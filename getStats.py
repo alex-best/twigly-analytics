@@ -128,7 +128,7 @@ class StatsHandler(BaseHandler):
 				returnstring += "<tr><td>" + count[0].strftime("%a %b %d, %Y") + "</td><td>" + str(count[1]) + "</td></tr>"
 			returnstring += ("</table><br><br>")
 
-		predefs = {"Combos": [41,42], "Minute Maid": [25], "Pasta": [10,11,13,14,18,19,26,37, 45], "Sandwich": [5,7,8,9,12,15,22,32,35,36], "Cheese Cake": [30], "Carrot Cake": [31], "Pita (/3)": [28,29], "Apple Strudel": [46]}
+		predefs = {"Combos": [41,42,47,48], "Minute Maid": [25], "Pasta": [10,11,13,14,18,19,26,37,45], "Sandwich": [5,7,8,9,12,15,22,32,35,36], "Cheese Cake": [30], "Carrot Cake": [31], "Pita (/3)": [28,29], "Apple Strudel": [46], "Blueberry Brainfreezer": [49]}
 
 		predefitems = [cat for cat in predefs]
 
