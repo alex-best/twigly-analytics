@@ -22,8 +22,6 @@ settings = {
 }
 statsBase = declarative_base()
 statsengine_url = 'mysql+pymysql://twigly:***REMOVED***@***REMOVED***/twigly_prod?charset=utf8'
-statsengine = sqlalchemy.create_engine(statsengine_url)
-statssession = scoped_session(sessionmaker(bind=statsengine))
 
 class order(statsBase):
 	__tablename__ = "orders"
@@ -102,42 +100,87 @@ class LoginHandler(BaseHandler):
 class StatsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
 		returnstring = "<style>td {padding: 10px;}</style>"
+		returnstring += "<table class='table-striped table-bordered table-hover' style='width: 100%;'><tr><td></td>"
 		todaydate = datetime.date.today()
 		oneweekago = todaydate - datetime.timedelta(days=7)
+		daterange = [oneweekago.strftime("%a %b %d, %Y")]
+		for c in range(6):
+			daterange.append((oneweekago + datetime.timedelta(days=(c+1))).strftime("%a %b %d, %Y"))
+
+		for thisday in daterange:
+			returnstring += "<td>" + thisday + "</td>"
+		
+		returnstring += "</tr>"
+		
+		dailysalesquery = statssession.query(order.date_add, sqlalchemy.func.sum(order.total)).filter(order.date_add < todaydate, order.date_add >= oneweekago, sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
+
+		returnstring += "<tr><td>Total Sales</td>"
+
+		thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): str(thisresult[1]) for thisresult in dailysalesquery}
+		for thisdate in daterange:
+			if thisdate in thiscountdetails:
+				returnstring += "<td>" + thiscountdetails[thisdate] + "</td>"
+			else:
+				returnstring += "<td>-</td>"
+		returnstring += ("</tr>")
+
+		dailyorderscountquery = statssession.query(order.date_add, sqlalchemy.func.count(order.order_id)).filter(order.date_add < todaydate, order.date_add >= oneweekago, sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
+
+		returnstring += "<tr><td>Total Orders</td>"
+
+		thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): str(thisresult[1]) for thisresult in dailyorderscountquery}
+		for thisdate in daterange:
+			if thisdate in thiscountdetails:
+				returnstring += "<td>" + thiscountdetails[thisdate] + "</td>"
+			else:
+				returnstring += "<td>-</td>"
+		returnstring += ("</tr>")
+
+		tags = statssession.query(tag).all()
 
 		dailyordersquery = statssession.query(order).filter(order.date_add < todaydate, order.date_add >= oneweekago, sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3)
 
 		dailyorderids = [order.order_id for order in dailyordersquery]
 
-		dailysalesquery = statssession.query(order.date_add, sqlalchemy.func.sum(order.total)).filter(order.date_add < todaydate, order.date_add >= oneweekago, sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
-
-		returnstring += "Total sales: <br><table class='table-striped table-bordered table-hover'>"
-		for sales in dailysalesquery:
-			returnstring += "<tr><td>" + sales[0].strftime("%a %b %d, %Y") + "</td><td>" + str(sales[1]) + "</td></tr>"
-
-		returnstring += ("</table><br><br>")
-
-		tags = statssession.query(tag).all()
+		returnstring += "<tr><td colspan='8'>Tags</td></tr><tr>"
 
 		for thistag in tags:
-			returnstring += thistag.name + ": <br><table class='table-striped table-bordered table-hover'>"
+			returnstring += "<td>" + thistag.name + "</td>"
 			relevantmenuitems = statssession.query(menu_item_tag.menu_item_id).filter(menu_item_tag.tag_id == thistag.tag_id)
 			thiscountquery = statssession.query(orderdetail.date_add, sqlalchemy.func.sum(orderdetail.quantity)).filter(orderdetail.date_add < todaydate, orderdetail.date_add >= oneweekago, orderdetail.order_id.in_(dailyorderids), orderdetail.menu_item_id.in_(relevantmenuitems)).group_by(sqlalchemy.func.year(orderdetail.date_add), sqlalchemy.func.month(orderdetail.date_add), sqlalchemy.func.day(orderdetail.date_add))
-			for count in thiscountquery:
-				returnstring += "<tr><td>" + count[0].strftime("%a %b %d, %Y") + "</td><td>" + str(count[1]) + "</td></tr>"
-			returnstring += ("</table><br><br>")
+			thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): str(thisresult[1]) for thisresult in thiscountquery}
+			for thisdate in daterange:
+				if thisdate in thiscountdetails:
+					returnstring += "<td>" + thiscountdetails[thisdate] + "</td>"
+				else:
+					returnstring += "<td>-</td>"
+			returnstring += ("</tr>")
 
 		predefs = {"Combos": [41,42,47,48], "Minute Maid": [25], "Pasta": [10,11,13,14,18,19,26,37,45], "Sandwich": [5,7,8,9,12,15,22,32,35,36], "Cheese Cake": [30], "Carrot Cake": [31], "Pita (/3)": [28,29], "Apple Strudel": [46], "Blueberry Brainfreezer": [49]}
 
 		predefitems = [cat for cat in predefs]
 
+		returnstring += "<tr><td colspan='8'>Input materials count</td></tr><tr>"
+
 		for cat in predefitems:
-			returnstring += cat + ": <br><table class='table-striped table-bordered table-hover'>"
+			returnstring += "<td>" + cat + "</td>"
 			salecountquery = statssession.query(orderdetail.date_add, sqlalchemy.func.sum(orderdetail.quantity)).filter(orderdetail.date_add < todaydate, orderdetail.date_add >= oneweekago, orderdetail.order_id.in_(dailyorderids), orderdetail.menu_item_id.in_(predefs[cat])).group_by(sqlalchemy.func.year(orderdetail.date_add), sqlalchemy.func.month(orderdetail.date_add), sqlalchemy.func.day(orderdetail.date_add))
-			for count in salecountquery:
-				returnstring += "<tr><td>" + count[0].strftime("%a %b %d, %Y") + "</td><td>" + str(count[1]) + "</td></tr>"
-			returnstring += ("</table><br><br>")
+			
+			thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): str(thisresult[1]) for thisresult in salecountquery}
+			for thisdate in daterange:
+				if thisdate in thiscountdetails:
+					returnstring += "<td>" + thiscountdetails[thisdate] + "</td>"
+				else:
+					returnstring += "<td>-</td>"
+
+			returnstring += ("</tr>")			
+
+		returnstring += "</table>"
+
+		statssession.remove()
 		self.render("templates/statstemplate.html", returnstring=returnstring)
 
 
