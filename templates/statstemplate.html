@@ -208,7 +208,7 @@
         }]
 	});
 	
-	var tagsmap = {{ tagsmap }};
+	var tagsmap = {% raw tagsmap %};
 
 	for (var i=0; i<tagsmap.length; i++) {
 		tagsmap[i].name = tagsmap[i].name.replace("#&lt;", "");
@@ -240,7 +240,7 @@
 		});
 	}
 
-	var inputsmap = {{ inputsmap }};
+	var inputsmap = {% raw inputsmap %};
 
 	for (var i=0; i<inputsmap.length; i++) {
 		inputsmap[i].name = inputsmap[i].name.replace(" ", "")
