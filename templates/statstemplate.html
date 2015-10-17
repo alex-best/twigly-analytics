@@ -4,12 +4,300 @@
     <meta charset="UTF-8">
     <title>Twigly Stats</title>
     <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/css/bootstrap-datepicker3.min.css">
+    <style>
+    	.smallchart {
+    		height: 400px;
+    	}
+    </style>
 </head>
 <body>
 <div class="container">
-    <div class="row">
-        {% raw returnstring %}
+	<div class="row" style="margin-bottom: 40px;">
+        <h2>Key Metrics</h2>
+    </div>
+    <div class="row" style="margin-bottom: 40px;">
+        <div id="totalsaleschart" style="width:100%; height:400px;"></div>
+    </div>
+    <div class="row" style="margin-bottom: 40px;">
+        <div id="orderschart" style="width:100%; height:400px;"></div>
+    </div>
+    <div class="row" style="margin-bottom: 40px;">
+        <div id="totalorderschart" style="width:100%; height:400px;"></div>
+    </div>
+    <div class="row" style="margin-bottom: 40px;" id="tagsheader">
+    	<h2>Tags Data</h2>
+    </div>
+    <div class="row" style="margin-bottom: 40px;" id="tagscontainer">
+        
+    </div>
+    <div class="row" style="margin-bottom: 40px;" id="inputsheader">
+    	<h2>Input Materials Data</h2>
+    </div>
+    <div class="row" style="margin-bottom: 40px;" id="inputscontainer">
+        
     </div>
 </div>
+<div id="horizon" style="position: fixed; top: 15px; right: 15px; text-align: center; width: 100px;">
+	<select id="horizonselect">
+		<option value="7">One Week</option>
+		<option value="14">Two Weeks</option>
+		<option value="30">30 Days</option>
+	</select>
+	<br>-OR-<br>
+	<div class="input-daterange" id="datepicker">
+    	<input type="text" class="input-sm form-control" name="start" id="startdate" />
+    	<span class="input-group-addon" style="width: 100px; border: 0px;">to</span>
+    	<input type="text" class="input-sm form-control" name="end" id="enddate" />
+    	<button class="btn btn-primary" id="setDates">Go!</button>
+	</div>
+
+</div>
+<script src="/static/js/jquery.min.js"></script>
+<script src="/static/js/highcharts.js"></script>
+<script src="/static/js/bootstrap-datepicker.min.js"></script>
+<script type="text/javascript">
+	var getUrlParameter = function getUrlParameter(sParam) {
+	    var sPageURL = decodeURIComponent(window.location.search.substring(1)),
+	        sURLVariables = sPageURL.split('&'),
+	        sParameterName,
+	        i;
+
+	    for (i = 0; i < sURLVariables.length; i++) {
+	        sParameterName = sURLVariables[i].split('=');
+
+	        if (sParameterName[0] === sParam) {
+	            return sParameterName[1] === undefined ? true : sParameterName[1];
+	        }
+	    }
+	};
+
+	$('#totalsaleschart').highcharts({
+		chart: {
+            zoomType: 'xy'
+        },
+        title: {
+            text: 'Total Sales and Orders'
+        },
+        xAxis: {
+            categories: {{ daterange }},
+            crosshair: true
+        },
+        yAxis: [{
+            title: {
+                text: 'Sales in INR'
+            }
+        },
+        {
+        	title: 'Orders',
+        	style: Highcharts.getOptions().colors[1],
+        	opposite: true
+        }],
+        tooltip: {
+            shared: true
+        },
+        series: [{
+        	name: "Total Sales",
+        	type: "column",
+        	yAxis: 1,
+        	showInLegend: false,
+            data: {{ totalsales }}
+        },{
+        	name: "Total Orders",
+        	type: "line",
+        	showInLegend: false,
+            data: {{ totalcount }}
+        }]
+	});
+	$('#orderschart').highcharts({
+		chart: {
+            type: "column"
+        },
+        title: {
+            text: 'New/Repeat Orders'
+        },
+        xAxis: {
+            categories: {{ daterange }},
+            crosshair: true
+        },
+        yAxis: {
+            title: {
+                text: 'Orders'
+            },
+            stackLabels: {
+            	enabled: true,
+            	style: {
+                    fontWeight: 'bold',
+                    color: (Highcharts.theme && Highcharts.theme.textColor) || 'gray'
+                }
+            }
+        },
+        plotOptions: {
+        	column: {
+        		stacking: 'normal',
+                dataLabels: {
+                    enabled: true,
+                    color: (Highcharts.theme && Highcharts.theme.dataLabelsColor) || 'white',
+                    style: {
+                        textShadow: '0 0 3px black'
+                    }
+                }
+            }
+        },
+        series: [{
+        	name: "New Orders",
+        	data: {{ neworders }}
+        },{
+        	name: "Repeat Orders",
+        	data: {{ repeatorders }}
+        }]
+	});
+
+	$('#totalorderschart').highcharts({
+		chart: {
+            type: "column"
+        },
+        title: {
+            text: 'New/Repeat Bill Totals'
+        },
+        xAxis: {
+            categories: {{ daterange }},
+            crosshair: true
+        },
+        yAxis: {
+            title: {
+                text: 'Orders'
+            },
+            stackLabels: {
+            	enabled: true,
+            	style: {
+                    fontWeight: 'bold',
+                    color: (Highcharts.theme && Highcharts.theme.textColor) || 'gray'
+                }
+            }
+        },
+        plotOptions: {
+        	column: {
+        		stacking: 'normal',
+                dataLabels: {
+                    enabled: true,
+                    color: (Highcharts.theme && Highcharts.theme.dataLabelsColor) || 'white',
+                    style: {
+                        textShadow: '0 0 3px black'
+                    }
+                }
+            }
+        },
+        tooltip: {
+	        pointFormat: "{series.name}: {point.y:.2f}"
+	    },
+        series: [{
+        	name: "New Orders",
+        	data: {{ newsums }},
+        	dataLabels: {
+                enabled: true,
+                format: '{point.y:.2f}'
+            }
+        },{
+        	name: "Repeat Orders",
+        	data: {{ repeatsums }},
+        	dataLabels: {
+                enabled: true,
+                format: '{point.y:.2f}'
+            }
+        }]
+	});
+	
+	var tagsmap = {{ tagsmap }};
+
+	for (var i=0; i<tagsmap.length; i++) {
+		tagsmap[i].name = tagsmap[i].name.replace("#&lt;", "");
+		tagsmap[i].name = tagsmap[i].name.replace(" ", "");
+		var newchartelem = $("<div class='col-xs-12 col-md-4 smallchart' id='" + tagsmap[i].name.substr(1) + "'></div>")
+		$('#tagscontainer').append(newchartelem);
+		var newchart = new Highcharts.Chart({
+			chart: {
+	            renderTo: tagsmap[i].name.substr(1),
+	            type: "column"
+	        },
+	        title: {
+	            text: 'Volume for ' + tagsmap[i].name
+	        },
+	        xAxis: {
+	            categories: {{ daterange }},
+	            crosshair: true
+	        },
+	        yAxis: {
+	            title: {
+	                text: 'Volume'
+	            }
+	        },
+	        series: [{
+	        	showInLegend: false,
+	        	name: tagsmap[i].name,
+	        	data: tagsmap[i].data
+	        }]
+		});
+	}
+
+	var inputsmap = {{ inputsmap }};
+
+	for (var i=0; i<inputsmap.length; i++) {
+		inputsmap[i].name = inputsmap[i].name.replace(" ", "")
+		var newchartelem = $("<div class='col-xs-12 col-md-4 smallchart' id='" + inputsmap[i].name + "'></div>")
+		$('#inputscontainer').append(newchartelem);
+		var newchart = new Highcharts.Chart({
+			chart: {
+	            renderTo: inputsmap[i].name,
+	            type: "column"
+	        },
+	        title: {
+	            text: 'Volume for ' + inputsmap[i].name
+	        },
+	        xAxis: {
+	            categories: {{ daterange }},
+	            crosshair: true
+	        },
+	        yAxis: {
+	            title: {
+	                text: 'Volume'
+	            }
+	        },
+	        series: [{
+	        	showInLegend: false,
+	        	name: inputsmap[i].name,
+	        	data: inputsmap[i].data
+	        }]
+		});
+	}
+
+	$(document).ready(function() {
+		$('#horizonselect').on('change', function() {
+			window.location.href = "/stats?horizon=" + $(this).val();
+		});
+		var thishorizon = getUrlParameter("horizon");
+		if (thishorizon) {
+			$('#horizonselect').val(thishorizon);
+		}
+		var thisstartdate = getUrlParameter("startdate");
+		if (thisstartdate) {
+			$('#startdate').val(thisstartdate);
+		}
+		var thisenddate = getUrlParameter("enddate");
+		if (thisenddate) {
+			$('#enddate').val(thisenddate);
+		}
+		$('.input-daterange').datepicker({
+		    todayBtn: "linked",
+		    autoclose: true,
+		    todayHighlight: true,
+		    format: "dd/mm/yy",
+		});
+		$('#setDates').on('click', function() {
+			window.location.href = "/stats?startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val();
+		});
+	});
+	
+</script>
 </body>
 </html>

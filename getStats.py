@@ -21,7 +21,7 @@ settings = {
     "login_url": "/"
 }
 statsBase = declarative_base()
-statsengine_url = 'mysql+pymysql://twigly:***REMOVED***@***REMOVED***/twigly_prod?charset=utf8'
+statsengine_url = 'mysql+pymysql://twigly_ro:tw1gl7r0@***REMOVED***/twigly_prod?charset=utf8'
 
 class order(statsBase):
 	__tablename__ = "orders"
@@ -100,88 +100,131 @@ class LoginHandler(BaseHandler):
 class StatsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
+		horizon = self.get_argument("horizon", None)
+		startdate = self.get_argument("startdate", None)
+		enddate = self.get_argument("enddate", None)
+		if startdate is None:
+			if horizon is None:
+				horizon = 7
+			else:
+				horizon = int(horizon)
+
+			parsedenddate = datetime.date.today()
+			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
+			daterange = [parsedstartdate.strftime("%a %b %d, %Y")]
+			for c in range(horizon-1):
+				daterange.append((parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%a %b %d, %Y"))
+		
+		else:
+			parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date()
+			parsedenddate = parsedenddate + datetime.timedelta(days=1)
+			parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
+			daterange = []
+			for c in range((parsedenddate - parsedstartdate).days):
+				daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%a %b %d, %Y"))
+
 		statsengine = sqlalchemy.create_engine(statsengine_url)
 		statssession = scoped_session(sessionmaker(bind=statsengine))
-		returnstring = "<style>td {padding: 10px;}</style>"
-		returnstring += "<table class='table-striped table-bordered table-hover' style='width: 100%;'><tr><td></td>"
-		todaydate = datetime.date.today()
-		oneweekago = todaydate - datetime.timedelta(days=7)
-		daterange = [oneweekago.strftime("%a %b %d, %Y")]
-		for c in range(6):
-			daterange.append((oneweekago + datetime.timedelta(days=(c+1))).strftime("%a %b %d, %Y"))
 
-		for thisday in daterange:
-			returnstring += "<td>" + thisday + "</td>"
-		
-		returnstring += "</tr>"
-		
-		dailysalesquery = statssession.query(order.date_add, sqlalchemy.func.sum(order.total)).filter(order.date_add < todaydate, order.date_add >= oneweekago, sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
 
-		returnstring += "<tr><td>Total Sales</td>"
+		dailysalesquery = statssession.query(order.date_add, sqlalchemy.func.sum(order.total)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
 
-		thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): str(thisresult[1]) for thisresult in dailysalesquery}
+		totalsales = []
+		thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): float(thisresult[1]) for thisresult in dailysalesquery}
 		for thisdate in daterange:
 			if thisdate in thiscountdetails:
-				returnstring += "<td>" + thiscountdetails[thisdate] + "</td>"
+				totalsales.append(thiscountdetails[thisdate])
 			else:
-				returnstring += "<td>-</td>"
-		returnstring += ("</tr>")
+				totalsales.append(0)
 
-		dailyorderscountquery = statssession.query(order.date_add, sqlalchemy.func.count(order.order_id)).filter(order.date_add < todaydate, order.date_add >= oneweekago, sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
+		dailyorderscountquery = statssession.query(order.date_add, sqlalchemy.func.count(order.order_id)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
 
-		returnstring += "<tr><td>Total Orders</td>"
 
-		thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): str(thisresult[1]) for thisresult in dailyorderscountquery}
+		thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): int(thisresult[1]) for thisresult in dailyorderscountquery}
+		totalcount = []
 		for thisdate in daterange:
 			if thisdate in thiscountdetails:
-				returnstring += "<td>" + thiscountdetails[thisdate] + "</td>"
+				totalcount.append(thiscountdetails[thisdate])
 			else:
-				returnstring += "<td>-</td>"
-		returnstring += ("</tr>")
+				totalcount.append(0)
+		
+
+		firstorderquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3).order_by(order.date_add).group_by(order.mobile_number)
+
+		firstordersmap = {}
+		for thisorder in firstorderquery:
+			firstordersmap[thisorder.mobile_number] = thisorder.date_add.strftime("%c")
+
+		ordercounts = {thisdate: {"new": 0, "old": 0} for thisdate in daterange}
+		ordertotals = {thisdate: {"new": 0.0, "old": 0.0} for thisdate in daterange}
+
+		dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3, order.date_add <= parsedenddate, order.date_add >= parsedstartdate)
+
+		dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
+
+		for thisorder in dailyordersquery:
+			if (thisorder.date_add.strftime("%c") == firstordersmap[thisorder.mobile_number]):
+				ordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["new"] += 1
+				ordertotals[thisorder.date_add.strftime("%a %b %d, %Y")]["new"] += float(thisorder.total)
+			else:
+				ordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["old"] += 1
+				ordertotals[thisorder.date_add.strftime("%a %b %d, %Y")]["old"] += float(thisorder.total)
+
+		neworders = []
+		for thisdate in daterange:
+			neworders.append(ordercounts[thisdate]["new"])
+
+		repeatorders = []
+		for thisdate in daterange:
+			repeatorders.append(ordercounts[thisdate]["old"])
+
+		newsums = []
+		for thisdate in daterange:
+			newsums.append(ordertotals[thisdate]["new"])
+
+		repeatsums = []
+		for thisdate in daterange:
+			repeatsums.append(ordertotals[thisdate]["old"])
 
 		tags = statssession.query(tag).all()
 
-		dailyordersquery = statssession.query(order).filter(order.date_add < todaydate, order.date_add >= oneweekago, sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3)
-
-		dailyorderids = [order.order_id for order in dailyordersquery]
-
-		returnstring += "<tr><td colspan='8'>Tags</td></tr><tr>"
+		tagsmap = []
 
 		for thistag in tags:
-			returnstring += "<td>" + thistag.name + "</td>"
 			relevantmenuitems = statssession.query(menu_item_tag.menu_item_id).filter(menu_item_tag.tag_id == thistag.tag_id)
-			thiscountquery = statssession.query(orderdetail.date_add, sqlalchemy.func.sum(orderdetail.quantity)).filter(orderdetail.date_add < todaydate, orderdetail.date_add >= oneweekago, orderdetail.order_id.in_(dailyorderids), orderdetail.menu_item_id.in_(relevantmenuitems)).group_by(sqlalchemy.func.year(orderdetail.date_add), sqlalchemy.func.month(orderdetail.date_add), sqlalchemy.func.day(orderdetail.date_add))
-			thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): str(thisresult[1]) for thisresult in thiscountquery}
+			thiscountquery = statssession.query(orderdetail.date_add, sqlalchemy.func.sum(orderdetail.quantity)).filter(orderdetail.date_add <= parsedenddate, orderdetail.date_add >= parsedstartdate, orderdetail.order_id.in_(dailyorderids), orderdetail.menu_item_id.in_(relevantmenuitems)).group_by(sqlalchemy.func.year(orderdetail.date_add), sqlalchemy.func.month(orderdetail.date_add), sqlalchemy.func.day(orderdetail.date_add))
+			thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): int(thisresult[1]) for thisresult in thiscountquery}
+			thistaglist = []
 			for thisdate in daterange:
 				if thisdate in thiscountdetails:
-					returnstring += "<td>" + thiscountdetails[thisdate] + "</td>"
+					thistaglist.append(thiscountdetails[thisdate])
 				else:
-					returnstring += "<td>-</td>"
-			returnstring += ("</tr>")
+					thistaglist.append(0)
+
+			tagsmap.append({"name": thistag.name, "data":thistaglist})
+			
 
 		predefs = {"Combos": [41,42,47,48], "Minute Maid": [25], "Pasta": [10,11,13,14,18,19,26,37,45], "Sandwich": [5,7,8,9,12,15,22,32,35,36], "Cheese Cake": [30], "Carrot Cake": [31], "Pita (/3)": [28,29], "Apple Strudel": [46], "Blueberry Brainfreezer": [49]}
 
 		predefitems = [cat for cat in predefs]
 
-		returnstring += "<tr><td colspan='8'>Input materials count</td></tr><tr>"
+		inputsmap = []
 
 		for cat in predefitems:
-			returnstring += "<td>" + cat + "</td>"
-			salecountquery = statssession.query(orderdetail.date_add, sqlalchemy.func.sum(orderdetail.quantity)).filter(orderdetail.date_add < todaydate, orderdetail.date_add >= oneweekago, orderdetail.order_id.in_(dailyorderids), orderdetail.menu_item_id.in_(predefs[cat])).group_by(sqlalchemy.func.year(orderdetail.date_add), sqlalchemy.func.month(orderdetail.date_add), sqlalchemy.func.day(orderdetail.date_add))
+			salecountquery = statssession.query(orderdetail.date_add, sqlalchemy.func.sum(orderdetail.quantity)).filter(orderdetail.date_add <= parsedenddate, orderdetail.date_add >= parsedstartdate, orderdetail.order_id.in_(dailyorderids), orderdetail.menu_item_id.in_(predefs[cat])).group_by(sqlalchemy.func.year(orderdetail.date_add), sqlalchemy.func.month(orderdetail.date_add), sqlalchemy.func.day(orderdetail.date_add))
 			
-			thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): str(thisresult[1]) for thisresult in salecountquery}
+			thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): int(thisresult[1]) for thisresult in salecountquery}
+			thisinputslist = []
 			for thisdate in daterange:
 				if thisdate in thiscountdetails:
-					returnstring += "<td>" + thiscountdetails[thisdate] + "</td>"
+					thisinputslist.append(thiscountdetails[thisdate])
 				else:
-					returnstring += "<td>-</td>"
+					thisinputslist.append(0)
 
-			returnstring += ("</tr>")			
-
-		returnstring += "</table>"
+			inputsmap.append({"name": cat, "data":thisinputslist})		
 
 		statssession.remove()
-		self.render("templates/statstemplate.html", returnstring=returnstring)
+		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=neworders, repeatorders=repeatorders, tagsmap=tagsmap, inputsmap=inputsmap, newsums=newsums, repeatsums=repeatsums)
 
 
 current_path = path.dirname(path.abspath(__file__))
