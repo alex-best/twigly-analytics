@@ -80,7 +80,7 @@
             text: 'Total Sales and Orders'
         },
         xAxis: {
-            categories: {{ daterange }},
+            categories: {% raw daterange %},
             crosshair: true
         },
         yAxis: [{
@@ -117,7 +117,7 @@
             text: 'New/Repeat Orders'
         },
         xAxis: {
-            categories: {{ daterange }},
+            categories: {% raw daterange %},
             crosshair: true
         },
         yAxis: {
@@ -161,7 +161,7 @@
             text: 'New/Repeat Bill Totals'
         },
         xAxis: {
-            categories: {{ daterange }},
+            categories: {% raw daterange %},
             crosshair: true
         },
         yAxis: {
@@ -224,7 +224,7 @@
 	            text: 'Volume for ' + tagsmap[i].name
 	        },
 	        xAxis: {
-	            categories: {{ daterange }},
+	            categories: {% raw daterange %},
 	            crosshair: true
 	        },
 	        yAxis: {
@@ -255,7 +255,7 @@
 	            text: 'Volume for ' + inputsmap[i].name
 	        },
 	        xAxis: {
-	            categories: {{ daterange }},
+	            categories: {% raw daterange %},
 	            crosshair: true
 	        },
 	        yAxis: {
