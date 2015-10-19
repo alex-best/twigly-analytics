@@ -75,6 +75,14 @@ class menu_item_tag(statsBase):
 		'primary_key':[menu_item_id, tag_id]
     }
 
+class feedback(statsBase):
+	__tablename__ = "feedbacks"
+	feedback_id = Column("feedback_id", Integer, primary_key=True)
+	food_rating = Column("food_rating", Integer)
+	delivery_rating = Column("delivery_rating", Integer)
+	order_id = Column("order_id", Integer)
+	comment = Column("comment", String)
+
 def authenticate(thisusername, thispassword):
 	if (thisusername == "admin" and thispassword == "tw1gl7st4ts"):
 		return {"result": True}
@@ -130,12 +138,15 @@ class StatsHandler(BaseHandler):
 		dailysalesquery = statssession.query(order.date_add, sqlalchemy.func.sum(order.total)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
 
 		totalsales = []
+
 		thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): float(thisresult[1]) for thisresult in dailysalesquery}
 		for thisdate in daterange:
 			if thisdate in thiscountdetails:
 				totalsales.append(thiscountdetails[thisdate])
 			else:
 				totalsales.append(0)
+
+		totalsalesvalue = sum(totalsales)
 
 		dailyorderscountquery = statssession.query(order.date_add, sqlalchemy.func.count(order.order_id)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
 
@@ -147,7 +158,11 @@ class StatsHandler(BaseHandler):
 				totalcount.append(thiscountdetails[thisdate])
 			else:
 				totalcount.append(0)
-		
+
+		dailyapc = []
+
+		for c in range(len(daterange)):
+			dailyapc.append(totalsales[c]/totalcount[c])
 
 		firstorderquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3).order_by(order.date_add).group_by(order.mobile_number)
 
@@ -162,6 +177,29 @@ class StatsHandler(BaseHandler):
 
 		dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
 
+		feedbackonorders = statssession.query(feedback).filter(feedback.order_id.in_(dailyorderids), sqlalchemy.or_(feedback.food_rating > 0, feedback.delivery_rating > 0)).all()
+
+		totalorders = len(dailyorderids)
+
+		averageapc = totalsalesvalue/totalorders
+
+		orders_with_feedback = len(feedbackonorders)
+
+		feedback_chart_data = [{"name": "Orders with Feedback", "y": orders_with_feedback}, {"name": "Orders without Feedback", "y": (totalorders - orders_with_feedback)}]
+
+		food_rating_counts = [{"name": "5 stars", "y": 0, "sliced": "true", "selected": "true"}, {"name": "4 stars", "y": 0}, {"name": "3 stars", "y": 0}, {"name": "2 stars", "y": 0}, {"name": "1 star", "y": 0}]
+		total_food_ratings = 0
+		delivery_rating_counts = [{"name": "5 stars", "y": 0, "sliced": "true", "selected": "true"}, {"name": "4 stars", "y": 0}, {"name": "3 stars", "y": 0}, {"name": "2 stars", "y": 0}, {"name": "1 star", "y": 0}]
+		total_delivery_ratings = 0
+
+		for thisfeedback in feedbackonorders:
+			if (thisfeedback.food_rating > 0):
+				food_rating_counts[5-thisfeedback.food_rating]["y"] += 1
+				total_food_ratings += 1
+			if (thisfeedback.delivery_rating > 0):
+				delivery_rating_counts[5-thisfeedback.delivery_rating]["y"] += 1
+				total_delivery_ratings += 1
+
 		for thisorder in dailyordersquery:
 			if (thisorder.date_add.strftime("%c") == firstordersmap[thisorder.mobile_number]):
 				ordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["new"] += 1
@@ -174,9 +212,13 @@ class StatsHandler(BaseHandler):
 		for thisdate in daterange:
 			neworders.append(ordercounts[thisdate]["new"])
 
+		totalneworders = sum(neworders)
+
 		repeatorders = []
 		for thisdate in daterange:
 			repeatorders.append(ordercounts[thisdate]["old"])
+
+		totalrepeatorders = sum(repeatorders)
 
 		newsums = []
 		for thisdate in daterange:
@@ -224,7 +266,7 @@ class StatsHandler(BaseHandler):
 			inputsmap.append({"name": cat, "data":thisinputslist})		
 
 		statssession.remove()
-		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=neworders, repeatorders=repeatorders, tagsmap=tagsmap, inputsmap=inputsmap, newsums=newsums, repeatsums=repeatsums)
+		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=neworders, repeatorders=repeatorders, tagsmap=tagsmap, inputsmap=inputsmap, newsums=newsums, repeatsums=repeatsums, dailyapc=dailyapc, feedback_chart_data=feedback_chart_data, food_rating_counts=food_rating_counts, delivery_rating_counts=delivery_rating_counts, totalsalesvalue=totalsalesvalue, totalorders=totalorders, totalneworders=totalneworders, totalrepeatorders=totalrepeatorders, averageapc=averageapc)
 
 
 current_path = path.dirname(path.abspath(__file__))
