@@ -6,12 +6,54 @@
     <link rel="stylesheet" href="/static/css/bootstrap.min.css">
     <link rel="stylesheet" href="/static/css/bootstrap-datepicker3.min.css">
     <style>
+    	@font-face {
+		    font-family: "Shadows Into Light Two";
+		    src: url(/static/fonts/ShadowsIntoLightTwo.ttf);
+		}
     	.smallchart {
     		height: 400px;
     	}
+    	a.navbar-brand span {
+		    color: #fff;
+		    font-size: 51px;
+		    font-family: "Shadows Into Light Two";
+		    font-style: normal;
+		    font-weight: 400;
+		    line-height: 18px;
+		    text-align: left;
+		}
+		.header-top {
+		    background-color: #009688;
+		}
+		.fx-center-x {
+		    position: absolute;
+		    width: 100%;
+		}
+		.fx-logo {
+		    top: 0;
+		    background-color: #009688;
+		    height: 82px;
+		}
     </style>
 </head>
 <body>
+<div class="header-top">
+    <div class="fx-center-x">
+        <img src="/static/img/logo_bg.png" class="img-responsive center-block" alt="Twigly">
+    </div>
+    <div class="fx-center-x fx-logo">
+        <img src="/static/img/logo.png" class="img-responsive center-block" style="margin-top:12px" alt="Logo">
+    </div>
+    
+    <nav class="navbar navbar-default" role="navigation" style="border:0px; background: transparent;">
+        <div class="container-fluid">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header">
+                <a class="navbar-brand hidden-xs" href="/stats" style="margin-top: 12px;"><span>Twigly</span></a>
+            </div>
+        </div>
+    </nav>
+</div>
 <div class="container">
 	<div class="row" style="margin-bottom: 40px;">
         <h2>Key Metrics</h2>
@@ -47,7 +89,9 @@
         
     </div>
 </div>
-<div id="horizon" style="position: fixed; top: 15px; right: 15px; text-align: center; width: 100px;">
+<button class="showFilters hidden-xs btn btn-success" style="position: fixed; top: 25px; right: 15px;">Show/Hide Filters</button>
+<button class="showFilters visible-xs btn btn-success" style="position: fixed; top: 25px; right: 15px;">V</button>
+<div id="horizon" style="position: fixed; top: 89px; right: 15px; text-align: center; width: 100px;">
 	<select id="horizonselect">
 		<option value="7">One Week</option>
 		<option value="14">Two Weeks</option>
@@ -468,6 +512,9 @@
 		});
 		$('#setDates').on('click', function() {
 			window.location.href = "/stats?startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val();
+		});
+		$('.showFilters').on('click', function() {
+			$('#horizon').fadeToggle();
 		});
 	});
 	
