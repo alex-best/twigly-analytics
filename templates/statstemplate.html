@@ -355,7 +355,7 @@
         	name: "Feedback on Orders",
         	colorByPoint: true,
         	showInLegend: true,
-        	data: {{ feedback_chart_data }}
+        	data: {% raw feedback_chart_data %}
         }]
 	});
 
@@ -388,7 +388,7 @@
         	name: "Feedback on Food",
         	colorByPoint: true,
         	showInLegend: true,
-        	data: {{ food_rating_counts }}
+        	data: {% raw food_rating_counts %}
         }]
 	});
 
@@ -421,7 +421,7 @@
         	name: "Feedback on Delivery",
         	colorByPoint: true,
         	showInLegend: true,
-        	data: {{ delivery_rating_counts }}
+        	data: {% raw delivery_rating_counts %}
         }]
 	});
 	
