@@ -83,6 +83,17 @@ class feedback(statsBase):
 	order_id = Column("order_id", Integer)
 	comment = Column("comment", String)
 
+class menuitem(statsBase):
+	__tablename__ = "menu_items"
+	menu_item_id = Column("menu_item_id", Integer, primary_key=True)
+	name = Column("name", String)
+	img_url = Column("img_url", String)
+	description = Column("description", String)
+	calories = Column("calories", Integer)
+	is_active = Column("is_active", Integer)
+	category = Column("category", Integer)
+	is_combo = Column("is_combo", Integer)
+
 def authenticate(thisusername, thispassword):
 	if (thisusername == "admin" and thispassword == "tw1gl7st4ts"):
 		return {"result": True}
@@ -246,27 +257,50 @@ class StatsHandler(BaseHandler):
 			tagsmap.append({"name": thistag.name, "data":thistaglist})
 			
 
-		predefs = {"Combos": [41,42,47,48], "Minute Maid": [25], "Pasta": [10,11,13,14,18,19,26,37,45], "Sandwich": [5,7,8,9,12,15,22,32,35,36], "Cheese Cake": [30], "Carrot Cake": [31], "Pita (/3)": [28,29], "Apple Strudel": [46], "Blueberry Brainfreezer": [49]}
+		menuitems = {thismenuitem.menu_item_id: {"name": thismenuitem.name, "total": 0, "datelookup": {thisdate: 0 for thisdate in daterange}} for thismenuitem in statssession.query(menuitem)}
+		for suborder in statssession.query(orderdetail).filter(orderdetail.order_id.in_(dailyorderids)):
+			menuitems[suborder.menu_item_id]["datelookup"][suborder.date_add.strftime("%a %b %d, %Y")] += suborder.quantity
+			menuitems[suborder.menu_item_id]["total"] += suborder.quantity
 
-		predefitems = [cat for cat in predefs]
+		itemhtml = "<table class='table table-striped table-hover'><thead><tr><th>Dish</th><th>Total</th>"
+		for thisdate in daterange:
+			itemhtml += "<th>" + thisdate + "</th>"
 
-		inputsmap = []
-
-		for cat in predefitems:
-			salecountquery = statssession.query(orderdetail.date_add, sqlalchemy.func.sum(orderdetail.quantity)).filter(orderdetail.date_add <= parsedenddate, orderdetail.date_add >= parsedstartdate, orderdetail.order_id.in_(dailyorderids), orderdetail.menu_item_id.in_(predefs[cat])).group_by(sqlalchemy.func.year(orderdetail.date_add), sqlalchemy.func.month(orderdetail.date_add), sqlalchemy.func.day(orderdetail.date_add))
-			
-			thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): int(thisresult[1]) for thisresult in salecountquery}
-			thisinputslist = []
+		itemhtml += "</tr><tbody>"
+		for thismenuitem in menuitems:
+			if menuitems[thismenuitem]["total"] == 0:
+				continue
+			itemhtml += "<tr><td style='font-weight: bold;'>" + menuitems[thismenuitem]["name"] + "</td>"
+			itemhtml += "<td style='font-weight: bold;'>" + str(menuitems[thismenuitem]["total"]) + "</td>"
 			for thisdate in daterange:
-				if thisdate in thiscountdetails:
-					thisinputslist.append(thiscountdetails[thisdate])
+				if menuitems[thismenuitem]["datelookup"][thisdate] == 0:
+					itemhtml += "<td>-</td>"
 				else:
-					thisinputslist.append(0)
+					itemhtml += "<td>" + str(menuitems[thismenuitem]["datelookup"][thisdate]) + "</td>"
+			itemhtml += "</tr>"
+		itemhtml += "</tbody></table>"
 
-			inputsmap.append({"name": cat, "data":thisinputslist})		
+		# predefs = {"Combos": [41,42,47,48], "Minute Maid": [25], "Pasta": [10,11,13,14,18,19,26,37,45], "Sandwich": [5,7,8,9,12,15,22,32,35,36], "Cheese Cake": [30], "Carrot Cake": [31], "Pita (/3)": [28,29], "Apple Strudel": [46], "Blueberry Brainfreezer": [49]}
+
+		# predefitems = [cat for cat in predefs]
+
+		# inputsmap = []
+
+		# for cat in predefitems:
+		# 	salecountquery = statssession.query(orderdetail.date_add, sqlalchemy.func.sum(orderdetail.quantity)).filter(orderdetail.date_add <= parsedenddate, orderdetail.date_add >= parsedstartdate, orderdetail.order_id.in_(dailyorderids), orderdetail.menu_item_id.in_(predefs[cat])).group_by(sqlalchemy.func.year(orderdetail.date_add), sqlalchemy.func.month(orderdetail.date_add), sqlalchemy.func.day(orderdetail.date_add))
+			
+		# 	thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): int(thisresult[1]) for thisresult in salecountquery}
+		# 	thisinputslist = []
+		# 	for thisdate in daterange:
+		# 		if thisdate in thiscountdetails:
+		# 			thisinputslist.append(thiscountdetails[thisdate])
+		# 		else:
+		# 			thisinputslist.append(0)
+
+		# 	inputsmap.append({"name": cat, "data":thisinputslist})		
 
 		statssession.remove()
-		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=neworders, repeatorders=repeatorders, tagsmap=tagsmap, inputsmap=inputsmap, newsums=newsums, repeatsums=repeatsums, dailyapc=dailyapc, feedback_chart_data=feedback_chart_data, food_rating_counts=food_rating_counts, delivery_rating_counts=delivery_rating_counts, totalsalesvalue=totalsalesvalue, totalorders=totalorders, totalneworders=totalneworders, totalrepeatorders=totalrepeatorders, averageapc=averageapc)
+		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=neworders, repeatorders=repeatorders, tagsmap=tagsmap, newsums=newsums, repeatsums=repeatsums, dailyapc=dailyapc, feedback_chart_data=feedback_chart_data, food_rating_counts=food_rating_counts, delivery_rating_counts=delivery_rating_counts, totalsalesvalue=totalsalesvalue, totalorders=totalorders, totalneworders=totalneworders, totalrepeatorders=totalrepeatorders, averageapc=averageapc, itemhtml=itemhtml)
 
 
 current_path = path.dirname(path.abspath(__file__))

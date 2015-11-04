@@ -83,10 +83,10 @@
         
     </div>
     <div class="row" style="margin-bottom: 40px;" id="inputsheader">
-    	<h2>Input Materials Data</h2>
+    	<h2>Dish Data</h2>
     </div>
     <div class="row" style="margin-bottom: 40px;" id="inputscontainer">
-        
+        {% raw itemhtml %}
     </div>
 </div>
 <button class="showFilters hidden-xs btn btn-success" style="position: fixed; top: 25px; right: 15px;">Show/Hide Filters</button>
@@ -459,9 +459,7 @@
 		});
 	}
 
-	var inputsmap = {% raw inputsmap %};
-
-	for (var i=0; i<inputsmap.length; i++) {
+	/*for (var i=0; i<inputsmap.length; i++) {
 		inputsmap[i].name = inputsmap[i].name.replace(" ", "")
 		var newchartelem = $("<div class='col-xs-12 col-md-4 smallchart' id='" + inputsmap[i].name + "'></div>")
 		$('#inputscontainer').append(newchartelem);
@@ -488,7 +486,7 @@
 	        	data: inputsmap[i].data
 	        }]
 		});
-	}
+	}*/
 
 	$(document).ready(function() {
 		$('#horizonselect').on('change', function() {
