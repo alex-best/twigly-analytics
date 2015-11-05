@@ -262,7 +262,7 @@ class StatsHandler(BaseHandler):
 			menuitems[suborder.menu_item_id]["datelookup"][suborder.date_add.strftime("%a %b %d, %Y")] += suborder.quantity
 			menuitems[suborder.menu_item_id]["total"] += suborder.quantity
 
-		itemhtml = "<table class='table table-striped table-hover'><thead><tr><th>Dish</th><th>Total</th>"
+		itemhtml = "<table class='table table-striped table-hover tablesorter' style='width: 100%;'><thead><tr><th>Dish</th><th>Total</th>"
 		for thisdate in daterange:
 			itemhtml += "<th>" + thisdate + "</th>"
 

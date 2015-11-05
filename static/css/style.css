@@ -1,0 +1,30 @@
+table.tablesorter {
+	font-size: 12px;
+}
+table.tablesorter th {
+	text-align: left;
+	padding: 5px;
+}
+table.tablesorter td {
+	padding: 5px;
+	text-align: right;
+}
+table.tablesorter .header {
+	background-image: url(bg.png);
+	background-repeat: no-repeat;
+	border-left: 1px solid #FFF;
+	border-right: 1px solid #000;
+	border-top: 1px solid #FFF;
+	padding-left: 30px;
+	padding-top: 8px;
+	height: auto;
+	cursor: pointer;
+}
+table.tablesorter .headerSortUp {
+	background-image: url(asc.png);
+	background-repeat: no-repeat;
+}
+table.tablesorter .headerSortDown {
+	background-image: url(desc.png);
+	background-repeat: no-repeat;
+}
