@@ -173,7 +173,10 @@ class StatsHandler(BaseHandler):
 		dailyapc = []
 
 		for c in range(len(daterange)):
-			dailyapc.append(totalsales[c]/totalcount[c])
+			try: 
+				dailyapc.append(totalsales[c]/totalcount[c])
+			except ZeroDivisionError:
+				dailyapc.append(0)
 
 		firstorderquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3).order_by(order.date_add).group_by(order.mobile_number)
 
@@ -192,7 +195,10 @@ class StatsHandler(BaseHandler):
 
 		totalorders = len(dailyorderids)
 
-		averageapc = totalsalesvalue/totalorders
+		try:
+			averageapc = totalsalesvalue/totalorders
+		except ZeroDivisionError:
+			averageapc = 0
 
 		orders_with_feedback = len(feedbackonorders)
 
