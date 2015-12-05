@@ -217,6 +217,8 @@ class StatsHandler(BaseHandler):
 				delivery_rating_counts[5-thisfeedback.delivery_rating]["y"] += 1
 				total_delivery_ratings += 1
 
+		platformcounts = {thisdate: {"Android": 0, "Web": 0, "iOS": 0} for thisdate in daterange}
+
 		for thisorder in dailyordersquery:
 			if (thisorder.date_add.strftime("%c") == firstordersmap[thisorder.mobile_number]):
 				ordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["new"] += 1
@@ -224,6 +226,13 @@ class StatsHandler(BaseHandler):
 			else:
 				ordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["old"] += 1
 				ordertotals[thisorder.date_add.strftime("%a %b %d, %Y")]["old"] += float(thisorder.total)
+			
+			if (thisorder.source == 0):
+				platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Android"] += 1
+			elif (thisorder.source == 1):
+				platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Web"] += 1
+			elif (thisorder.source ==2):
+				platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["iOS"] += 1
 
 		neworders = []
 		for thisdate in daterange:
@@ -244,6 +253,15 @@ class StatsHandler(BaseHandler):
 		repeatsums = []
 		for thisdate in daterange:
 			repeatsums.append(ordertotals[thisdate]["old"])
+
+		androidorders = []
+		weborders = []
+		iosorders = []
+
+		for thisdate in daterange:
+			androidorders.append(platformcounts[thisdate]["Android"])
+			weborders.append(platformcounts[thisdate]["Web"])
+			iosorders.append(platformcounts[thisdate]["iOS"])
 
 		tags = statssession.query(tag).all()
 
@@ -306,7 +324,7 @@ class StatsHandler(BaseHandler):
 		# 	inputsmap.append({"name": cat, "data":thisinputslist})		
 
 		statssession.remove()
-		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=neworders, repeatorders=repeatorders, tagsmap=tagsmap, newsums=newsums, repeatsums=repeatsums, dailyapc=dailyapc, feedback_chart_data=feedback_chart_data, food_rating_counts=food_rating_counts, delivery_rating_counts=delivery_rating_counts, totalsalesvalue=totalsalesvalue, totalorders=totalorders, totalneworders=totalneworders, totalrepeatorders=totalrepeatorders, averageapc=averageapc, itemhtml=itemhtml)
+		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=neworders, repeatorders=repeatorders, tagsmap=tagsmap, newsums=newsums, repeatsums=repeatsums, dailyapc=dailyapc, feedback_chart_data=feedback_chart_data, food_rating_counts=food_rating_counts, delivery_rating_counts=delivery_rating_counts, totalsalesvalue=totalsalesvalue, totalorders=totalorders, totalneworders=totalneworders, totalrepeatorders=totalrepeatorders, averageapc=averageapc, itemhtml=itemhtml, androidorders=androidorders, weborders=weborders, iosorders=iosorders)
 
 
 current_path = path.dirname(path.abspath(__file__))
