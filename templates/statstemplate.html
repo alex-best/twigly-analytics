@@ -79,19 +79,6 @@
         <div id="food_feedback" style="height:400px;" class="col-xs-12 col-md-4"></div>
         <div id="delivery_feedback" style="height:400px;" class="col-xs-12 col-md-4"></div>
     </div>
-
-    <div class="row" style="margin-bottom: 40px;" id="tagsheader">
-    	<h2>Tags Data</h2>
-    </div>
-    <div class="row" style="margin-bottom: 40px;" id="tagscontainer">
-        
-    </div>
-    <div class="row" style="margin-bottom: 40px;" id="inputsheader">
-    	<h2>Dish Data</h2>
-    </div>
-    <div class="row" style="margin-bottom: 40px;" id="inputscontainer">
-        {% raw itemhtml %}
-    </div>
 </div>
 <button class="showFilters hidden-xs btn btn-success" style="position: fixed; top: 25px; right: 15px;">Show/Hide Filters</button>
 <button class="showFilters visible-xs btn btn-success" style="position: fixed; top: 25px; right: 15px;">V</button>
@@ -485,67 +472,6 @@
         	data: {% raw delivery_rating_counts %}
         }]
 	});
-	
-	var tagsmap = {% raw tagsmap %};
-
-	for (var i=0; i<tagsmap.length; i++) {
-		tagsmap[i].name = tagsmap[i].name.replace("#&lt;", "");
-		tagsmap[i].name = tagsmap[i].name.replace(" ", "");
-		var newchartelem = $("<div class='col-xs-12 col-md-4 smallchart' id='" + tagsmap[i].name.substr(1) + "'></div>")
-		$('#tagscontainer').append(newchartelem);
-		var newchart = new Highcharts.Chart({
-			chart: {
-	            renderTo: tagsmap[i].name.substr(1),
-	            type: "column"
-	        },
-	        title: {
-	            text: 'Volume for ' + tagsmap[i].name
-	        },
-	        xAxis: {
-	            categories: {% raw daterange %},
-	            crosshair: true
-	        },
-	        yAxis: {
-	            title: {
-	                text: 'Volume'
-	            }
-	        },
-	        series: [{
-	        	showInLegend: false,
-	        	name: tagsmap[i].name,
-	        	data: tagsmap[i].data
-	        }]
-		});
-	}
-
-	/*for (var i=0; i<inputsmap.length; i++) {
-		inputsmap[i].name = inputsmap[i].name.replace(" ", "")
-		var newchartelem = $("<div class='col-xs-12 col-md-4 smallchart' id='" + inputsmap[i].name + "'></div>")
-		$('#inputscontainer').append(newchartelem);
-		var newchart = new Highcharts.Chart({
-			chart: {
-	            renderTo: inputsmap[i].name,
-	            type: "column"
-	        },
-	        title: {
-	            text: 'Volume for ' + inputsmap[i].name
-	        },
-	        xAxis: {
-	            categories: {% raw daterange %},
-	            crosshair: true
-	        },
-	        yAxis: {
-	            title: {
-	                text: 'Volume'
-	            }
-	        },
-	        series: [{
-	        	showInLegend: false,
-	        	name: inputsmap[i].name,
-	        	data: inputsmap[i].data
-	        }]
-		});
-	}*/
 
 	$(document).ready(function() {
 		$('#horizonselect').on('change', function() {

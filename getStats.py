@@ -263,8 +263,64 @@ class StatsHandler(BaseHandler):
 			weborders.append(platformcounts[thisdate]["Web"])
 			iosorders.append(platformcounts[thisdate]["iOS"])
 
-		tags = statssession.query(tag).all()
+		
 
+		# predefs = {"Combos": [41,42,47,48], "Minute Maid": [25], "Pasta": [10,11,13,14,18,19,26,37,45], "Sandwich": [5,7,8,9,12,15,22,32,35,36], "Cheese Cake": [30], "Carrot Cake": [31], "Pita (/3)": [28,29], "Apple Strudel": [46], "Blueberry Brainfreezer": [49]}
+
+		# predefitems = [cat for cat in predefs]
+
+		# inputsmap = []
+
+		# for cat in predefitems:
+		# 	salecountquery = statssession.query(orderdetail.date_add, sqlalchemy.func.sum(orderdetail.quantity)).filter(orderdetail.date_add <= parsedenddate, orderdetail.date_add >= parsedstartdate, orderdetail.order_id.in_(dailyorderids), orderdetail.menu_item_id.in_(predefs[cat])).group_by(sqlalchemy.func.year(orderdetail.date_add), sqlalchemy.func.month(orderdetail.date_add), sqlalchemy.func.day(orderdetail.date_add))
+			
+		# 	thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): int(thisresult[1]) for thisresult in salecountquery}
+		# 	thisinputslist = []
+		# 	for thisdate in daterange:
+		# 		if thisdate in thiscountdetails:
+		# 			thisinputslist.append(thiscountdetails[thisdate])
+		# 		else:
+		# 			thisinputslist.append(0)
+
+		# 	inputsmap.append({"name": cat, "data":thisinputslist})		
+
+		statssession.remove()
+		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=neworders, repeatorders=repeatorders, newsums=newsums, repeatsums=repeatsums, dailyapc=dailyapc, feedback_chart_data=feedback_chart_data, food_rating_counts=food_rating_counts, delivery_rating_counts=delivery_rating_counts, totalsalesvalue=totalsalesvalue, totalorders=totalorders, totalneworders=totalneworders, totalrepeatorders=totalrepeatorders, averageapc=averageapc, androidorders=androidorders, weborders=weborders, iosorders=iosorders)
+
+class ItemStatsHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		horizon = self.get_argument("horizon", None)
+		startdate = self.get_argument("startdate", None)
+		enddate = self.get_argument("enddate", None)
+		if startdate is None:
+			if horizon is None:
+				horizon = 7
+			else:
+				horizon = int(horizon)
+
+			parsedenddate = datetime.date.today()
+			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
+			daterange = [parsedstartdate.strftime("%a %b %d, %Y")]
+			for c in range(horizon-1):
+				daterange.append((parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%a %b %d, %Y"))
+		
+		else:
+			parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date()
+			parsedenddate = parsedenddate + datetime.timedelta(days=1)
+			parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
+			daterange = []
+			for c in range((parsedenddate - parsedstartdate).days):
+				daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%a %b %d, %Y"))
+
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
+
+		dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3, order.date_add <= parsedenddate, order.date_add >= parsedstartdate)
+
+		dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
+
+		tags = statssession.query(tag).all()
 		tagsmap = []
 
 		for thistag in tags:
@@ -304,27 +360,120 @@ class StatsHandler(BaseHandler):
 			itemhtml += "</tr>"
 		itemhtml += "</tbody></table>"
 
-		# predefs = {"Combos": [41,42,47,48], "Minute Maid": [25], "Pasta": [10,11,13,14,18,19,26,37,45], "Sandwich": [5,7,8,9,12,15,22,32,35,36], "Cheese Cake": [30], "Carrot Cake": [31], "Pita (/3)": [28,29], "Apple Strudel": [46], "Blueberry Brainfreezer": [49]}
+		statssession.remove()
+		self.render("templates/itemstatstemplate.html", daterange=daterange, tagsmap=tagsmap, itemhtml=itemhtml)
 
-		# predefitems = [cat for cat in predefs]
+class UserStatsHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		horizon = self.get_argument("horizon", None)
+		startdate = self.get_argument("startdate", None)
+		enddate = self.get_argument("enddate", None)
+		if startdate is None:
+			if horizon is None:
+				horizon = 7
+			else:
+				horizon = int(horizon)
 
-		# inputsmap = []
+			parsedenddate = datetime.date.today()
+			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
+			daterange = [parsedstartdate.strftime("%a %b %d, %Y")]
+			for c in range(horizon-1):
+				daterange.append((parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%a %b %d, %Y"))
+		
+		else:
+			parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date()
+			parsedenddate = parsedenddate + datetime.timedelta(days=1)
+			parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
+			daterange = []
+			for c in range((parsedenddate - parsedstartdate).days):
+				daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%a %b %d, %Y"))
 
-		# for cat in predefitems:
-		# 	salecountquery = statssession.query(orderdetail.date_add, sqlalchemy.func.sum(orderdetail.quantity)).filter(orderdetail.date_add <= parsedenddate, orderdetail.date_add >= parsedstartdate, orderdetail.order_id.in_(dailyorderids), orderdetail.menu_item_id.in_(predefs[cat])).group_by(sqlalchemy.func.year(orderdetail.date_add), sqlalchemy.func.month(orderdetail.date_add), sqlalchemy.func.day(orderdetail.date_add))
-			
-		# 	thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): int(thisresult[1]) for thisresult in salecountquery}
-		# 	thisinputslist = []
-		# 	for thisdate in daterange:
-		# 		if thisdate in thiscountdetails:
-		# 			thisinputslist.append(thiscountdetails[thisdate])
-		# 		else:
-		# 			thisinputslist.append(0)
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
 
-		# 	inputsmap.append({"name": cat, "data":thisinputslist})		
+		dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3, order.date_add <= parsedenddate, order.date_add >= parsedstartdate)
+		dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
+		orderdetailsquery = statssession.query(orderdetail).filter(orderdetail.order_id.in_(dailyorderids))
+		orderdetailslookup = {thisorder.order_id: [] for thisorder in dailyordersquery}
+		for thisorderdetail in orderdetailsquery:
+			orderdetailslookup[thisorderdetail.order_id].append(thisorderdetail)
+
+		resultlookup = {}
+		countlookup = {}
+
+		for thisorder in dailyordersquery:
+			if thisorder.user_id not in resultlookup:
+				resultlookup[thisorder.user_id] = 0
+				countlookup[thisorder.user_id] = 0
+			countlookup[thisorder.user_id] += 1
+			revenue = thisorder.total
+			cost = thisorder.cost
+			#cost = 0
+			delivery = 60
+			#for thisorderitem in orderdetailslookup[thisorder.order_id]:
+			#	cost += thisorderitem.item_cost + thisorderitem.packaging_cost
+			profit = revenue - cost - delivery
+			if (thisorder.user_id == 116):
+				print (thisorder.user_id, profit, thisorder.order_id)
+			resultlookup[thisorder.user_id] += profit
+
+		users = len([x for x in resultlookup])
+
+		lossthreshold = 0
+		med1threshold = 100
+		med2threshold = 500
+		highthreshold = 1000
+		lossmakers = 0
+		med1makers = 0
+		med2makers = 0
+		med3makers = 0
+		highmakers = 0
+
+		order1threshold = 1
+		order2threshold = 2
+		order3threshold = 5
+		order4threshold = 7
+		order5threshold = 10
+		counter1 = 0
+		counter2 = 0
+		counter3 = 0
+		counter4 = 0
+		counter5 = 0
+
+		lossmakerids = []
+
+		for user in resultlookup:
+			if resultlookup[user] < lossthreshold:
+				lossmakers += 1
+				lossmakerids.append(user)
+			elif resultlookup[user] >= lossthreshold and resultlookup[user] < med1threshold:
+				med1makers += 1
+			elif resultlookup[user] >= med1threshold and resultlookup[user] < med2threshold:
+				med2makers += 1
+			elif resultlookup[user] >= med2threshold and resultlookup[user] < highthreshold:
+				med3makers += 1
+			elif resultlookup[user] > highthreshold:
+				highmakers += 1
+
+		for user in countlookup:
+			if countlookup[user] >= order1threshold and countlookup[user] < order2threshold:
+				counter1 += 1 
+			elif countlookup[user] >= order2threshold and countlookup[user] < order3threshold:
+				counter2 += 1 
+			elif countlookup[user] >= order3threshold and countlookup[user] < order4threshold:
+				counter3 += 1 
+			elif countlookup[user] >= order4threshold and countlookup[user] < order5threshold:
+				counter4 += 1 
+			elif countlookup[user] >= order5threshold:
+				counter5 += 1 
+
+		lossmakerstring = ""
+		for lossmakerid in lossmakerids:
+			lossmakerstring += str(lossmakerid) + ", "
 
 		statssession.remove()
-		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=neworders, repeatorders=repeatorders, tagsmap=tagsmap, newsums=newsums, repeatsums=repeatsums, dailyapc=dailyapc, feedback_chart_data=feedback_chart_data, food_rating_counts=food_rating_counts, delivery_rating_counts=delivery_rating_counts, totalsalesvalue=totalsalesvalue, totalorders=totalorders, totalneworders=totalneworders, totalrepeatorders=totalrepeatorders, averageapc=averageapc, itemhtml=itemhtml, androidorders=androidorders, weborders=weborders, iosorders=iosorders)
+		self.render("templates/userstemplate.html", daterange=daterange, lossmakers=lossmakers, med1makers=med1makers, med2makers=med2makers, med3makers=med3makers, highmakers=highmakers, counter1=counter1, counter2=counter2, counter3=counter3, counter4=counter4, counter5=counter5, users=users, lossmakerids=lossmakerids)
 
 
 current_path = path.dirname(path.abspath(__file__))
@@ -333,6 +482,8 @@ static_path = path.join(current_path, "static")
 application = tornado.web.Application([
 	(r"/", LoginHandler),
 	(r"/stats", StatsHandler),
+	(r"/itemstats", ItemStatsHandler),
+	(r"/userstats", UserStatsHandler),
 	(r'/static/(.*)', tornado.web.StaticFileHandler, {'path': static_path}),
 ], **settings)
 
