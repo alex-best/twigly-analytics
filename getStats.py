@@ -95,7 +95,7 @@ class menuitem(statsBase):
 	is_combo = Column("is_combo", Integer)
 
 def authenticate(thisusername, thispassword):
-	if (thisusername == "admin" and thispassword == "tw1gl7st4ts"):
+	if (thisusername == "admin" and thispassword == "tw1gl7st4ts") or (thisusername == "review" and thispassword == "h1twigl7"):
 		return {"result": True}
 	else:
 		return {"result": False}
@@ -290,190 +290,198 @@ class StatsHandler(BaseHandler):
 class ItemStatsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
-		horizon = self.get_argument("horizon", None)
-		startdate = self.get_argument("startdate", None)
-		enddate = self.get_argument("enddate", None)
-		if startdate is None:
-			if horizon is None:
-				horizon = 7
-			else:
-				horizon = int(horizon)
-
-			parsedenddate = datetime.date.today()
-			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
-			daterange = [parsedstartdate.strftime("%a %b %d, %Y")]
-			for c in range(horizon-1):
-				daterange.append((parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%a %b %d, %Y"))
-		
+		current_user = self.get_current_user()
+		if current_user != "admin":
+			self.redirect('/stats')
 		else:
-			parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date()
-			parsedenddate = parsedenddate + datetime.timedelta(days=1)
-			parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
-			daterange = []
-			for c in range((parsedenddate - parsedstartdate).days):
-				daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%a %b %d, %Y"))
-
-		statsengine = sqlalchemy.create_engine(statsengine_url)
-		statssession = scoped_session(sessionmaker(bind=statsengine))
-
-		dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3, order.date_add <= parsedenddate, order.date_add >= parsedstartdate)
-
-		dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
-
-		tags = statssession.query(tag).all()
-		tagsmap = []
-
-		for thistag in tags:
-			relevantmenuitems = statssession.query(menu_item_tag.menu_item_id).filter(menu_item_tag.tag_id == thistag.tag_id)
-			thiscountquery = statssession.query(orderdetail.date_add, sqlalchemy.func.sum(orderdetail.quantity)).filter(orderdetail.date_add <= parsedenddate, orderdetail.date_add >= parsedstartdate, orderdetail.order_id.in_(dailyorderids), orderdetail.menu_item_id.in_(relevantmenuitems)).group_by(sqlalchemy.func.year(orderdetail.date_add), sqlalchemy.func.month(orderdetail.date_add), sqlalchemy.func.day(orderdetail.date_add))
-			thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): int(thisresult[1]) for thisresult in thiscountquery}
-			thistaglist = []
-			for thisdate in daterange:
-				if thisdate in thiscountdetails:
-					thistaglist.append(thiscountdetails[thisdate])
+			horizon = self.get_argument("horizon", None)
+			startdate = self.get_argument("startdate", None)
+			enddate = self.get_argument("enddate", None)
+			if startdate is None:
+				if horizon is None:
+					horizon = 7
 				else:
-					thistaglist.append(0)
+					horizon = int(horizon)
 
-			tagsmap.append({"name": thistag.name, "data":thistaglist})
+				parsedenddate = datetime.date.today()
+				parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
+				daterange = [parsedstartdate.strftime("%a %b %d, %Y")]
+				for c in range(horizon-1):
+					daterange.append((parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%a %b %d, %Y"))
 			
+			else:
+				parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date()
+				parsedenddate = parsedenddate + datetime.timedelta(days=1)
+				parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
+				daterange = []
+				for c in range((parsedenddate - parsedstartdate).days):
+					daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%a %b %d, %Y"))
 
-		menuitems = {thismenuitem.menu_item_id: {"name": thismenuitem.name, "total": 0, "datelookup": {thisdate: 0 for thisdate in daterange}} for thismenuitem in statssession.query(menuitem)}
-		for suborder in statssession.query(orderdetail).filter(orderdetail.order_id.in_(dailyorderids)):
-			menuitems[suborder.menu_item_id]["datelookup"][suborder.date_add.strftime("%a %b %d, %Y")] += suborder.quantity
-			menuitems[suborder.menu_item_id]["total"] += suborder.quantity
+			statsengine = sqlalchemy.create_engine(statsengine_url)
+			statssession = scoped_session(sessionmaker(bind=statsengine))
 
-		itemhtml = "<table class='table table-striped table-hover tablesorter' style='width: 100%;'><thead><tr><th>Dish</th><th>Total</th>"
-		for thisdate in daterange:
-			itemhtml += "<th>" + thisdate + "</th>"
+			dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3, order.date_add <= parsedenddate, order.date_add >= parsedstartdate)
 
-		itemhtml += "</tr><tbody>"
-		for thismenuitem in menuitems:
-			if menuitems[thismenuitem]["total"] == 0:
-				continue
-			itemhtml += "<tr><td style='font-weight: bold;'>" + menuitems[thismenuitem]["name"] + "</td>"
-			itemhtml += "<td style='font-weight: bold;'>" + str(menuitems[thismenuitem]["total"]) + "</td>"
+			dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
+
+			tags = statssession.query(tag).all()
+			tagsmap = []
+
+			for thistag in tags:
+				relevantmenuitems = statssession.query(menu_item_tag.menu_item_id).filter(menu_item_tag.tag_id == thistag.tag_id)
+				thiscountquery = statssession.query(orderdetail.date_add, sqlalchemy.func.sum(orderdetail.quantity)).filter(orderdetail.date_add <= parsedenddate, orderdetail.date_add >= parsedstartdate, orderdetail.order_id.in_(dailyorderids), orderdetail.menu_item_id.in_(relevantmenuitems)).group_by(sqlalchemy.func.year(orderdetail.date_add), sqlalchemy.func.month(orderdetail.date_add), sqlalchemy.func.day(orderdetail.date_add))
+				thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): int(thisresult[1]) for thisresult in thiscountquery}
+				thistaglist = []
+				for thisdate in daterange:
+					if thisdate in thiscountdetails:
+						thistaglist.append(thiscountdetails[thisdate])
+					else:
+						thistaglist.append(0)
+
+				tagsmap.append({"name": thistag.name, "data":thistaglist})
+				
+
+			menuitems = {thismenuitem.menu_item_id: {"name": thismenuitem.name, "total": 0, "datelookup": {thisdate: 0 for thisdate in daterange}} for thismenuitem in statssession.query(menuitem)}
+			for suborder in statssession.query(orderdetail).filter(orderdetail.order_id.in_(dailyorderids)):
+				menuitems[suborder.menu_item_id]["datelookup"][suborder.date_add.strftime("%a %b %d, %Y")] += suborder.quantity
+				menuitems[suborder.menu_item_id]["total"] += suborder.quantity
+
+			itemhtml = "<table class='table table-striped table-hover tablesorter' style='width: 100%;'><thead><tr><th>Dish</th><th>Total</th>"
 			for thisdate in daterange:
-				if menuitems[thismenuitem]["datelookup"][thisdate] == 0:
-					itemhtml += "<td>-</td>"
-				else:
-					itemhtml += "<td>" + str(menuitems[thismenuitem]["datelookup"][thisdate]) + "</td>"
-			itemhtml += "</tr>"
-		itemhtml += "</tbody></table>"
+				itemhtml += "<th>" + thisdate + "</th>"
 
-		statssession.remove()
-		self.render("templates/itemstatstemplate.html", daterange=daterange, tagsmap=tagsmap, itemhtml=itemhtml)
+			itemhtml += "</tr><tbody>"
+			for thismenuitem in menuitems:
+				if menuitems[thismenuitem]["total"] == 0:
+					continue
+				itemhtml += "<tr><td style='font-weight: bold;'>" + menuitems[thismenuitem]["name"] + "</td>"
+				itemhtml += "<td style='font-weight: bold;'>" + str(menuitems[thismenuitem]["total"]) + "</td>"
+				for thisdate in daterange:
+					if menuitems[thismenuitem]["datelookup"][thisdate] == 0:
+						itemhtml += "<td>-</td>"
+					else:
+						itemhtml += "<td>" + str(menuitems[thismenuitem]["datelookup"][thisdate]) + "</td>"
+				itemhtml += "</tr>"
+			itemhtml += "</tbody></table>"
+
+			statssession.remove()
+			self.render("templates/itemstatstemplate.html", daterange=daterange, tagsmap=tagsmap, itemhtml=itemhtml)
 
 class UserStatsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
-		horizon = self.get_argument("horizon", None)
-		startdate = self.get_argument("startdate", None)
-		enddate = self.get_argument("enddate", None)
-		if startdate is None:
-			if horizon is None:
-				horizon = 7
-			else:
-				horizon = int(horizon)
-
-			parsedenddate = datetime.date.today()
-			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
-			daterange = [parsedstartdate.strftime("%a %b %d, %Y")]
-			for c in range(horizon-1):
-				daterange.append((parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%a %b %d, %Y"))
-		
+		current_user = self.get_current_user()
+		if current_user != "admin":
+			self.redirect('/stats')
 		else:
-			parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date()
-			parsedenddate = parsedenddate + datetime.timedelta(days=1)
-			parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
-			daterange = []
-			for c in range((parsedenddate - parsedstartdate).days):
-				daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%a %b %d, %Y"))
+			horizon = self.get_argument("horizon", None)
+			startdate = self.get_argument("startdate", None)
+			enddate = self.get_argument("enddate", None)
+			if startdate is None:
+				if horizon is None:
+					horizon = 7
+				else:
+					horizon = int(horizon)
 
-		statsengine = sqlalchemy.create_engine(statsengine_url)
-		statssession = scoped_session(sessionmaker(bind=statsengine))
+				parsedenddate = datetime.date.today()
+				parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
+				daterange = [parsedstartdate.strftime("%a %b %d, %Y")]
+				for c in range(horizon-1):
+					daterange.append((parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%a %b %d, %Y"))
+			
+			else:
+				parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date()
+				parsedenddate = parsedenddate + datetime.timedelta(days=1)
+				parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
+				daterange = []
+				for c in range((parsedenddate - parsedstartdate).days):
+					daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%a %b %d, %Y"))
 
-		dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3, order.date_add <= parsedenddate, order.date_add >= parsedstartdate)
-		dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
-		orderdetailsquery = statssession.query(orderdetail).filter(orderdetail.order_id.in_(dailyorderids))
-		orderdetailslookup = {thisorder.order_id: [] for thisorder in dailyordersquery}
-		for thisorderdetail in orderdetailsquery:
-			orderdetailslookup[thisorderdetail.order_id].append(thisorderdetail)
+			statsengine = sqlalchemy.create_engine(statsengine_url)
+			statssession = scoped_session(sessionmaker(bind=statsengine))
 
-		resultlookup = {}
-		countlookup = {}
+			dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3, order.date_add <= parsedenddate, order.date_add >= parsedstartdate)
+			dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
+			orderdetailsquery = statssession.query(orderdetail).filter(orderdetail.order_id.in_(dailyorderids))
+			orderdetailslookup = {thisorder.order_id: [] for thisorder in dailyordersquery}
+			for thisorderdetail in orderdetailsquery:
+				orderdetailslookup[thisorderdetail.order_id].append(thisorderdetail)
 
-		for thisorder in dailyordersquery:
-			if thisorder.user_id not in resultlookup:
-				resultlookup[thisorder.user_id] = 0
-				countlookup[thisorder.user_id] = 0
-			countlookup[thisorder.user_id] += 1
-			revenue = thisorder.total
-			cost = thisorder.cost
-			#cost = 0
-			delivery = 60
-			#for thisorderitem in orderdetailslookup[thisorder.order_id]:
-			#	cost += thisorderitem.item_cost + thisorderitem.packaging_cost
-			profit = revenue - cost - delivery
-			if (thisorder.user_id == 116):
-				print (thisorder.user_id, profit, thisorder.order_id)
-			resultlookup[thisorder.user_id] += profit
+			resultlookup = {}
+			countlookup = {}
 
-		users = len([x for x in resultlookup])
+			for thisorder in dailyordersquery:
+				if thisorder.user_id not in resultlookup:
+					resultlookup[thisorder.user_id] = 0
+					countlookup[thisorder.user_id] = 0
+				countlookup[thisorder.user_id] += 1
+				revenue = thisorder.total
+				cost = thisorder.cost
+				#cost = 0
+				delivery = 60
+				#for thisorderitem in orderdetailslookup[thisorder.order_id]:
+				#	cost += thisorderitem.item_cost + thisorderitem.packaging_cost
+				profit = revenue - cost - delivery
+				if (thisorder.user_id == 116):
+					print (thisorder.user_id, profit, thisorder.order_id)
+				resultlookup[thisorder.user_id] += profit
 
-		lossthreshold = 0
-		med1threshold = 100
-		med2threshold = 500
-		highthreshold = 1000
-		lossmakers = 0
-		med1makers = 0
-		med2makers = 0
-		med3makers = 0
-		highmakers = 0
+			users = len([x for x in resultlookup])
 
-		order1threshold = 1
-		order2threshold = 2
-		order3threshold = 5
-		order4threshold = 7
-		order5threshold = 10
-		counter1 = 0
-		counter2 = 0
-		counter3 = 0
-		counter4 = 0
-		counter5 = 0
+			lossthreshold = 0
+			med1threshold = 100
+			med2threshold = 500
+			highthreshold = 1000
+			lossmakers = 0
+			med1makers = 0
+			med2makers = 0
+			med3makers = 0
+			highmakers = 0
 
-		lossmakerids = []
+			order1threshold = 1
+			order2threshold = 2
+			order3threshold = 5
+			order4threshold = 7
+			order5threshold = 10
+			counter1 = 0
+			counter2 = 0
+			counter3 = 0
+			counter4 = 0
+			counter5 = 0
 
-		for user in resultlookup:
-			if resultlookup[user] < lossthreshold:
-				lossmakers += 1
-				lossmakerids.append(user)
-			elif resultlookup[user] >= lossthreshold and resultlookup[user] < med1threshold:
-				med1makers += 1
-			elif resultlookup[user] >= med1threshold and resultlookup[user] < med2threshold:
-				med2makers += 1
-			elif resultlookup[user] >= med2threshold and resultlookup[user] < highthreshold:
-				med3makers += 1
-			elif resultlookup[user] > highthreshold:
-				highmakers += 1
+			lossmakerids = []
 
-		for user in countlookup:
-			if countlookup[user] >= order1threshold and countlookup[user] < order2threshold:
-				counter1 += 1 
-			elif countlookup[user] >= order2threshold and countlookup[user] < order3threshold:
-				counter2 += 1 
-			elif countlookup[user] >= order3threshold and countlookup[user] < order4threshold:
-				counter3 += 1 
-			elif countlookup[user] >= order4threshold and countlookup[user] < order5threshold:
-				counter4 += 1 
-			elif countlookup[user] >= order5threshold:
-				counter5 += 1 
+			for user in resultlookup:
+				if resultlookup[user] < lossthreshold:
+					lossmakers += 1
+					lossmakerids.append(user)
+				elif resultlookup[user] >= lossthreshold and resultlookup[user] < med1threshold:
+					med1makers += 1
+				elif resultlookup[user] >= med1threshold and resultlookup[user] < med2threshold:
+					med2makers += 1
+				elif resultlookup[user] >= med2threshold and resultlookup[user] < highthreshold:
+					med3makers += 1
+				elif resultlookup[user] > highthreshold:
+					highmakers += 1
 
-		lossmakerstring = ""
-		for lossmakerid in lossmakerids:
-			lossmakerstring += str(lossmakerid) + ", "
+			for user in countlookup:
+				if countlookup[user] >= order1threshold and countlookup[user] < order2threshold:
+					counter1 += 1 
+				elif countlookup[user] >= order2threshold and countlookup[user] < order3threshold:
+					counter2 += 1 
+				elif countlookup[user] >= order3threshold and countlookup[user] < order4threshold:
+					counter3 += 1 
+				elif countlookup[user] >= order4threshold and countlookup[user] < order5threshold:
+					counter4 += 1 
+				elif countlookup[user] >= order5threshold:
+					counter5 += 1 
 
-		statssession.remove()
-		self.render("templates/userstemplate.html", daterange=daterange, lossmakers=lossmakers, med1makers=med1makers, med2makers=med2makers, med3makers=med3makers, highmakers=highmakers, counter1=counter1, counter2=counter2, counter3=counter3, counter4=counter4, counter5=counter5, users=users, lossmakerids=lossmakerids)
+			lossmakerstring = ""
+			for lossmakerid in lossmakerids:
+				lossmakerstring += str(lossmakerid) + ", "
+
+			statssession.remove()
+			self.render("templates/userstemplate.html", daterange=daterange, lossmakers=lossmakers, med1makers=med1makers, med2makers=med2makers, med3makers=med3makers, highmakers=highmakers, counter1=counter1, counter2=counter2, counter3=counter3, counter4=counter4, counter5=counter5, users=users, lossmakerids=lossmakerids)
 
 
 current_path = path.dirname(path.abspath(__file__))
