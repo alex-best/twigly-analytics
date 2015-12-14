@@ -290,7 +290,7 @@ class StatsHandler(BaseHandler):
 class ItemStatsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
-		current_user = self.get_current_user()
+		current_user = self.get_current_user().decode()
 		if current_user != "admin":
 			self.redirect('/stats')
 		else:
@@ -370,7 +370,7 @@ class ItemStatsHandler(BaseHandler):
 class UserStatsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
-		current_user = self.get_current_user()
+		current_user = self.get_current_user().decode()
 		if current_user != "admin":
 			self.redirect('/stats')
 		else:
