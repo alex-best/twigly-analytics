@@ -290,6 +290,8 @@ class StatsHandler(BaseHandler):
 class ItemStatsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
+		relevantStates = [3,10,11]
+
 		current_user = self.get_current_user().decode()
 		if current_user != "admin":
 			self.redirect('/stats')
@@ -320,7 +322,7 @@ class ItemStatsHandler(BaseHandler):
 			statsengine = sqlalchemy.create_engine(statsengine_url)
 			statssession = scoped_session(sessionmaker(bind=statsengine))
 
-			dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3, order.date_add <= parsedenddate, order.date_add >= parsedstartdate)
+			dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status.in_(relevantStates), order.date_add <= parsedenddate, order.date_add >= parsedstartdate)
 
 			dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
 
@@ -400,7 +402,7 @@ class UserStatsHandler(BaseHandler):
 			statsengine = sqlalchemy.create_engine(statsengine_url)
 			statssession = scoped_session(sessionmaker(bind=statsengine))
 
-			dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3, order.date_add <= parsedenddate, order.date_add >= parsedstartdate)
+			dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status, order.date_add <= parsedenddate, order.date_add >= parsedstartdate)
 			dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
 			orderdetailsquery = statssession.query(orderdetail).filter(orderdetail.order_id.in_(dailyorderids))
 			orderdetailslookup = {thisorder.order_id: [] for thisorder in dailyordersquery}
