@@ -290,7 +290,7 @@ class StatsHandler(BaseHandler):
 class ItemStatsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
-		relevantStates = [3,10,11]
+		relevantStates = [3,10,11,12]
 
 		current_user = self.get_current_user().decode()
 		if current_user != "admin":
