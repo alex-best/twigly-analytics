@@ -203,8 +203,14 @@ class StatsHandler(BaseHandler):
 		netsalespretax = []
 
 		for c in range(0, len(daterange)):
-			grosssales.append(float(grosssaleslookup[daterange[c]]))
-			netsalespretax.append(float(totalsales[c]) - float(vatlookup[daterange[c]]))
+			try:
+				grosssales.append(float(grosssaleslookup[daterange[c]]))
+			except KeyError:
+				grosssales.append(0.0)
+			try:
+				netsalespretax.append(float(totalsales[c]) - float(vatlookup[daterange[c]]))
+			except KeyError:
+				netsalespretax.append(0.0)
 
 		totalgrosssales = sum(grosssales)
 		totalnetsalespretax = sum(netsalespretax)
