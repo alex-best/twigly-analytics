@@ -96,7 +96,7 @@ class menuitem(statsBase):
 	is_combo = Column("is_combo", Integer)
 
 def authenticate(thisusername, thispassword):
-	if (thisusername == "admin" and thispassword == "tw1gl7st4ts") or (thisusername == "review" and thispassword == "h1twigl7"):
+	if (thisusername == "admin" and thispassword == "tw1gl7st4ts") or (thisusername == "review" and thispassword == "h1twigl7") or (thisusername == "chef" and thispassword == "twigly123"):
 		return {"result": True}
 	else:
 		return {"result": False}
@@ -505,7 +505,7 @@ class StoreItemsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
 		current_user = self.get_current_user().decode()
-		if current_user != "admin":
+		if current_user != "chef":
 			self.redirect('/stats')
 		else:
 			statsengine = sqlalchemy.create_engine(statsengine_url)
@@ -544,15 +544,15 @@ class UpdateItemsActiveHandler(BaseHandler):
 
 		if status == "true":
 			selected_menu_item.is_active = 1
-			selected_menu_item.priority = len(active_store_items)+1
+			selected_menu_item.priority = 1000*(len(active_store_items)+1)
 		else:
 			selected_menu_item.is_active = 0
-			selected_menu_item.priority = len(inactive_store_items)+1
+			selected_menu_item.priority = 1000*(len(inactive_store_items)+1)
 		
 		for i in range(0, len(active_store_items)):
-			active_store_items[i].priority = len(active_store_items) - i
+			active_store_items[i].priority = 1000*(len(active_store_items) - i)
 		for i in range(0, len(inactive_store_items)):
-			inactive_store_items[i].priority = len(inactive_store_items) - i
+			inactive_store_items[i].priority = 1000*(len(inactive_store_items) - i)
 
 		statssession.commit()
 		self.write({"action": True})
@@ -574,7 +574,7 @@ class MoveItemsHandler(BaseHandler):
 		finallist.insert(index, thisitem)
 		
 		for i in range(0, len(finallist)):
-			finallist[i].priority = len(finallist) - i
+			finallist[i].priority = 1000*(len(finallist) - i)
 
 		statssession.commit()
 		self.write({"action": True})
