@@ -63,6 +63,9 @@
 </div>
 <div class="container">
 	<div class="row" style="margin-bottom: 40px; margin-top: 40px;">
+		{{ activeitems }} active dishes
+	</div>
+	<div class="row" style="margin-bottom: 40px; margin-top: 40px;">
 		<ul id="activelist" class="list-group">
 			{% for i in range(0, len(activelist)) %}
 				<li class="list-group-item clearfix" data-storemenuitemid="{{ activelist[i]['store_menu_item_id'] }}" data-priority="{{ activelist[i]['priority'] }}">

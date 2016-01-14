@@ -541,7 +541,7 @@ class StoreItemsHandler(BaseHandler):
 			store_items.sort(key=lambda x: (-x.is_active, -x.priority))
 			activelist = [{"name": menu_item_mapping[x.menu_item_id].name, "menu_item_id": x.menu_item_id, "store_menu_item_id": x.store_menu_item_id, "quantity": x.avl_quantity, "is_active": x.is_active, "priority": x.priority} for x in store_items if x.is_active]
 			inactivelist = [{"name": menu_item_mapping[x.menu_item_id].name, "menu_item_id": x.menu_item_id, "store_menu_item_id": x.store_menu_item_id, "quantity": x.avl_quantity, "is_active": x.is_active, "priority": x.priority} for x in store_items if not x.is_active]
-			self.render("templates/storeitems.html", activelist = activelist, inactivelist = inactivelist)
+			self.render("templates/storeitems.html", activelist = activelist, inactivelist = inactivelist, activeitems = len(activelist))
 			statssession.remove()
 
 class UpdateItemsActiveHandler(BaseHandler):
