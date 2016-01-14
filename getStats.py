@@ -21,7 +21,8 @@ settings = {
     "login_url": "/"
 }
 statsBase = declarative_base()
-statsengine_url = 'mysql+pymysql://twigly_ro:tw1gl7r0@***REMOVED***/twigly_prod?charset=utf8'
+#statsengine_url = 'mysql+pymysql://twigly_ro:tw1gl7r0@***REMOVED***/twigly_prod?charset=utf8'
+statsengine_url = 'mysql+pymysql://root@localhost:3306/twigly_dev?charset=utf8'
 
 class order(statsBase):
 	__tablename__ = "orders"
@@ -485,6 +486,115 @@ class UserStatsHandler(BaseHandler):
 			statssession.remove()
 			self.render("templates/userstemplate.html", daterange=daterange, lossmakers=lossmakers, med1makers=med1makers, med2makers=med2makers, med3makers=med3makers, highmakers=highmakers, counter1=counter1, counter2=counter2, counter3=counter3, counter4=counter4, counter5=counter5, users=users, lossmakerids=lossmakerids)
 
+class storemenuitem(statsBase):
+	__tablename__ = "store_menu_items"
+	store_menu_item_id = Column("store_menu_item_id", Integer, primary_key=True)
+	store_id = Column("store_id", String)
+	menu_item_id = Column("menu_item_id", String)
+	avl_quantity = Column("avl_quantity", String)
+	selling_price = Column("selling_price", Integer)
+	cost_price = Column("cost_price", Integer)
+	discount = Column("discount", Integer)
+	discount_type = Column("discount_type", Integer)
+	discount_quantity = Column("discount_quantity", Integer)
+	packaging_cost = Column("packaging_cost", Integer)
+	is_active = Column("is_active", Integer)
+	priority = Column("priority", Integer)
+
+class StoreItemsHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		current_user = self.get_current_user().decode()
+		if current_user != "admin":
+			self.redirect('/stats')
+		else:
+			statsengine = sqlalchemy.create_engine(statsengine_url)
+			statssession = scoped_session(sessionmaker(bind=statsengine))
+
+			store_items = statssession.query(storemenuitem).all()
+			menu_items = statssession.query(menuitem).all()
+			menu_item_mapping = {thismenuitem.menu_item_id: thismenuitem for thismenuitem in menu_items}
+			store_items.sort(key=lambda x: (-x.is_active, -x.priority))
+			activelist = [{"name": menu_item_mapping[x.menu_item_id].name, "menu_item_id": x.menu_item_id, "store_menu_item_id": x.store_menu_item_id, "quantity": x.avl_quantity, "is_active": x.is_active, "priority": x.priority} for x in store_items if x.is_active]
+			inactivelist = [{"name": menu_item_mapping[x.menu_item_id].name, "menu_item_id": x.menu_item_id, "store_menu_item_id": x.store_menu_item_id, "quantity": x.avl_quantity, "is_active": x.is_active, "priority": x.priority} for x in store_items if not x.is_active]
+			self.render("templates/storeitems.html", activelist = activelist, inactivelist = inactivelist)
+			statssession.remove()
+
+class UpdateItemsActiveHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		store_menu_item_id = int(self.get_argument("store_menu_item_id"))
+		status = self.get_argument("checked")
+
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
+
+		store_items = statssession.query(storemenuitem).all()
+		store_items.sort(key=lambda x: (-x.is_active, -x.priority))
+		active_store_items = []
+		inactive_store_items = []
+		selected_menu_item = None
+		for store_item in store_items:
+			if (store_item.store_menu_item_id == store_menu_item_id):
+				selected_menu_item = store_item
+			elif store_item.is_active:
+				active_store_items.append(store_item)
+			else:
+				inactive_store_items.append(store_item)
+
+		if status == "true":
+			selected_menu_item.is_active = 1
+			selected_menu_item.priority = len(active_store_items)+1
+		else:
+			selected_menu_item.is_active = 0
+			selected_menu_item.priority = len(inactive_store_items)+1
+		
+		for i in range(0, len(active_store_items)):
+			active_store_items[i].priority = len(active_store_items) - i
+		for i in range(0, len(inactive_store_items)):
+			inactive_store_items[i].priority = len(inactive_store_items) - i
+
+		statssession.commit()
+		self.write({"action": True})
+		statssession.remove()
+
+class MoveItemsHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		store_menu_item_id = int(self.get_argument("store_menu_item_id"))
+		index = int(self.get_argument("index"))
+		
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
+
+		store_items = statssession.query(storemenuitem).filter(storemenuitem.is_active == True).all()
+		store_items.sort(key=lambda x: (-x.priority))
+		finallist = [x for x in store_items if x.store_menu_item_id != store_menu_item_id]
+		thisitem = [x for x in store_items if x.store_menu_item_id == store_menu_item_id][0]
+		finallist.insert(index, thisitem)
+		
+		for i in range(0, len(finallist)):
+			finallist[i].priority = len(finallist) - i
+
+		statssession.commit()
+		self.write({"action": True})
+		statssession.remove()
+
+class UpdateQuantityHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		store_menu_item_id = int(self.get_argument("store_menu_item_id"))
+		quantity = int(self.get_argument("quantity"))
+
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
+
+		store_item = statssession.query(storemenuitem).filter(storemenuitem.store_menu_item_id == store_menu_item_id).one()
+		store_item.avl_quantity = quantity
+
+		statssession.commit()
+		self.write({"action": True})
+		statssession.remove()
 
 current_path = path.dirname(path.abspath(__file__))
 static_path = path.join(current_path, "static")
@@ -494,7 +604,11 @@ application = tornado.web.Application([
 	(r"/stats", StatsHandler),
 	(r"/itemstats", ItemStatsHandler),
 	(r"/userstats", UserStatsHandler),
-	(r'/static/(.*)', tornado.web.StaticFileHandler, {'path': static_path}),
+	(r"/storeitems", StoreItemsHandler),
+	(r"/updateActive", UpdateItemsActiveHandler),
+	(r"/moveActive", MoveItemsHandler),
+	(r"/updateQuantity", UpdateQuantityHandler),
+	(r'/static/(.*)', tornado.web.StaticFileHandler, {'path': static_path})
 ], **settings)
 
 if __name__ == "__main__":
