@@ -146,8 +146,7 @@ class StatsHandler(BaseHandler):
 		statsengine = sqlalchemy.create_engine(statsengine_url)
 		statssession = scoped_session(sessionmaker(bind=statsengine))
 
-
-		dailysalesquery = statssession.query(order.date_add, sqlalchemy.func.sum(order.total)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
+		dailysalesquery = statssession.query(order.date_add, sqlalchemy.func.sum(order.total), sqlalchemy.func.sum(order.vat)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
 
 		totalsales = []
 
@@ -161,7 +160,6 @@ class StatsHandler(BaseHandler):
 		totalsalesvalue = sum(totalsales)
 
 		dailyorderscountquery = statssession.query(order.date_add, sqlalchemy.func.count(order.order_id)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
-
 
 		thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): int(thisresult[1]) for thisresult in dailyorderscountquery}
 		totalcount = []
@@ -191,6 +189,32 @@ class StatsHandler(BaseHandler):
 		dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3, order.date_add <= parsedenddate, order.date_add >= parsedstartdate)
 
 		dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
+
+		grosssalesquery = statssession.query(orderdetail.date_add, orderdetail.quantity, orderdetail.price).filter(orderdetail.date_add <= parsedenddate, orderdetail.date_add >= parsedstartdate, orderdetail.order_id.in_(dailyorderids))
+		grosssaleslookup = {}
+		for grossdetail in grosssalesquery:
+			if grossdetail.date_add.strftime("%a %b %d, %Y") in grosssaleslookup:
+				grosssaleslookup[grossdetail.date_add.strftime("%a %b %d, %Y")] += (grossdetail.quantity*grossdetail.price)
+			else:
+				grosssaleslookup[grossdetail.date_add.strftime("%a %b %d, %Y")] = (grossdetail.quantity*grossdetail.price)
+
+		vatlookup = {thisresult[0].strftime("%a %b %d, %Y"): float(thisresult[2]) for thisresult in dailysalesquery}
+
+		grosssales = []
+		netsalespretax = []
+
+		for c in range(0, len(daterange)):
+			try:
+				grosssales.append(float(grosssaleslookup[daterange[c]]))
+			except KeyError:
+				grosssales.append(0.0)
+			try:
+				netsalespretax.append(float(totalsales[c]) - float(vatlookup[daterange[c]]))
+			except KeyError:
+				netsalespretax.append(0.0)
+
+		totalgrosssales = sum(grosssales)
+		totalnetsalespretax = sum(netsalespretax)
 
 		feedbackonorders = statssession.query(feedback).filter(feedback.order_id.in_(dailyorderids), sqlalchemy.or_(feedback.food_rating > 0, feedback.delivery_rating > 0)).all()
 
@@ -286,7 +310,7 @@ class StatsHandler(BaseHandler):
 		# 	inputsmap.append({"name": cat, "data":thisinputslist})		
 
 		statssession.remove()
-		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=neworders, repeatorders=repeatorders, newsums=newsums, repeatsums=repeatsums, dailyapc=dailyapc, feedback_chart_data=feedback_chart_data, food_rating_counts=food_rating_counts, delivery_rating_counts=delivery_rating_counts, totalsalesvalue=totalsalesvalue, totalorders=totalorders, totalneworders=totalneworders, totalrepeatorders=totalrepeatorders, averageapc=averageapc, androidorders=androidorders, weborders=weborders, iosorders=iosorders)
+		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=neworders, repeatorders=repeatorders, newsums=newsums, repeatsums=repeatsums, dailyapc=dailyapc, feedback_chart_data=feedback_chart_data, food_rating_counts=food_rating_counts, delivery_rating_counts=delivery_rating_counts, totalsalesvalue=totalsalesvalue, totalorders=totalorders, totalneworders=totalneworders, totalrepeatorders=totalrepeatorders, averageapc=averageapc, androidorders=androidorders, weborders=weborders, iosorders=iosorders, grosssales = grosssales, totalgrosssales = totalgrosssales, netsalespretax = netsalespretax, totalnetsalespretax = totalnetsalespretax)
 
 class ItemStatsHandler(BaseHandler):
 	@tornado.web.authenticated
