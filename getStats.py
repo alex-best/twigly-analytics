@@ -21,8 +21,8 @@ settings = {
     "login_url": "/"
 }
 statsBase = declarative_base()
-#statsengine_url = 'mysql+pymysql://twigly_ro:tw1gl7r0@***REMOVED***/twigly_prod?charset=utf8'
-statsengine_url = 'mysql+pymysql://root@localhost:3306/twigly_dev?charset=utf8'
+statsengine_url = 'mysql+pymysql://twigly:***REMOVED***@***REMOVED***/twigly_prod?charset=utf8'
+#statsengine_url = 'mysql+pymysql://root@localhost:3306/twigly_dev?charset=utf8'
 
 class order(statsBase):
 	__tablename__ = "orders"
