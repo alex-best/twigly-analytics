@@ -529,6 +529,19 @@ class storemenuitem(statsBase):
 	is_active = Column("is_active", Integer)
 	priority = Column("priority", Integer)
 
+def getStoreItems():
+	statsengine = sqlalchemy.create_engine(statsengine_url)
+	statssession = scoped_session(sessionmaker(bind=statsengine))
+
+	store_items = statssession.query(storemenuitem).all()
+	menu_items = statssession.query(menuitem).all()
+	menu_item_mapping = {thismenuitem.menu_item_id: thismenuitem for thismenuitem in menu_items}
+	store_items.sort(key=lambda x: (-x.is_active, -x.priority))
+	activelist = [{"name": menu_item_mapping[x.menu_item_id].name, "menu_item_id": x.menu_item_id, "store_menu_item_id": x.store_menu_item_id, "quantity": x.avl_quantity, "is_active": x.is_active, "priority": x.priority} for x in store_items if x.is_active]
+	inactivelist = [{"name": menu_item_mapping[x.menu_item_id].name, "menu_item_id": x.menu_item_id, "store_menu_item_id": x.store_menu_item_id, "quantity": x.avl_quantity, "is_active": x.is_active, "priority": x.priority} for x in store_items if not x.is_active]
+	statssession.remove()
+	return (activelist, inactivelist)
+
 class StoreItemsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
@@ -536,17 +549,18 @@ class StoreItemsHandler(BaseHandler):
 		if current_user != "chef":
 			self.redirect('/stats')
 		else:
-			statsengine = sqlalchemy.create_engine(statsengine_url)
-			statssession = scoped_session(sessionmaker(bind=statsengine))
+			storeitems = getStoreItems()
+			self.render("templates/storeitems.html", activelist = storeitems[0], inactivelist = storeitems[1], activeitems = len(storeitems[0]))
 
-			store_items = statssession.query(storemenuitem).all()
-			menu_items = statssession.query(menuitem).all()
-			menu_item_mapping = {thismenuitem.menu_item_id: thismenuitem for thismenuitem in menu_items}
-			store_items.sort(key=lambda x: (-x.is_active, -x.priority))
-			activelist = [{"name": menu_item_mapping[x.menu_item_id].name, "menu_item_id": x.menu_item_id, "store_menu_item_id": x.store_menu_item_id, "quantity": x.avl_quantity, "is_active": x.is_active, "priority": x.priority} for x in store_items if x.is_active]
-			inactivelist = [{"name": menu_item_mapping[x.menu_item_id].name, "menu_item_id": x.menu_item_id, "store_menu_item_id": x.store_menu_item_id, "quantity": x.avl_quantity, "is_active": x.is_active, "priority": x.priority} for x in store_items if not x.is_active]
-			self.render("templates/storeitems.html", activelist = activelist, inactivelist = inactivelist, activeitems = len(activelist))
-			statssession.remove()
+class TodayMenuHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		current_user = self.get_current_user().decode()
+		if current_user != "chef":
+			self.redirect('/stats')
+		else:
+			storeitems = getStoreItems()
+			self.render("templates/todaysmenu.html", activelist = storeitems[0], activeitems = len(storeitems[0]))
 
 class UpdateItemsActiveHandler(BaseHandler):
 	@tornado.web.authenticated
@@ -633,6 +647,7 @@ application = tornado.web.Application([
 	(r"/itemstats", ItemStatsHandler),
 	(r"/userstats", UserStatsHandler),
 	(r"/storeitems", StoreItemsHandler),
+	(r"/todaysmenu", TodayMenuHandler),
 	(r"/updateActive", UpdateItemsActiveHandler),
 	(r"/moveActive", MoveItemsHandler),
 	(r"/updateQuantity", UpdateQuantityHandler),
