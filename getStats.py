@@ -119,6 +119,9 @@ class LoginHandler(BaseHandler):
 class StatsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
+
+		relevantStates = [3,10,11,12]
+
 		horizon = self.get_argument("horizon", None)
 		startdate = self.get_argument("startdate", None)
 		enddate = self.get_argument("enddate", None)
@@ -185,7 +188,7 @@ class StatsHandler(BaseHandler):
 		ordercounts = {thisdate: {"new": 0, "old": 0} for thisdate in daterange}
 		ordertotals = {thisdate: {"new": 0.0, "old": 0.0} for thisdate in daterange}
 
-		dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3, order.date_add <= parsedenddate, order.date_add >= parsedstartdate)
+		dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status.in_(relevantStates), order.date_add <= parsedenddate, order.date_add >= parsedstartdate)
 
 		dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
 
@@ -244,12 +247,13 @@ class StatsHandler(BaseHandler):
 		platformcounts = {thisdate: {"Android": 0, "Web": 0, "iOS": 0} for thisdate in daterange}
 
 		for thisorder in dailyordersquery:
-			if (thisorder.date_add.strftime("%c") == firstordersmap[thisorder.mobile_number]):
-				ordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["new"] += 1
-				ordertotals[thisorder.date_add.strftime("%a %b %d, %Y")]["new"] += float(thisorder.total)
-			else:
-				ordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["old"] += 1
-				ordertotals[thisorder.date_add.strftime("%a %b %d, %Y")]["old"] += float(thisorder.total)
+			if thisorder.mobile_number in firstordersmap:
+				if (thisorder.date_add.strftime("%c") == firstordersmap[thisorder.mobile_number]):
+					ordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["new"] += 1
+					ordertotals[thisorder.date_add.strftime("%a %b %d, %Y")]["new"] += float(thisorder.total)
+				else:
+					ordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["old"] += 1
+					ordertotals[thisorder.date_add.strftime("%a %b %d, %Y")]["old"] += float(thisorder.total)
 			
 			if (thisorder.source == 0):
 				platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Android"] += 1
