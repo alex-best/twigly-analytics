@@ -37,7 +37,11 @@
                 method: "POST",
                 success: function(data) {
                     if (data.result) {
-                        window.location = "/stats";
+                        if ($('#username').val() == "chef") {
+                            window.location = "/storeitems";
+                        } else {
+                            window.location = "/stats";
+                        }
                     } else {
                         $('#loginresult').text("Login failed").fadeIn();
                     }
