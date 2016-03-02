@@ -69,9 +69,10 @@
 		<ul id="activelist" class="list-group">
 			{% for i in range(0, len(activelist)) %}
 				<li class="list-group-item clearfix" data-storemenuitemid="{{ activelist[i]['store_menu_item_id'] }}" data-priority="{{ activelist[i]['priority'] }}">
-					<div class="col-xs-8">{{ activelist[i]["name"] }}</div>
+					<div class="col-xs-6">{{ activelist[i]["name"] }}</div>
 					<div class="col-xs-2"><input type="number" class="quantity" value="{{ activelist[i]["quantity"] }}" /></div>
-					<div class="col-xs-2"><input class="is_active" type="checkbox" {% if (activelist[i]["is_active"]) %} checked="checked" {% end%} /> <button class="btn btn-success update" style="display: none; height: 22px; padding: 1px 6px; margin-left: 20px;">Update</button></div>
+					<div class="col-xs-2"><button class="btn btn-success update" style="display: none; height: 22px; padding: 1px 6px; margin-left: 20px;">Update</button></div>
+					<div class="col-xs-2"><input class="is_active" type="checkbox" {% if (activelist[i]["is_active"]) %} checked="checked" {% end%} /></div>
 				</li>
 			{% end %}
 	</div>
@@ -89,6 +90,7 @@
 <script type="text/javascript" src="/static/js/Sortable.js"></script>
 <script type="text/javascript">
 	var el = document.getElementById('activelist');
+	{% if (user=="admin") %}
 	var sortable = Sortable.create(el,{
 		draggable: '.list-group-item',
 		onUpdate: function (evt) {
@@ -112,6 +114,7 @@
 			});
 	    },
 	});
+	{% end %}
 	$(document).ready(function() {
 		$(document).on('click', '.is_active', function() {
 			var thiselem = $(this);

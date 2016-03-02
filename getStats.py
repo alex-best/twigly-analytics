@@ -546,11 +546,11 @@ class StoreItemsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
 		current_user = self.get_current_user().decode()
-		if current_user != "chef":
+		if current_user not in ("chef", "admin"):
 			self.redirect('/stats')
 		else:
 			storeitems = getStoreItems()
-			self.render("templates/storeitems.html", activelist = storeitems[0], inactivelist = storeitems[1], activeitems = len(storeitems[0]))
+			self.render("templates/storeitems.html", activelist = storeitems[0], inactivelist = storeitems[1], activeitems = len(storeitems[0]), user=self.get_current_user().decode())
 
 class TodayMenuHandler(BaseHandler):
 	@tornado.web.authenticated
