@@ -16,6 +16,16 @@ from os import path
 import tornado.ioloop
 import tornado.web
 
+import argparse
+
+from apiclient.discovery import build
+from oauth2client.service_account import ServiceAccountCredentials
+
+import httplib2
+from oauth2client import client
+from oauth2client import file
+from oauth2client import tools
+
 settings = {
     "cookie_secret": "twiglyrocks",
     "login_url": "/"
@@ -536,11 +546,16 @@ def getStoreItems():
 	store_items = statssession.query(storemenuitem).all()
 	menu_items = statssession.query(menuitem).all()
 	menu_item_mapping = {thismenuitem.menu_item_id: thismenuitem for thismenuitem in menu_items}
-	store_items.sort(key=lambda x: (-x.is_active, -x.priority))
-	activelist = [{"name": menu_item_mapping[x.menu_item_id].name, "menu_item_id": x.menu_item_id, "store_menu_item_id": x.store_menu_item_id, "quantity": x.avl_quantity, "is_active": x.is_active, "priority": x.priority} for x in store_items if x.is_active]
-	inactivelist = [{"name": menu_item_mapping[x.menu_item_id].name, "menu_item_id": x.menu_item_id, "store_menu_item_id": x.store_menu_item_id, "quantity": x.avl_quantity, "is_active": x.is_active, "priority": x.priority} for x in store_items if not x.is_active]
+	store_items.sort(key=lambda x: (-int(format(x.is_active, '08b')[-1]), -x.priority))
+	activelist = [{"name": menu_item_mapping[x.menu_item_id].name, "menu_item_id": x.menu_item_id, "store_menu_item_id": x.store_menu_item_id, "quantity": x.avl_quantity, "is_active": isActiveItem(x), "priority": x.priority} for x in store_items if isActiveItem(x)]
+	inactivelist = [{"name": menu_item_mapping[x.menu_item_id].name, "menu_item_id": x.menu_item_id, "store_menu_item_id": x.store_menu_item_id, "quantity": x.avl_quantity, "is_active": isActiveItem(x), "priority": x.priority} for x in store_items if not isActiveItem(x)]
+	# for i in store_items:
+	# 	print (menu_item_mapping[i.menu_item_id].name, format(i.is_active, '08b'), bool(int(format(i.is_active, '08b')[-1])))
 	statssession.remove()
 	return (activelist, inactivelist)
+
+def isActiveItem(store_item):
+	return bool(int(format(store_item.is_active, '08b')[-1]))
 
 class StoreItemsHandler(BaseHandler):
 	@tornado.web.authenticated
@@ -562,6 +577,15 @@ class TodayMenuHandler(BaseHandler):
 			storeitems = getStoreItems()
 			self.render("templates/todaysmenu.html", activelist = storeitems[0], activeitems = len(storeitems[0]))
 
+def flip(input, status):
+	inputb = format(input, "08b")
+	output = ""
+	if status == "true":
+		output = inputb[0:-1] + "1"
+	else:
+		output = inputb[0:-1] + "0"
+	return int(output,2)
+
 class UpdateItemsActiveHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
@@ -572,23 +596,22 @@ class UpdateItemsActiveHandler(BaseHandler):
 		statssession = scoped_session(sessionmaker(bind=statsengine))
 
 		store_items = statssession.query(storemenuitem).all()
-		store_items.sort(key=lambda x: (-x.is_active, -x.priority))
+		store_items.sort(key=lambda x: (-int(format(x.is_active, '08b')[-1]), -x.priority))
 		active_store_items = []
 		inactive_store_items = []
 		selected_menu_item = None
 		for store_item in store_items:
 			if (store_item.store_menu_item_id == store_menu_item_id):
 				selected_menu_item = store_item
-			elif store_item.is_active:
+			elif isActiveItem(store_item):
 				active_store_items.append(store_item)
 			else:
 				inactive_store_items.append(store_item)
 
+		selected_menu_item.is_active = flip(selected_menu_item.is_active, status)
 		if status == "true":
-			selected_menu_item.is_active = 1
 			selected_menu_item.priority = 1000*(len(active_store_items)+1)
 		else:
-			selected_menu_item.is_active = 0
 			selected_menu_item.priority = 1000*(len(inactive_store_items)+1)
 		
 		for i in range(0, len(active_store_items)):
@@ -609,7 +632,8 @@ class MoveItemsHandler(BaseHandler):
 		statsengine = sqlalchemy.create_engine(statsengine_url)
 		statssession = scoped_session(sessionmaker(bind=statsengine))
 
-		store_items = statssession.query(storemenuitem).filter(storemenuitem.is_active == True).all()
+		store_items = statssession.query(storemenuitem).all()
+		store_items = [x for x in store_items if isActiveItem(x)]
 		store_items.sort(key=lambda x: (-x.priority))
 		finallist = [x for x in store_items if x.store_menu_item_id != store_menu_item_id]
 		thisitem = [x for x in store_items if x.store_menu_item_id == store_menu_item_id][0]
@@ -638,6 +662,102 @@ class UpdateQuantityHandler(BaseHandler):
 		self.write({"action": True})
 		statssession.remove()
 
+def get_service(api_name, api_version, scope, key_file_location, service_account_email):
+	"""Get a service that communicates to a Google API.
+
+	Args:
+	api_name: The name of the api to connect to.
+	api_version: The api version to connect to.
+	scope: A list auth scopes to authorize for the application.
+	key_file_location: The path to a valid service account p12 key file.
+	service_account_email: The service account email address.
+
+	Returns:
+	A service that is connected to the specified API.
+	"""
+
+	credentials = ServiceAccountCredentials.from_json_keyfile_name(key_file_location, scopes=scope)
+
+	http = credentials.authorize(httplib2.Http())
+
+	# Build the service object.
+	service = build(api_name, api_version, http=http)
+
+	return service
+
+def get_first_profile_id(service):
+	# Use the Analytics service object to get the first profile id.
+
+	# Get a list of all Google Analytics accounts for this user
+	accounts = service.management().accounts().list().execute()
+
+	if accounts.get('items'):
+		# Get the first Google Analytics account.
+		account = accounts.get('items')[0].get('id')
+
+	# Get a list of all the properties for the first account.
+	properties = service.management().webproperties().list(accountId=account).execute()
+
+	if properties.get('items'):
+		# Get the first property id.
+		property = properties.get('items')[0].get('id')
+
+		# Get a list of all views (profiles) for the first property.
+		profiles = service.management().profiles().list(accountId=account, webPropertyId=property).execute()
+
+		if profiles.get('items'):
+			# return the first view (profile) id.
+			return profiles.get('items')[0].get('id')
+
+	return None
+
+def get_results(service, profile_id):
+	# Use the Analytics Service Object to query the Core Reporting API
+	# for the number of sessions within the past seven days.
+	return service.data().ga().get(
+		ids='ga:' + profile_id,
+		start_date='7daysAgo',
+		end_date='today',
+		metrics='ga:sessions').execute()
+
+def print_results(results):
+	# Print data nicely for the user.
+	if results:
+		print('View (Profile): %s' % results.get('profileInfo').get('profileName'))
+		print('Total Sessions: %s' % results.get('rows')[0][0])
+
+	else:
+		print('No results found')
+
+class AnalyticsHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		current_user = self.get_current_user().decode()
+		if current_user != "admin":
+			self.redirect('/stats')
+		else:
+			# Define the auth scopes to request.
+			scope = ['https://www.googleapis.com/auth/analytics.readonly']
+
+			# Use the developer console and replace the values with your
+			# service account email and relative location of your key file.
+			service_account_email = 'twigly-analytics@global-terrain-***REMOVED***.iam.gserviceaccount.com'
+			key_file_location = '..//analytics.json'
+
+			# Authenticate and construct service.
+			service = get_service('analytics', 'v3', scope, key_file_location, service_account_email)
+			profile = get_first_profile_id(service)
+			api_query = service.data().ga().get(
+			    ids="ga:" + profile,
+			    start_date='40daysAgo',
+			    end_date='today',
+			    metrics='ga:users,ga:newUsers',
+			    dimensions='ga:date, ga:appVersion')
+			results = api_query.execute()
+			for result in results.get('rows'):
+				print (result)
+			self.write("Done")
+
 current_path = path.dirname(path.abspath(__file__))
 static_path = path.join(current_path, "static")
 
@@ -645,12 +765,13 @@ application = tornado.web.Application([
 	(r"/", LoginHandler),
 	(r"/stats", StatsHandler),
 	(r"/itemstats", ItemStatsHandler),
-	(r"/userstats", UserStatsHandler),
+	#(r"/userstats", UserStatsHandler),
 	(r"/storeitems", StoreItemsHandler),
 	(r"/todaysmenu", TodayMenuHandler),
 	(r"/updateActive", UpdateItemsActiveHandler),
 	(r"/moveActive", MoveItemsHandler),
 	(r"/updateQuantity", UpdateQuantityHandler),
+	(r"/userstats", AnalyticsHandler),
 	(r'/static/(.*)', tornado.web.StaticFileHandler, {'path': static_path})
 ], **settings)
 
