@@ -114,7 +114,7 @@
 <script type="text/javascript" src="/static/js/Sortable.js"></script>
 <script type="text/javascript">
 	var el = document.getElementById('activelist');
-	{% if (user=="admin") %}
+	{% if (user=="admin" or user=="headchef") %}
 	var sortable = Sortable.create(el,{
 		draggable: '.list-group-item',
 		onUpdate: function (evt) {
