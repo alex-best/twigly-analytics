@@ -748,7 +748,7 @@ def getAnalyticsData(start_date, end_date, metrics, dimensions, sort=None):
 	# Use the developer console and replace the values with your
 	# service account email and relative location of your key file.
 	service_account_email = 'twigly-analytics@global-terrain-***REMOVED***.iam.gserviceaccount.com'
-	key_file_location = '..//analytics.json'
+	key_file_location = 'analytics.json'
 
 	# Authenticate and construct service.
 	service = get_service('analytics', 'v3', scope, key_file_location, service_account_email)
