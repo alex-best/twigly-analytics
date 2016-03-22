@@ -58,30 +58,22 @@
 </div>
 <div class="container">
 	<div class="row" style="margin-bottom: 40px;">
-        <h2>Key Metrics</h2>
+        <h2>User Metrics</h2>
     </div>
     <div class="row" style="margin-bottom: 40px;">
-        <div id="grosssaleschart" style="width:100%; height:400px;"></div>
+        <div id="userschart" style="width:100%; height:400px;"></div>
     </div>
     <div class="row" style="margin-bottom: 40px;">
-        <div id="totalsaleschart" style="width:100%; height:400px;"></div>
+        <div id="conversionchart" style="width:100%; height:400px;"></div>
     </div>
     <div class="row" style="margin-bottom: 40px;">
-        <div id="dailyapc" style="width:100%; height:400px;"></div>
+        <div id="sourceschart" style="width:100%; height:400px;"></div>
     </div>
     <div class="row" style="margin-bottom: 40px;">
-        <div id="orderschart" style="width:100%; height:400px;"></div>
+        <div id="platformuserschart" style="width:100%; height:400px;"></div>
     </div>
     <div class="row" style="margin-bottom: 40px;">
-        <div id="totalorderschart" style="width:100%; height:400px;"></div>
-    </div>
-    <div class="row" style="margin-bottom: 40px;">
-        <div id="platformchart" style="width:100%; height:400px;"></div>
-    </div>
-    <div class="row" style="margin-bottom: 40px;">
-        <div id="total_feedback" style="height:400px;" class="col-xs-12 col-md-4"></div>
-        <div id="food_feedback" style="height:400px;" class="col-xs-12 col-md-4"></div>
-        <div id="delivery_feedback" style="height:400px;" class="col-xs-12 col-md-4"></div>
+        <div id="platformconversionchart" style="width:100%; height:400px;"></div>
     </div>
 </div>
 <button class="showFilters hidden-xs btn btn-success" style="position: fixed; top: 25px; right: 15px;">Show/Hide Filters</button>
@@ -106,8 +98,6 @@
 <script src="/static/js/bootstrap-datepicker.min.js"></script>
 <script src="/static/js/exporting.js"></script>
 <script src="/static/js/export-csv.js"></script>
-<script src="/static/js/jquery.tablesorter.min.js"></script>
-<script src="/static/js/jquery.metadata.js"></script>
 <script type="text/javascript">
 	var getUrlParameter = function getUrlParameter(sParam) {
 	    var sPageURL = decodeURIComponent(window.location.search.substring(1)),
@@ -135,17 +125,18 @@
 
     Highcharts.setOptions(Highcharts.theme);
 
-	var totalsalesvalue = {{ totalsalesvalue }};
-    var totalgrosssales = {{ totalgrosssales }};
-    var totalnetsalespretax = {{ totalnetsalespretax }};
+	var userslist = {{ userslist }};
+    var newuserslist = {{ newuserslist }};
+    var totalusers = {{ totalusers }};
+    var totalnewusers = {{ totalnewusers }};
 
-    $('#grosssaleschart').highcharts({
+    $('#userschart').highcharts({
         chart: {
             zoomType: 'xy'
         },
         title: {
             useHTML: true,
-            text: 'Gross Sales Pre Tax (&#8377;' + totalgrosssales.toFixed(2).toLocaleString() + ')<br>Net Sales Pre Tax (&#8377;' + totalnetsalespretax.toFixed(2).toLocaleString() + ')'
+            text: 'Total Users: ' + totalusers + '<br>Total New Users: ' + totalnewusers
         },
         xAxis: {
             categories: {% raw daterange %},
@@ -153,41 +144,43 @@
         },
         yAxis: [{
             title: {
-                text: 'Sales in INR'
+                text: 'Users'
             }
         }],
         tooltip: {
             shared: true
         },
         series: [{
-            name: "Gross Sales",
+            name: "Total Users",
             type: "column",
             yAxis: 0,
             showInLegend: true,
-            data: {{ grosssales }},
+            data: userslist,
             dataLabels: {
                 enabled: true
             }
         },{
-            name: "Net Sales Pre Tax",
+            name: "New Users",
             type: "column",
             yAxis: 0,
             showInLegend: true,
-            data: {{ netsalespretax }},
+            data: newuserslist,
             dataLabels: {
-                enabled: true,
-                format: '{point.y:.2f}'
+                enabled: true
             }
         }]
     });
 
-	$('#totalsaleschart').highcharts({
-		chart: {
+    var overallconversion = {{ overallconversion }};
+    var overallnewconversion = {{ overallnewconversion }};
+
+    $('#conversionchart').highcharts({
+        chart: {
             zoomType: 'xy'
         },
         title: {
-        	useHTML: true,
-            text: 'Net Sales (&#8377;' + totalsalesvalue.toFixed(2).toLocaleString() + ') and Orders ({{ totalorders }})'
+            useHTML: true,
+            text: 'Overall Conversion: ' + (overallconversion*100).toFixed(2) + '%<br>New User Conversion: ' + (overallnewconversion*100).toFixed(2) + "%"
         },
         xAxis: {
             categories: {% raw daterange %},
@@ -195,187 +188,44 @@
         },
         yAxis: [{
             title: {
-                text: 'Sales in INR'
+                text: 'Conversion'
             }
-        },{
-        	title: {
-                text: 'Orders'
-            },
-        	style: Highcharts.getOptions().colors[1],
-        	opposite: true,
-            min: 0
         }],
         tooltip: {
             shared: true
         },
         series: [{
-        	name: "Total Sales",
-        	type: "column",
-        	yAxis: 0,
-        	showInLegend: false,
-            data: {{ totalsales }},
+            name: "Overall Conversion",
+            type: "line",
+            showInLegend: true,
+            data: {{ dailyconversion }},
             dataLabels: {
-            	enabled: true,
-            	format: '{point.y:.2f}'
+                enabled: true,
+                formatter: function() {
+                    var pcnt = (this.y) * 100;
+                    return Highcharts.numberFormat(pcnt) + '%';
+                }
             }
         },{
-        	name: "Total Orders",
-        	type: "line",
-        	yAxis: 1,
-        	showInLegend: false,
-            data: {{ totalcount }},
+            name: "New User Conversion",
+            type: "line",
+            showInLegend: true,
+            data: {{ newconversion }},
             dataLabels: {
-            	enabled: true
-            }
-        }]
-	});
-
-	$('#dailyapc').highcharts({
-		chart: {
-            type: "column"
-        },
-        title: {
-            text: 'Daily APC'
-        },
-        xAxis: {
-            categories: {% raw daterange %},
-            crosshair: true
-        },
-        yAxis: {
-            title: {
-                text: 'APC (INR)'
-            },
-            plotLines: [{
-            	color: "#FF6600",
-            	value: {{averageapc}},
-            	width: 1,
-            	zIndex: 5
-            }]
-        },
-        tooltip: {
-	        pointFormat: "{point.y:.2f}"
-	    },
-        series: [{
-        	showInLegend: false,
-        	name: "Daily APC",
-        	data: {{ dailyapc }},
-        	dataLabels: {
-            	enabled: true,
-            	format: '{point.y:.2f}'
-            }
-        }]
-	});
-
-	$('#orderschart').highcharts({
-		chart: {
-            type: "column"
-        },
-        title: {
-            text: 'New ({{totalneworders}})/Repeat ({{totalrepeatorders}}) Orders'
-        },
-        xAxis: {
-            categories: {% raw daterange %},
-            crosshair: true
-        },
-        yAxis: {
-            title: {
-                text: 'Orders'
-            },
-            stackLabels: {
-            	enabled: true,
-            	style: {
-                    fontWeight: 'bold',
-                    color: (Highcharts.theme && Highcharts.theme.textColor) || 'gray'
-                }
-            }
-        },
-        plotOptions: {
-        	column: {
-        		stacking: 'normal',
-                dataLabels: {
-                    enabled: true,
-                    color: (Highcharts.theme && Highcharts.theme.dataLabelsColor) || 'white',
-                    style: {
-                        textShadow: '0 0 3px black'
-                    }
-                }
-            }
-        },
-        tooltip: {
-            formatter: function () {
-                return (this.y/this.point.stackTotal*100).toPrecision(2) + '%';
-            }
-        },
-        series: [{
-        	name: "New Orders",
-        	data: {{ neworders }}
-        },{
-        	name: "Repeat Orders",
-        	data: {{ repeatorders }}
-        }]
-	});
-
-	$('#totalorderschart').highcharts({
-		chart: {
-            type: "column"
-        },
-        title: {
-            text: 'Net Sales from New/Repeat Customers'
-        },
-        xAxis: {
-            categories: {% raw daterange %},
-            crosshair: true
-        },
-        yAxis: {
-            title: {
-                text: 'Orders'
-            },
-            stackLabels: {
-            	enabled: true,
-            	style: {
-                    fontWeight: 'bold',
-                    color: (Highcharts.theme && Highcharts.theme.textColor) || 'gray'
-                }
-            }
-        },
-        plotOptions: {
-        	column: {
-        		stacking: 'normal',
-                dataLabels: {
-                    enabled: true,
-                    color: (Highcharts.theme && Highcharts.theme.dataLabelsColor) || 'white',
-                    style: {
-                        textShadow: '0 0 3px black'
-                    }
-                }
-            }
-        },
-        tooltip: {
-	        pointFormat: "{series.name}: {point.y:.2f}"
-	    },
-        series: [{
-        	name: "New Orders",
-        	data: {{ newsums }},
-        	dataLabels: {
                 enabled: true,
-                format: '{point.y:.2f}'
-            }
-        },{
-        	name: "Repeat Orders",
-        	data: {{ repeatsums }},
-        	dataLabels: {
-                enabled: true,
-                format: '{point.y:.2f}'
+                formatter: function() {
+                    var pcnt = (this.y) * 100;
+                    return Highcharts.numberFormat(pcnt) + '%';
+                }
             }
         }]
-	});
-
-    $('#platformchart').highcharts({
+    });
+    $('#sourceschart').highcharts({
         chart: {
             type: "column"
         },
         title: {
-            text: 'Orders by Platform'
+            text: 'Traffic Sources'
         },
         xAxis: {
             categories: {% raw daterange %},
@@ -383,7 +233,7 @@
         },
         yAxis: {
             title: {
-                text: 'Orders'
+                text: 'Traffic'
             },
             stackLabels: {
                 enabled: true,
@@ -410,147 +260,140 @@
                 return (this.y/this.point.stackTotal*100).toPrecision(2) + '%';
             }
         },
+        series: {% raw trafficdatatodisplay %}
+    });
+    
+    $('#platformuserschart').highcharts({
+        chart: {
+            type: "column"
+        },
+        title: {
+            text: 'Traffic by Platform'
+        },
+        xAxis: {
+            categories: {% raw daterange %},
+            crosshair: true
+        },
+        yAxis: {
+            title: {
+                text: 'Traffic'
+            },
+            stackLabels: {
+                enabled: true,
+                style: {
+                    fontWeight: 'bold',
+                    color: (Highcharts.theme && Highcharts.theme.textColor) || 'gray'
+                }
+            }
+        },
+        plotOptions: {
+            column: {
+                stacking: 'normal',
+                dataLabels: {
+                    enabled: true,
+                    color: (Highcharts.theme && Highcharts.theme.dataLabelsColor) || 'white',
+                    style: {
+                        textShadow: '0 0 3px black'
+                    }
+                }
+            }
+        },
+        tooltip: {
+            formatter: function () {
+                return (this.y/this.point.stackTotal*100).toPrecision(2) + '%';
+            }
+        },
+        series: {% raw platformdatatoshow %}
+    });
+    $('#platformconversionchart').highcharts({
+        chart: {
+            zoomType: 'xy'
+        },
+        title: {
+            useHTML: true,
+            text: 'Android Conversion: ' + ({{ androidconversion }}*100).toFixed(2) + '%<br>Web Conversion: ' + ({{ webconversion }}*100).toFixed(2) + '%<br>iOS Conversion: ' + ({{ iosconversion }}*100).toFixed(2) + "%"
+        },
+        xAxis: {
+            categories: {% raw daterange %},
+            crosshair: true
+        },
+        yAxis: [{
+            title: {
+                text: 'Conversion'
+            }
+        }],
+        tooltip: {
+            shared: true
+        },
         series: [{
-            name: "Android",
-            data: {{ androidorders }}
+            name: "Android Conversion",
+            type: "line",
+            showInLegend: true,
+            data: {{ androidconversionseries }},
+            dataLabels: {
+                enabled: true,
+                formatter: function() {
+                    var pcnt = (this.y) * 100;
+                    return Highcharts.numberFormat(pcnt) + '%';
+                }
+            }
         },{
-            name: "Web Orders",
-            data: {{ weborders }}
+            name: "Web Conversion",
+            type: "line",
+            showInLegend: true,
+            data: {{ webconversionseries }},
+            dataLabels: {
+                enabled: true,
+                formatter: function() {
+                    var pcnt = (this.y) * 100;
+                    return Highcharts.numberFormat(pcnt) + '%';
+                }
+            }
         },{
-            name: "iOS Orders",
-            data: {{ iosorders }}
+            name: "iOS Conversion",
+            type: "line",
+            showInLegend: true,
+            data: {{ iosconversionseries }},
+            dataLabels: {
+                enabled: true,
+                formatter: function() {
+                    var pcnt = (this.y) * 100;
+                    return Highcharts.numberFormat(pcnt) + '%';
+                }
+            }
         }]
     });
 
-	$("#total_feedback").highcharts({
-		chart: {
-            type: 'pie'
-        },
-        title: {
-            text: 'Overall Feedback Rate'
-        },
-        tooltip: {
-            pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b>, {point.y}'
-        },
-        plotOptions: {
-            pie: {
-                allowPointSelect: true,
-                cursor: 'pointer',
-                dataLabels: {
-                    enabled: false,
-                    format: '<b>{point.name}</b>: {point.percentage:.1f} %'
-                }
-            }
-        },
-        legend: {
-        	labelFormatter: function() {
-        		return this.name + " (" + this.y + ")";
-        	}
-        },
-        series: [{
-        	name: "Feedback on Orders",
-        	colorByPoint: true,
-        	showInLegend: true,
-        	data: {% raw feedback_chart_data %}
-        }]
-	});
-
-	$("#food_feedback").highcharts({
-		chart: {
-            type: 'pie'
-        },
-        title: {
-            text: 'Feedback on Food'
-        },
-        tooltip: {
-            pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b>, {point.y}'
-        },
-        plotOptions: {
-            pie: {
-                allowPointSelect: true,
-                cursor: 'pointer',
-                dataLabels: {
-                    enabled: false,
-                    format: '<b>{point.name}</b>: {point.percentage:.1f} %'
-                }
-            }
-        },
-        legend: {
-        	labelFormatter: function() {
-        		return this.name + " (" + this.y + ")";
-        	}
-        },
-        series: [{
-        	name: "Feedback on Food",
-        	colorByPoint: true,
-        	showInLegend: true,
-        	data: {% raw food_rating_counts %}
-        }]
-	});
-
-	$("#delivery_feedback").highcharts({
-		chart: {
-            type: 'pie'
-        },
-        title: {
-            text: 'Feedback on Delivery'
-        },
-        tooltip: {
-            pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b>, {point.y}'
-        },
-        plotOptions: {
-            pie: {
-                allowPointSelect: true,
-                cursor: 'pointer',
-                dataLabels: {
-                    enabled: false,
-                    format: '<b>{point.name}</b>: {point.percentage:.1f} %'
-                }
-            }
-        },
-        legend: {
-        	labelFormatter: function() {
-        		return this.name + " (" + this.y + ")";
-        	}
-        },
-        series: [{
-        	name: "Feedback on Delivery",
-        	colorByPoint: true,
-        	showInLegend: true,
-        	data: {% raw delivery_rating_counts %}
-        }]
-	});
-
-	$(document).ready(function() {
-		$('#horizonselect').on('change', function() {
-			window.location.href = "/stats?horizon=" + $(this).val();
-		});
-		var thishorizon = getUrlParameter("horizon");
-		if (thishorizon) {
-			$('#horizonselect').val(thishorizon);
-		}
-		var thisstartdate = getUrlParameter("startdate");
-		if (thisstartdate) {
-			$('#startdate').val(thisstartdate);
-		}
-		var thisenddate = getUrlParameter("enddate");
-		if (thisenddate) {
-			$('#enddate').val(thisenddate);
-		}
-		$('.input-daterange').datepicker({
-		    todayBtn: "linked",
-		    autoclose: true,
-		    todayHighlight: true,
-		    format: "dd/mm/yy",
-		});
-		$('#setDates').on('click', function() {
-			window.location.href = "/stats?startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val();
-		});
-		$('.showFilters').on('click', function() {
-			$('#horizon').fadeToggle();
-		});
+    $(document).ready(function() {
+        $('#horizonselect').on('change', function() {
+            window.location.href = "/userstats?horizon=" + $(this).val();
+        });
+        var thishorizon = getUrlParameter("horizon");
+        if (thishorizon) {
+            $('#horizonselect').val(thishorizon);
+        }
+        var thisstartdate = getUrlParameter("startdate");
+        if (thisstartdate) {
+            $('#startdate').val(thisstartdate);
+        }
+        var thisenddate = getUrlParameter("enddate");
+        if (thisenddate) {
+            $('#enddate').val(thisenddate);
+        }
+        $('.input-daterange').datepicker({
+            todayBtn: "linked",
+            autoclose: true,
+            todayHighlight: true,
+            format: "dd/mm/yy",
+        });
+        $('#setDates').on('click', function() {
+            window.location.href = "/userstats?startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val();
+        });
+        $('.showFilters').on('click', function() {
+            $('#horizon').fadeToggle();
+        });
         $('.tablesorter').tablesorter({sortList: [[1,1], [0,0]]});
-	});
+    });
 	
 </script>
 </body>

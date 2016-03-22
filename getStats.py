@@ -12,6 +12,7 @@ from sqlalchemy import (
 from sqlalchemy.orm.exc import NoResultFound
 import datetime
 from os import path
+from json import dumps
 
 import tornado.ioloop
 import tornado.web
@@ -33,6 +34,8 @@ settings = {
 statsBase = declarative_base()
 statsengine_url = 'mysql+pymysql://twigly:***REMOVED***@***REMOVED***/twigly_prod?charset=utf8'
 #statsengine_url = 'mysql+pymysql://root@localhost:3306/twigly_dev?charset=utf8'
+
+relevantStates = [3,10,11,12]
 
 class order(statsBase):
 	__tablename__ = "orders"
@@ -106,7 +109,7 @@ class menuitem(statsBase):
 	is_combo = Column("is_combo", Integer)
 
 def authenticate(thisusername, thispassword):
-	if (thisusername == "admin" and thispassword == "tw1gl7st4ts") or (thisusername == "review" and thispassword == "h1twigl7") or (thisusername == "chef" and thispassword == "twigly123"):
+	if (thisusername == "admin" and thispassword == "tw1gl7st4ts") or (thisusername == "review" and thispassword == "h1twigl7") or (thisusername == "chef" and thispassword == "twigly123")  or (thisusername == "headchef" and thispassword == "rahulonly"):
 		return {"result": True}
 	else:
 		return {"result": False}
@@ -127,11 +130,82 @@ class LoginHandler(BaseHandler):
 			self.set_secure_cookie("user", thisuser)
 		self.write(authresult)
 
+def getTotalCount(parsedstartdate, parsedenddate, daterange, statssession):
+	dailyorderscountquery = statssession.query(order.date_add, sqlalchemy.func.count(order.order_id)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
+
+	thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): int(thisresult[1]) for thisresult in dailyorderscountquery}
+	totalcount = []
+	for thisdate in daterange:
+		if thisdate in thiscountdetails:
+			totalcount.append(thiscountdetails[thisdate])
+		else:
+			totalcount.append(0)
+
+	return totalcount
+
+def getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, statssession):
+	firstorderquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3).order_by(order.date_add).group_by(order.mobile_number)
+
+	firstordersmap = {}
+	for thisorder in firstorderquery:
+		firstordersmap[thisorder.mobile_number] = thisorder.date_add.strftime("%c")
+
+	ordercounts = {thisdate: {"new": 0, "old": 0} for thisdate in daterange}
+	ordertotals = {thisdate: {"new": 0.0, "old": 0.0} for thisdate in daterange}
+
+	platformcounts = {thisdate: {"Android": 0, "Web": 0, "iOS": 0} for thisdate in daterange}
+
+	for thisorder in dailyordersquery:
+		if thisorder.mobile_number in firstordersmap:
+			if (thisorder.date_add.strftime("%c") == firstordersmap[thisorder.mobile_number]):
+				ordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["new"] += 1
+				ordertotals[thisorder.date_add.strftime("%a %b %d, %Y")]["new"] += float(thisorder.total)
+			else:
+				ordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["old"] += 1
+				ordertotals[thisorder.date_add.strftime("%a %b %d, %Y")]["old"] += float(thisorder.total)
+		
+		if (thisorder.source == 0):
+			platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Android"] += 1
+		elif (thisorder.source == 1):
+			platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Web"] += 1
+		elif (thisorder.source ==2):
+			platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["iOS"] += 1
+
+	neworders = []
+	for thisdate in daterange:
+		neworders.append(ordercounts[thisdate]["new"])
+
+	totalneworders = sum(neworders)
+
+	repeatorders = []
+	for thisdate in daterange:
+		repeatorders.append(ordercounts[thisdate]["old"])
+
+	totalrepeatorders = sum(repeatorders)
+
+	newsums = []
+	for thisdate in daterange:
+		newsums.append(ordertotals[thisdate]["new"])
+
+	repeatsums = []
+	for thisdate in daterange:
+		repeatsums.append(ordertotals[thisdate]["old"])
+
+	androidorders = []
+	weborders = []
+	iosorders = []
+
+	for thisdate in daterange:
+		androidorders.append(platformcounts[thisdate]["Android"])
+		weborders.append(platformcounts[thisdate]["Web"])
+		iosorders.append(platformcounts[thisdate]["iOS"])
+
+	result = {"neworders": neworders, "repeatorders": repeatorders, "totalneworders": totalneworders, "totalrepeatorders": totalrepeatorders, "newsums": newsums, "repeatsums": repeatsums, "androidorders": androidorders, "weborders": weborders, "iosorders": iosorders}
+	return (result)
+
 class StatsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
-
-		relevantStates = [3,10,11,12]
 
 		horizon = self.get_argument("horizon", None)
 		startdate = self.get_argument("startdate", None)
@@ -172,15 +246,7 @@ class StatsHandler(BaseHandler):
 
 		totalsalesvalue = sum(totalsales)
 
-		dailyorderscountquery = statssession.query(order.date_add, sqlalchemy.func.count(order.order_id)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
-
-		thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): int(thisresult[1]) for thisresult in dailyorderscountquery}
-		totalcount = []
-		for thisdate in daterange:
-			if thisdate in thiscountdetails:
-				totalcount.append(thiscountdetails[thisdate])
-			else:
-				totalcount.append(0)
+		totalcount = getTotalCount(parsedstartdate, parsedenddate, daterange, statssession)
 
 		dailyapc = []
 
@@ -190,16 +256,9 @@ class StatsHandler(BaseHandler):
 			except ZeroDivisionError:
 				dailyapc.append(0)
 
-		firstorderquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3).order_by(order.date_add).group_by(order.mobile_number)
+		dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status.in_(relevantStates), order.date_add <= parsedenddate, order.date_add >= parsedstartdate).all()
 
-		firstordersmap = {}
-		for thisorder in firstorderquery:
-			firstordersmap[thisorder.mobile_number] = thisorder.date_add.strftime("%c")
-
-		ordercounts = {thisdate: {"new": 0, "old": 0} for thisdate in daterange}
-		ordertotals = {thisdate: {"new": 0.0, "old": 0.0} for thisdate in daterange}
-
-		dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status.in_(relevantStates), order.date_add <= parsedenddate, order.date_add >= parsedstartdate)
+		detailedordercounts = getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, statssession)
 
 		dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
 
@@ -255,52 +314,7 @@ class StatsHandler(BaseHandler):
 				delivery_rating_counts[5-thisfeedback.delivery_rating]["y"] += 1
 				total_delivery_ratings += 1
 
-		platformcounts = {thisdate: {"Android": 0, "Web": 0, "iOS": 0} for thisdate in daterange}
-
-		for thisorder in dailyordersquery:
-			if thisorder.mobile_number in firstordersmap:
-				if (thisorder.date_add.strftime("%c") == firstordersmap[thisorder.mobile_number]):
-					ordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["new"] += 1
-					ordertotals[thisorder.date_add.strftime("%a %b %d, %Y")]["new"] += float(thisorder.total)
-				else:
-					ordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["old"] += 1
-					ordertotals[thisorder.date_add.strftime("%a %b %d, %Y")]["old"] += float(thisorder.total)
-			
-			if (thisorder.source == 0):
-				platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Android"] += 1
-			elif (thisorder.source == 1):
-				platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Web"] += 1
-			elif (thisorder.source ==2):
-				platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["iOS"] += 1
-
-		neworders = []
-		for thisdate in daterange:
-			neworders.append(ordercounts[thisdate]["new"])
-
-		totalneworders = sum(neworders)
-
-		repeatorders = []
-		for thisdate in daterange:
-			repeatorders.append(ordercounts[thisdate]["old"])
-
-		totalrepeatorders = sum(repeatorders)
-
-		newsums = []
-		for thisdate in daterange:
-			newsums.append(ordertotals[thisdate]["new"])
-
-		repeatsums = []
-		for thisdate in daterange:
-			repeatsums.append(ordertotals[thisdate]["old"])
-
-		androidorders = []
-		weborders = []
-		iosorders = []
-
-		for thisdate in daterange:
-			androidorders.append(platformcounts[thisdate]["Android"])
-			weborders.append(platformcounts[thisdate]["Web"])
-			iosorders.append(platformcounts[thisdate]["iOS"])
+		
 
 		
 
@@ -324,13 +338,11 @@ class StatsHandler(BaseHandler):
 		# 	inputsmap.append({"name": cat, "data":thisinputslist})		
 
 		statssession.remove()
-		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=neworders, repeatorders=repeatorders, newsums=newsums, repeatsums=repeatsums, dailyapc=dailyapc, feedback_chart_data=feedback_chart_data, food_rating_counts=food_rating_counts, delivery_rating_counts=delivery_rating_counts, totalsalesvalue=totalsalesvalue, totalorders=totalorders, totalneworders=totalneworders, totalrepeatorders=totalrepeatorders, averageapc=averageapc, androidorders=androidorders, weborders=weborders, iosorders=iosorders, grosssales = grosssales, totalgrosssales = totalgrosssales, netsalespretax = netsalespretax, totalnetsalespretax = totalnetsalespretax)
+		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=detailedordercounts["neworders"], repeatorders=detailedordercounts["repeatorders"], newsums=detailedordercounts["newsums"], repeatsums=detailedordercounts["repeatsums"], dailyapc=dailyapc, feedback_chart_data=feedback_chart_data, food_rating_counts=food_rating_counts, delivery_rating_counts=delivery_rating_counts, totalsalesvalue=totalsalesvalue, totalorders=totalorders, totalneworders=detailedordercounts["totalneworders"], totalrepeatorders=detailedordercounts["totalrepeatorders"], averageapc=averageapc, androidorders=detailedordercounts["androidorders"], weborders=detailedordercounts["weborders"], iosorders=detailedordercounts["iosorders"], grosssales = grosssales, totalgrosssales = totalgrosssales, netsalespretax = netsalespretax, totalnetsalespretax = totalnetsalespretax)
 
 class ItemStatsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
-		relevantStates = [3,10,11,12]
-
 		current_user = self.get_current_user().decode()
 		if current_user != "admin":
 			self.redirect('/stats')
@@ -729,6 +741,46 @@ def print_results(results):
 	else:
 		print('No results found')
 
+def getAnalyticsData(start_date, end_date, metrics, dimensions, sort=None):
+	# Define the auth scopes to request.
+	scope = ['https://www.googleapis.com/auth/analytics.readonly']
+
+	# Use the developer console and replace the values with your
+	# service account email and relative location of your key file.
+	service_account_email = 'twigly-analytics@global-terrain-***REMOVED***.iam.gserviceaccount.com'
+	key_file_location = '..//analytics.json'
+
+	# Authenticate and construct service.
+	service = get_service('analytics', 'v3', scope, key_file_location, service_account_email)
+	profile = get_first_profile_id(service)
+	if (sort == None):
+		api_query = service.data().ga().get(
+		    ids="ga:" + profile,
+		    start_date=start_date,
+		    end_date=end_date,
+		    metrics=metrics,
+		    dimensions=dimensions)
+	else:
+		api_query = service.data().ga().get(
+		    ids="ga:" + profile,
+		    start_date=start_date,
+		    end_date=end_date,
+		    metrics=metrics,
+		    dimensions=dimensions,
+		    sort=sort)
+	results = api_query.execute()
+	return results.get('rows')
+
+def getPlatform(input):
+	if (input == "Wap" or input == "Web"):
+		return "Web"
+	elif (input.count(".") == 2):
+		return "Android"
+	elif (input.count(".") == 1):
+		return "iOS"
+	else:
+		return input
+
 class AnalyticsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
@@ -736,27 +788,149 @@ class AnalyticsHandler(BaseHandler):
 		if current_user != "admin":
 			self.redirect('/stats')
 		else:
-			# Define the auth scopes to request.
-			scope = ['https://www.googleapis.com/auth/analytics.readonly']
+			horizon = self.get_argument("horizon", None)
+			startdate = self.get_argument("startdate", None)
+			enddate = self.get_argument("enddate", None)
+			if startdate is None:
+				if horizon is None:
+					horizon = 7
+				else:
+					horizon = int(horizon)
 
-			# Use the developer console and replace the values with your
-			# service account email and relative location of your key file.
-			service_account_email = 'twigly-analytics@global-terrain-***REMOVED***.iam.gserviceaccount.com'
-			key_file_location = '..//analytics.json'
+				parsedenddate = datetime.date.today()
+				parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
+				gastartdate = parsedstartdate.strftime("%Y-%m-%d")
+				gaenddate = (parsedenddate - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+				daterange = [parsedstartdate.strftime("%a %b %d, %Y")]
+				resultdatelookup = {parsedstartdate.strftime("%Y%m%d"): parsedstartdate.strftime("%a %b %d, %Y")}
+				for c in range(horizon-1):
+					resultdatelookup[(parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%Y%m%d")] = (parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%a %b %d, %Y")
+					daterange.append((parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%a %b %d, %Y"))
+			else:
+				parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date()
+				parsedenddate = parsedenddate + datetime.timedelta(days=1)
+				parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
+				gastartdate = parsedstartdate.strftime("%Y-%m-%d")
+				gaenddate = (parsedenddate - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+				daterange = []
+				resultdatelookup = {parsedstartdate.strftime("%Y%m%d"): parsedstartdate.strftime("%a %b %d, %Y")}
+				for c in range((parsedenddate - parsedstartdate).days):
+					resultdatelookup[(parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%Y%m%d")] = (parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%a %b %d, %Y")
+					daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%a %b %d, %Y"))
 
-			# Authenticate and construct service.
-			service = get_service('analytics', 'v3', scope, key_file_location, service_account_email)
-			profile = get_first_profile_id(service)
-			api_query = service.data().ga().get(
-			    ids="ga:" + profile,
-			    start_date='40daysAgo',
-			    end_date='today',
-			    metrics='ga:users,ga:newUsers',
-			    dimensions='ga:date, ga:appVersion')
-			results = api_query.execute()
-			for result in results.get('rows'):
-				print (result)
-			self.write("Done")
+			userresults = getAnalyticsData(gastartdate, gaenddate, 'ga:users, ga:newUsers', 'ga:date')
+
+			userresultslookup = {thisdate: {"users": 0, "newusers": 0} for thisdate in daterange}
+			for result in userresults:
+				userresultslookup[resultdatelookup[result[0]]]["users"] = int(result[1])
+				userresultslookup[resultdatelookup[result[0]]]["newusers"] = int(result[2])
+
+			userslist = [userresultslookup[thisdate]["users"] for thisdate in daterange]
+			newuserslist = [userresultslookup[thisdate]["newusers"] for thisdate in daterange]
+
+			totalusers = sum(userslist)
+			totalnewusers = sum(newuserslist)
+
+			statsengine = sqlalchemy.create_engine(statsengine_url)
+			statssession = scoped_session(sessionmaker(bind=statsengine))
+
+			totalcount = getTotalCount(parsedstartdate, parsedenddate, daterange, statssession)
+
+			dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status.in_(relevantStates), order.date_add <= parsedenddate, order.date_add >= parsedstartdate).all()
+
+			detailedordercounts = getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, statssession)
+
+			dailyconversion = []
+			for d in range(0, len(daterange)):
+				dailyconversion.append(totalcount[d]/userslist[d])
+
+			newconversion = []
+			for d in range(0, len(daterange)):
+				newconversion.append(detailedordercounts["neworders"][d]/newuserslist[d])
+
+			overallconversion = sum(totalcount)/totalusers
+			overallnewconversion = detailedordercounts["totalneworders"]/totalnewusers
+
+			trafficsourcedata = getAnalyticsData(gastartdate, gaenddate, 'ga:users', 'ga:date, ga:source', '-ga:users, ga:source')
+			trafficresults = {}
+			trafficsources = []
+			for result in trafficsourcedata:
+				if result[1] not in trafficsources:
+					try:
+						trafficsources.append(result[1])
+					except UnicodeDecodeError:
+						trafficsources.append(result[1].decode())
+				if resultdatelookup[result[0]] in trafficresults:
+					try:
+						trafficresults[resultdatelookup[result[0]]][result[1]] = int(result[2])
+					except UnicodeDecodeError:
+						trafficresults[resultdatelookup[result[0]]][result[1].decode()] = int(result[2])
+				else:
+					try:
+						trafficresults[resultdatelookup[result[0]]] = {result[1]: int(result[2])}
+					except UnicodeDecodeError:
+						trafficresults[resultdatelookup[result[0]]] = {result[1].decode(): int(result[2])}
+			
+			trafficintermediate = {}
+			for thisdate in daterange:
+				for source in trafficsources:
+					if source in trafficresults[thisdate]:
+						if source in trafficintermediate:
+							trafficintermediate[source].append(trafficresults[thisdate][source])
+						else:
+							trafficintermediate[source] = [trafficresults[thisdate][source]]
+					else:
+						if source in trafficintermediate:
+							trafficintermediate[source].append(0)
+						else:
+							trafficintermediate[source] = [0]
+
+			trafficdatatodisplay = []
+			for source in trafficintermediate:
+				trafficdatatodisplay.append({"name": source, "data": trafficintermediate[source]})
+
+			platformdata = getAnalyticsData(gastartdate, gaenddate, 'ga:users', 'ga:date, ga:appVersion')
+
+			platformresults = {}
+			platforms = []
+			for result in platformdata:
+				thisplatform = getPlatform(result[1])
+				if thisplatform not in platforms:
+					platforms.append(thisplatform)
+				if resultdatelookup[result[0]] in platformresults:
+					if thisplatform in platformresults[resultdatelookup[result[0]]]:
+						platformresults[resultdatelookup[result[0]]][thisplatform] += int(result[2])
+					else:
+						platformresults[resultdatelookup[result[0]]][thisplatform] = int(result[2])
+				else:
+					platformresults[resultdatelookup[result[0]]] = {thisplatform: int(result[2])}
+
+			platformintermediate = {}
+			for thisdate in daterange:
+				for platform in platformresults[thisdate]:
+					if platform in platformintermediate:
+						platformintermediate[platform].append(platformresults[thisdate][platform])
+					else:
+						platformintermediate[platform] = [platformresults[thisdate][platform]]
+
+			platformdatatoshow = []
+			for platform in platformintermediate:
+				platformdatatoshow.append({"name": platform, "data": platformintermediate[platform]})
+
+			androidconversionseries = []
+			webconversionseries = []
+			iosconversionseries = []
+
+			for d in range(0, len(daterange)):
+				androidconversionseries.append(detailedordercounts["androidorders"][d]/platformintermediate["Android"][d])
+				webconversionseries.append(detailedordercounts["weborders"][d]/platformintermediate["Web"][d])
+				iosconversionseries.append(detailedordercounts["iosorders"][d]/platformintermediate["iOS"][d])
+
+			androidconversion = sum(detailedordercounts["androidorders"])/sum(platformintermediate["Android"])
+			webconversion = sum(detailedordercounts["weborders"])/sum(platformintermediate["Web"])
+			iosconversion = sum(detailedordercounts["iosorders"])/sum(platformintermediate["iOS"])
+
+			self.render("templates/userstatstemplate.html", daterange=daterange, userslist=userslist, newuserslist=newuserslist, totalusers=totalusers, totalnewusers=totalnewusers, dailyconversion=dailyconversion, newconversion=newconversion, overallconversion=overallconversion, overallnewconversion=overallnewconversion, trafficdatatodisplay=dumps(trafficdatatodisplay), platformdatatoshow=dumps(platformdatatoshow), androidconversionseries=androidconversionseries, webconversionseries=webconversionseries, iosconversionseries=iosconversionseries, androidconversion=androidconversion, webconversion=webconversion, iosconversion=iosconversion)
 
 current_path = path.dirname(path.abspath(__file__))
 static_path = path.join(current_path, "static")
