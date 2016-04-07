@@ -141,6 +141,12 @@
 	    },
 	});
 	{% end %}
+	{% if (user!="admin" or user!="headchef") %}
+		var updater = setTimeout(function() {
+	        $('.cover').fadeIn();
+	        window.location.reload();
+	    }, 900000);
+	{% end %}
 	$(document).ready(function() {
 		$(document).on('click', '.is_active', function() {
 			$('.cover').fadeIn();

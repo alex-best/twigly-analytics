@@ -35,7 +35,7 @@ statsBase = declarative_base()
 statsengine_url = 'mysql+pymysql://twigly:***REMOVED***@***REMOVED***/twigly_prod?charset=utf8'
 #statsengine_url = 'mysql+pymysql://root@localhost:3306/twigly_dev?charset=utf8'
 
-relevantStates = [3,10,11,12]
+relevantStates = [3,10,11,12,16]
 
 class order(statsBase):
 	__tablename__ = "orders"
