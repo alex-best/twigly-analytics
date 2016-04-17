@@ -56,6 +56,9 @@
     </nav>
 </div>
 <div class="container">
+	{% if (user=="admin" or user=="headchef") %}
+		{% include "navtemplate.html" %}
+	{% end %}
     <div class="row" style="margin-bottom: 40px;" id="tagsheader">
     	<h2>Tags Data</h2>
     </div>

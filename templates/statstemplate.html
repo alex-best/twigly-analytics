@@ -57,6 +57,9 @@
     </nav>
 </div>
 <div class="container">
+    {% if (user=="admin" or user=="headchef") %}
+        {% include "navtemplate.html" %}
+    {% end %}
 	<div class="row" style="margin-bottom: 40px;">
         <h2>Key Metrics</h2>
     </div>

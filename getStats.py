@@ -13,6 +13,8 @@ from sqlalchemy.orm.exc import NoResultFound
 import datetime
 from os import path
 from json import dumps
+from urllib import parse
+from mailchimp import Mailchimp
 
 import tornado.ioloop
 import tornado.web
@@ -34,6 +36,7 @@ settings = {
 statsBase = declarative_base()
 statsengine_url = 'mysql+pymysql://twigly:***REMOVED***@***REMOVED***/twigly_prod?charset=utf8'
 #statsengine_url = 'mysql+pymysql://root@localhost:3306/twigly_dev?charset=utf8'
+mailchimpkey = "***REMOVED***"
 
 relevantStates = [3,10,11,12,16]
 
@@ -337,14 +340,16 @@ class StatsHandler(BaseHandler):
 
 		# 	inputsmap.append({"name": cat, "data":thisinputslist})		
 
+		current_user = self.get_current_user().decode()
+
 		statssession.remove()
-		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=detailedordercounts["neworders"], repeatorders=detailedordercounts["repeatorders"], newsums=detailedordercounts["newsums"], repeatsums=detailedordercounts["repeatsums"], dailyapc=dailyapc, feedback_chart_data=feedback_chart_data, food_rating_counts=food_rating_counts, delivery_rating_counts=delivery_rating_counts, totalsalesvalue=totalsalesvalue, totalorders=totalorders, totalneworders=detailedordercounts["totalneworders"], totalrepeatorders=detailedordercounts["totalrepeatorders"], averageapc=averageapc, androidorders=detailedordercounts["androidorders"], weborders=detailedordercounts["weborders"], iosorders=detailedordercounts["iosorders"], grosssales = grosssales, totalgrosssales = totalgrosssales, netsalespretax = netsalespretax, totalnetsalespretax = totalnetsalespretax)
+		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=detailedordercounts["neworders"], repeatorders=detailedordercounts["repeatorders"], newsums=detailedordercounts["newsums"], repeatsums=detailedordercounts["repeatsums"], dailyapc=dailyapc, feedback_chart_data=feedback_chart_data, food_rating_counts=food_rating_counts, delivery_rating_counts=delivery_rating_counts, totalsalesvalue=totalsalesvalue, totalorders=totalorders, totalneworders=detailedordercounts["totalneworders"], totalrepeatorders=detailedordercounts["totalrepeatorders"], averageapc=averageapc, androidorders=detailedordercounts["androidorders"], weborders=detailedordercounts["weborders"], iosorders=detailedordercounts["iosorders"], grosssales = grosssales, totalgrosssales = totalgrosssales, netsalespretax = netsalespretax, totalnetsalespretax = totalnetsalespretax, user=current_user)
 
 class ItemStatsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
 		current_user = self.get_current_user().decode()
-		if current_user != "admin":
+		if current_user not in ["admin", "headchef"]:
 			self.redirect('/stats')
 		else:
 			horizon = self.get_argument("horizon", None)
@@ -418,7 +423,7 @@ class ItemStatsHandler(BaseHandler):
 			itemhtml += "</tbody></table>"
 
 			statssession.remove()
-			self.render("templates/itemstatstemplate.html", daterange=daterange, tagsmap=tagsmap, itemhtml=itemhtml)
+			self.render("templates/itemstatstemplate.html", daterange=daterange, tagsmap=tagsmap, itemhtml=itemhtml, user=current_user)
 
 class UserStatsHandler(BaseHandler):
 	@tornado.web.authenticated
@@ -534,7 +539,7 @@ class UserStatsHandler(BaseHandler):
 				lossmakerstring += str(lossmakerid) + ", "
 
 			statssession.remove()
-			self.render("templates/userstemplate.html", daterange=daterange, lossmakers=lossmakers, med1makers=med1makers, med2makers=med2makers, med3makers=med3makers, highmakers=highmakers, counter1=counter1, counter2=counter2, counter3=counter3, counter4=counter4, counter5=counter5, users=users, lossmakerids=lossmakerids)
+			self.render("templates/userstemplate.html", daterange=daterange, lossmakers=lossmakers, med1makers=med1makers, med2makers=med2makers, med3makers=med3makers, highmakers=highmakers, counter1=counter1, counter2=counter2, counter3=counter3, counter4=counter4, counter5=counter5, users=users, lossmakerids=lossmakerids, user=current_user)
 
 class storemenuitem(statsBase):
 	__tablename__ = "store_menu_items"
@@ -551,16 +556,41 @@ class storemenuitem(statsBase):
 	is_active = Column("is_active", Integer)
 	priority = Column("priority", Integer)
 
+def getDishType():
+	statsengine = sqlalchemy.create_engine(statsengine_url)
+	statssession = scoped_session(sessionmaker(bind=statsengine))
+
+	tags = statssession.query(tag).all()
+	menu_item_tags = statssession.query(menu_item_tag).all()
+	vegtagid = None
+	nonvegtagid = None
+	eggtagid = None
+	for thistag in tags:
+		if thistag.name == "#VEG":
+			vegtagid = thistag.tag_id
+		if thistag.name == "#NONVEG":
+			nonvegtagid = thistag.tag_id
+		if thistag.name == "#EGG":
+			eggtagid = thistag.tag_id
+
+	vegitems = [mit.menu_item_id for mit in menu_item_tags if mit.tag_id == vegtagid]
+	nonvegitems = [mit.menu_item_id for mit in menu_item_tags if mit.tag_id == nonvegtagid]
+	eggitems = [mit.menu_item_id for mit in menu_item_tags if mit.tag_id == eggtagid]
+
+	statssession.remove()
+	return (vegitems, nonvegitems, eggitems)
+
 def getStoreItems():
 	statsengine = sqlalchemy.create_engine(statsengine_url)
 	statssession = scoped_session(sessionmaker(bind=statsengine))
 
 	store_items = statssession.query(storemenuitem).all()
 	menu_items = statssession.query(menuitem).all()
+
 	menu_item_mapping = {thismenuitem.menu_item_id: thismenuitem for thismenuitem in menu_items}
 	store_items.sort(key=lambda x: (-int(format(x.is_active, '08b')[-1]), -x.priority))
-	activelist = [{"name": menu_item_mapping[x.menu_item_id].name, "menu_item_id": x.menu_item_id, "store_menu_item_id": x.store_menu_item_id, "quantity": x.avl_quantity, "is_active": isActiveItem(x), "priority": x.priority} for x in store_items if isActiveItem(x)]
-	inactivelist = [{"name": menu_item_mapping[x.menu_item_id].name, "menu_item_id": x.menu_item_id, "store_menu_item_id": x.store_menu_item_id, "quantity": x.avl_quantity, "is_active": isActiveItem(x), "priority": x.priority} for x in store_items if not isActiveItem(x)]
+	activelist = [{"name": menu_item_mapping[x.menu_item_id].name, "menu_item_id": x.menu_item_id, "store_menu_item_id": x.store_menu_item_id, "quantity": x.avl_quantity, "is_active": isActiveItem(x), "priority": x.priority, "image": menu_item_mapping[x.menu_item_id].img_url, "description": menu_item_mapping[x.menu_item_id].description} for x in store_items if isActiveItem(x)]
+	inactivelist = [{"name": menu_item_mapping[x.menu_item_id].name, "menu_item_id": x.menu_item_id, "store_menu_item_id": x.store_menu_item_id, "quantity": x.avl_quantity, "is_active": isActiveItem(x), "priority": x.priority, "image": menu_item_mapping[x.menu_item_id].img_url, "description": menu_item_mapping[x.menu_item_id].description} for x in store_items if not isActiveItem(x)]
 	# for i in store_items:
 	# 	print (menu_item_mapping[i.menu_item_id].name, format(i.is_active, '08b'), bool(int(format(i.is_active, '08b')[-1])))
 	statssession.remove()
@@ -587,7 +617,7 @@ class TodayMenuHandler(BaseHandler):
 			self.redirect('/stats')
 		else:
 			storeitems = getStoreItems()
-			self.render("templates/todaysmenu.html", activelist = storeitems[0], activeitems = len(storeitems[0]))
+			self.render("templates/todaysmenu.html", activelist = storeitems[0], activeitems = len(storeitems[0]), user=current_user)
 
 def flip(input, status):
 	inputb = format(input, "08b")
@@ -930,7 +960,99 @@ class AnalyticsHandler(BaseHandler):
 			webconversion = sum(detailedordercounts["weborders"])/sum(platformintermediate["Web"])
 			iosconversion = sum(detailedordercounts["iosorders"])/sum(platformintermediate["iOS"])
 
-			self.render("templates/userstatstemplate.html", daterange=daterange, userslist=userslist, newuserslist=newuserslist, totalusers=totalusers, totalnewusers=totalnewusers, dailyconversion=dailyconversion, newconversion=newconversion, overallconversion=overallconversion, overallnewconversion=overallnewconversion, trafficdatatodisplay=dumps(trafficdatatodisplay), platformdatatoshow=dumps(platformdatatoshow), androidconversionseries=androidconversionseries, webconversionseries=webconversionseries, iosconversionseries=iosconversionseries, androidconversion=androidconversion, webconversion=webconversion, iosconversion=iosconversion)
+			self.render("templates/userstatstemplate.html", daterange=daterange, userslist=userslist, newuserslist=newuserslist, totalusers=totalusers, totalnewusers=totalnewusers, dailyconversion=dailyconversion, newconversion=newconversion, overallconversion=overallconversion, overallnewconversion=overallnewconversion, trafficdatatodisplay=dumps(trafficdatatodisplay), platformdatatoshow=dumps(platformdatatoshow), androidconversionseries=androidconversionseries, webconversionseries=webconversionseries, iosconversionseries=iosconversionseries, androidconversion=androidconversion, webconversion=webconversion, iosconversion=iosconversion, user=current_user)
+
+class SendMailHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		current_user = self.get_current_user().decode()
+		if current_user != "admin":
+			self.redirect('/stats')
+		else:
+			activelist = getStoreItems()[0]
+			vegitems, nonvegitems, eggitems = getDishType()
+
+			for activeitem in activelist:
+				if activeitem["menu_item_id"] in vegitems:
+					activeitem["type"] = "v"
+				elif activeitem["menu_item_id"] in nonvegitems:
+					activeitem["type"] = "n"
+				elif activeitem["menu_item_id"] in eggitems:
+					activeitem["type"] = "e"
+				else:
+					activeitem["type"] = ""
+			self.render("templates/sendmailtemplate.html", activelist = activelist, user=current_user)
+
+def createMail(itemlist):
+	activelist = getStoreItems()[0]
+	itemlist = [int(x) for x in itemlist.split(",")]
+
+	vegitems, nonvegitems, eggitems = getDishType()
+
+	for activeitem in activelist:
+		if activeitem["menu_item_id"] in vegitems:
+			activeitem["type"] = "v"
+		elif activeitem["menu_item_id"] in nonvegitems:
+			activeitem["type"] = "n"
+		elif activeitem["menu_item_id"] in eggitems:
+			activeitem["type"] = "e"
+		else:
+			activeitem["type"] = ""
+
+	itemlookup = {item["store_menu_item_id"]: item for item in activelist}
+	finallist = [itemlookup[x] for x in itemlist]
+	return finallist
+
+class MailPreviewHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		current_user = self.get_current_user().decode()
+		if current_user != "admin":
+			self.redirect('/stats')
+		else:
+			subject = parse.unquote(self.get_argument("subject"))
+			header = parse.unquote(self.get_argument("header"))
+			length = int(self.get_argument("items"))
+			itemlist = self.get_argument("itemlist")
+			finallist = createMail(itemlist)
+
+			self.render(template_name = "templates/mailtemplate.html", activeitems = finallist, header = header, length = length)
+
+class MailchimpHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		current_user = self.get_current_user().decode()
+		if current_user != "admin":
+			self.redirect('/stats')
+		else:
+			activelist = getStoreItems()[0]
+			subject = parse.unquote(self.get_argument("subject"))
+			header = parse.unquote(self.get_argument("header"))
+			length = int(self.get_argument("items"))
+			itemlist = self.get_argument("itemlist")
+			finallist = createMail(itemlist)
+			
+			content = self.render_string(template_name = "templates/mailtemplate.html", activeitems = finallist, header = header, length = length)
+
+			#Change this variable to change the list
+			list_id = "ea0d1e3356"	
+			# ea0d1e3356 is the main Twigly list
+			#list_id = "d2a7019f47"
+			# d2a7019f47 is the test list
+
+			mailerror = False
+			try:
+				mailchimp = Mailchimp(mailchimpkey)
+				newCampaign = mailchimp.campaigns.create(type="regular", options={"list_id": list_id, "subject": subject, "from_email": "@testmail.com", "from_name": "Twigly", "to_name": "*|FNAME|*", "title": subject, "authenticate": True, "generate_text": True}, content={"html": content})
+				mailchimp.campaigns.send(newCampaign["id"])
+			except:
+				mailerror = True
+				print ("Unexpected error:" + sys.exc_info()[0])
+
+			if (mailerror):
+				self.write({"result": False})
+			else:
+				self.write({"result": True})
 
 current_path = path.dirname(path.abspath(__file__))
 static_path = path.join(current_path, "static")
@@ -946,6 +1068,9 @@ application = tornado.web.Application([
 	(r"/moveActive", MoveItemsHandler),
 	(r"/updateQuantity", UpdateQuantityHandler),
 	(r"/userstats", AnalyticsHandler),
+	(r"/sendmail", SendMailHandler),
+	(r"/getpreview", MailPreviewHandler),
+	(r"/sendtomailchimp", MailchimpHandler),
 	(r'/static/(.*)', tornado.web.StaticFileHandler, {'path': static_path})
 ], **settings)
 

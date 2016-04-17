@@ -62,6 +62,9 @@
     </nav>
 </div>
 <div class="container">
+	{% if (user=="admin" or user=="headchef") %}
+		{% include "navtemplate.html" %}
+	{% end %}
 	<div class="row" style="margin-bottom: 40px; margin-top: 40px;">
 		{{ activeitems }} active dishes
 	</div>

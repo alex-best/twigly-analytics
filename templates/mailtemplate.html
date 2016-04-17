@@ -1,0 +1,183 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<table width="100%" border="0" cellspacing="0" cellpadding="0" bgcolor="#fff"> 
+  <tr>
+    <td>
+      
+    <table width="100%" border="0" cellspacing="0" cellpadding="0" align="center" style="display:block; max-width:600px !important;" bgcolor="#ffffff">
+      <tr>
+        <td>
+        
+        <table id="holder" class="wrapper" border="0" cellspacing="0" cellpadding="0" style="width:100%; max-width:600px !important;" align="center" bgcolor="#FFFFFF">
+        <tr><td align="center">
+        <!--[if mso]>
+             <table id="outlookholder" border="0" cellspacing="0" cellpadding="0" align="center"><tr><td>
+        <![endif]-->
+        <!--[if (IE)]>
+             <table border="0" cellspacing="0" cellpadding="0" width="640" align="center"><tr><td>
+         <![endif]-->  
+
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" bgcolor="#FFF">
+          <tr>
+            <td width="50%" style="text-align: center;" align="center">
+              <a href="*|ARCHIVE|*" style="text-decoration: none; font-family:serif; color:#44917b; text-align:center; font-size: 15px;">
+                View in Browser
+              </a>
+            </td>
+            <td width="50%" style="text-align: center;" align="center">
+              <a href="https://www.facebook.com/twiglyfoods" style="text-decoration: none; font-family:serif; color:#44917b; text-align:center; font-size: 15px;">
+                Like us on Facebook
+              </a>
+            </td>
+          </tr>
+        </table>
+
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" bgcolor="#FFF">
+          <tr>
+            <td width="100%" style="text-align: center;" align="center">
+              <a href="http://www.twigly.in/menu?utm_source=newsletter&utm_medium=email&utm_campaign=digest">
+                <img border="0" src="https://gallery.mailchimp.com/58afaa07a8565821433f7986a/images/e45c7b5a-6170-43f9-9146-99b4df0e3216.jpg" alt="Twigly - bringing international cuisine to your doorstep" width="100%" style="width: 100%; max-width: 600px;">
+              </a>
+            </td>
+          </tr>
+        </table>
+
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" bgcolor="#FFFFFF" style="padding: 15px 0;">
+          <tr>
+            <td width="100%" align="center" height="70" style="font-family:serif; font-size:20px; line-height:24px; color:#606060; text-align:center;">
+              {% raw header %}
+            </td>
+          </tr>
+        </table>
+      <a href="http://www.twigly.in/menu?utm_source=newsletter&utm_medium=email&utm_campaign=digest" target="_blank" style="text-decoration: none !important; color: #606060; font-family: serif;">
+
+{% for i in range(0, length, 2) %}
+<!--2 column-->
+        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+          <tr>
+            <td>
+            <table width="300" border="0" cellspacing="0" cellpadding="0" align="left">
+                <tr>
+                  <td width="10" bgcolor="#FFFFFF"></td>
+                  <td width="280" bgcolor="#FFFFFF">
+                  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                    <tr>
+                      <td align="center"><img border="0" style="border-radius: 20px;" src="http://www.twigly.in{{ activeitems[i]['image'] }}" width="280" height="187" alt="{{ activeitems[i]['name'] }}" title="{{ activeitems[i]['name'] }}"></td>
+                    </tr>
+                  </table>
+                  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                    <tr>  
+                      <td valign="top" width="280"><table style="padding-bottom: 10px; padding-top: 5px;"><tr><td width="10%" valign="top" align="center">
+                        {% if activeitems[i]["type"] == "n" %}
+                          <img alt="Non Veg" title="Non Veg" src="http://www.twigly.in/assets/img/nonvegicon.png" height="18" style="height: 18px; vertical-align: middle;">
+                        {% end %}
+                        {% if activeitems[i]["type"] == "v" %}
+                          <img alt="Veg" title="Veg" src="http://www.twigly.in/assets/img/vegicon.png" height="18" style="height: 18px; vertical-align: middle;">
+                        {% end %}
+                        {% if activeitems[i]["type"] == "e" %}
+                          <img alt="Contains Egg" title="Contains Egg" src="http://www.twigly.in/assets/img/eggicon.png" height="18" style="height: 18px; vertical-align: middle;">
+                        {% end %}
+                      </td><td valign="top" style="font-family:serif; font-size:18px; line-height:24px; background:#FFFFFF; color: #303030; text-align:left; padding-left: 5px;">{{ activeitems[i]['name'] }}</td></tr></table><div style="font-size: 14px; padding-top: 5px; text-align: justify; line-height: 20px; font-family: serif;">{{ activeitems[i]['description'] }}</div>
+</td> 
+                    </tr>
+                  </table>
+                  </td>
+                  <td width="10" bgcolor="#FFFFFF"></td>
+                </tr>
+                <tr>
+                  <td height="10" width="100%" colspan="3"></td>
+                </tr>
+             </table>
+              <!--[if mso]></td><td><![endif]-->
+             <table width="300" border="0" cellspacing="0" cellpadding="0" align="left">
+                <tr>
+                  <td width="10" bgcolor="#FFFFFF"></td>
+                  <td width="280" bgcolor="#FFFFFF">
+                  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                    <tr>
+                      <td align="center"><img border="0" style="border-radius: 20px;" src="http://www.twigly.in{{ activeitems[i+1]['image'] }}" width="280" height="187" alt="{{ activeitems[i+1]['name'] }}" title="{{ activeitems[i+1]['name'] }}"></td>
+                    </tr>
+                  </table>
+                  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                    <tr>  
+                      <td valign="top" width="280"><table style="padding-bottom: 10px; padding-top: 5px;"><tr><td width="10%" valign="top" align="center">
+                        {% if activeitems[i+1]["type"] == "n" %}
+                          <img alt="Non Veg" title="Non Veg" src="http://www.twigly.in/assets/img/nonvegicon.png" height="18" style="height: 18px; vertical-align: middle;">
+                        {% end %}
+                        {% if activeitems[i+1]["type"] == "v" %}
+                          <img alt="Veg" title="Veg" src="http://www.twigly.in/assets/img/vegicon.png" height="18" style="height: 18px; vertical-align: middle;">
+                        {% end %}
+                        {% if activeitems[i+1]["type"] == "e" %}
+                          <img alt="Contains Egg" title="Contains Egg" src="http://www.twigly.in/assets/img/eggicon.png" height="18" style="height: 18px; vertical-align: middle;">
+                        {% end %}
+                      </td><td valign="top" style="font-family:serif; font-size:18px; line-height:24px; background:#FFFFFF; color: #303030; text-align:left; padding-left: 5px;">{{ activeitems[i+1]['name'] }}</td></tr></table><div style="font-size: 14px; padding-top: 5px; text-align: justify; line-height: 20px; font-family: serif;">{{ activeitems[i+1]['description'] }}</div>
+</td> 
+                    </tr>
+                  </table>
+                  </td>
+                  <td width="10" bgcolor="#FFFFFF"></td>
+                </tr>
+                <tr>
+                  <td height="10" width="100%" colspan="3"></td>
+                </tr>
+             </table>
+            </td>
+          </tr>
+        </table>  
+{% end %}
+            </a>
+              </td></tr></table>
+        <!--[if mso]>
+              </td></tr></table>
+        <![endif]-->
+        <!--[if IE]>
+              </td></tr></table>
+        <![endif]-->
+        
+        
+    
+</td></tr></table>
+</td></tr></table>
+<div style="text-align: center; padding-top: 15px;font-family:serif; color:#606060; font-size: 17px;">
+    See the full menu at <a href="http://www.twigly.in/menu?utm_source=newsletter&utm_medium=email&utm_campaign=digest" target="_blank">http://www.twigly.in/menu</a><br><br> 
+    <a href="http://www.twigly.in/menu?utm_source=newsletter&utm_medium=email&utm_campaign=digest" target="_blank" style="text-decoration: none !important;">
+      <img alt="Order Now" title="Order Now" src="https://gallery.mailchimp.com/58afaa07a8565821433f7986a/images/25a27544-519a-426a-8381-9a88e88b4d5b.png" height="72">
+    </a>
+</div>
+
+<a href="http://www.twigly.in/menu?utm_source=newsletter&utm_medium=email&utm_campaign=digest" target="_blank" style="text-decoration: none !important;">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-top: 15px;">
+          <tr>
+            <td width="100%" align="center" height="70" style="font-family:Helvetica, Arial, sans-serif; font-size:20px; line-height:24px; color:#44917b; text-align:center; background: #FFFFFF !important;">
+              <img src="https://gallery.mailchimp.com/58afaa07a8565821433f7986a/images/10ac7a93-1134-4546-835e-4e4775d28ea0.png" width="100%" style="width: 100%; max-width: 600px;" alt="Twigly Happy Hours - 4-7 PM - Use Promo Code HAPPY15" title="Twigly Happy Hours - 4-7 PM - Use Promo Code HAPPY15">
+            </td>
+          </tr>
+        </table>
+</a> 
+
+<div style="text-align: center; padding-top: 15px;font-family:serif; color:#606060; font-size: 17px; ">
+  SERVING FROM 11 AM - 11 PM ON ALL DAYS<br><br> 
+    <a href="https://play.google.com/store/apps/details?id=com.twigly.app" target="_blank" style="text-decoration: none;">
+    <img alt="Download Twigly's Android App" title="Download Twigly's Android App" src="https://gallery.mailchimp.com/58afaa07a8565821433f7986a/images/e9be7ada-b6c1-4e92-a7d0-938b023f92b8.png" height="70">
+    </a>
+    <a href="https://itunes.apple.com/in/app/twigly/id1057253478?mt=8" target="_blank" style="text-decoration: none;">
+    <img alt="Download Twigly's iOS App" title="Download Twigly's iOS App" src="https://gallery.mailchimp.com/58afaa07a8565821433f7986a/images/91383900-c4fd-457d-808d-5e34b497b573.png" height="70">
+    </a>
+</div>
+<div style="text-align: center; font-family: serif; margin-top: 20px;">
+  JOIN THE EXCITEMENT<br><br>
+    <a href="https://www.facebook.com/twiglyfoods" style="text-decoration: none;">
+      <img src="https://gallery.mailchimp.com/58afaa07a8565821433f7986a/images/9f630759-b673-4788-8960-5dd4ccba47e7.png" width="50">
+  </a>
+  <span>  </span>
+  <a href="https://www.twitter.com/twiglyfoods" style="text-decoration: none;">
+    <img src="https://gallery.mailchimp.com/58afaa07a8565821433f7986a/images/55e1d242-7d00-4583-a5e2-2b7ee160e3f4.png" width="50">
+  </a>
+  <span>  </span>
+  <a href="https://instagram.com/twiglyfoods" style="text-decoration: none;">
+    <img src="https://gallery.mailchimp.com/58afaa07a8565821433f7986a/images/d24560f0-f6aa-406e-9f23-d52f815d03af.png" width="50">
+  </a>
+  <span>  </span>
+  <a href="mailto:@testmail.com" style="text-decoration: none;">
+    <img src="https://gallery.mailchimp.com/58afaa07a8565821433f7986a/images/5a7fef26-9878-419b-8e1d-e79ffa91e4d4.png" width="50">
+  </a>
+</div>
