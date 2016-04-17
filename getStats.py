@@ -38,7 +38,10 @@ statsengine_url = 'mysql+pymysql://twigly:***REMOVED***@***REMOVED***/twigly_pro
 #statsengine_url = 'mysql+pymysql://root@localhost:3306/twigly_dev?charset=utf8'
 mailchimpkey = "***REMOVED***"
 
-relevantStates = [3,10,11,12,16]
+#relevantStates = [3,10,11,12,16]
+deliveredStates = [3]
+deliveredFreeStates = [10,11,12,16]
+inProgress = [1,2,9,15]
 
 class order(statsBase):
 	__tablename__ = "orders"
@@ -134,7 +137,7 @@ class LoginHandler(BaseHandler):
 		self.write(authresult)
 
 def getTotalCount(parsedstartdate, parsedenddate, daterange, statssession):
-	dailyorderscountquery = statssession.query(order.date_add, sqlalchemy.func.count(order.order_id)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
+	dailyorderscountquery = statssession.query(order.date_add, sqlalchemy.func.count(order.order_id)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress)).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
 
 	thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): int(thisresult[1]) for thisresult in dailyorderscountquery}
 	totalcount = []
@@ -147,7 +150,7 @@ def getTotalCount(parsedstartdate, parsedenddate, daterange, statssession):
 	return totalcount
 
 def getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, statssession):
-	firstorderquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3).order_by(order.date_add).group_by(order.mobile_number)
+	firstorderquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress)).order_by(order.date_add).group_by(order.mobile_number)
 
 	firstordersmap = {}
 	for thisorder in firstorderquery:
@@ -236,7 +239,7 @@ class StatsHandler(BaseHandler):
 		statsengine = sqlalchemy.create_engine(statsengine_url)
 		statssession = scoped_session(sessionmaker(bind=statsengine))
 
-		dailysalesquery = statssession.query(order.date_add, sqlalchemy.func.sum(order.total), sqlalchemy.func.sum(order.vat)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status == 3).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
+		dailysalesquery = statssession.query(order.date_add, sqlalchemy.func.sum(order.total), sqlalchemy.func.sum(order.vat)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status.in_(deliveredStates + inProgress)).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
 
 		totalsales = []
 
@@ -251,15 +254,7 @@ class StatsHandler(BaseHandler):
 
 		totalcount = getTotalCount(parsedstartdate, parsedenddate, daterange, statssession)
 
-		dailyapc = []
-
-		for c in range(len(daterange)):
-			try: 
-				dailyapc.append(totalsales[c]/totalcount[c])
-			except ZeroDivisionError:
-				dailyapc.append(0)
-
-		dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status.in_(relevantStates), order.date_add <= parsedenddate, order.date_add >= parsedstartdate).all()
+		dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate).all()
 
 		detailedordercounts = getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, statssession)
 
@@ -287,6 +282,14 @@ class StatsHandler(BaseHandler):
 				netsalespretax.append(float(totalsales[c]) - float(vatlookup[daterange[c]]))
 			except KeyError:
 				netsalespretax.append(0.0)
+
+		dailyapc = []
+
+		for c in range(len(daterange)):
+			try: 
+				dailyapc.append(grosssales[c]/totalcount[c])
+			except ZeroDivisionError:
+				dailyapc.append(0)
 
 		totalgrosssales = sum(grosssales)
 		totalnetsalespretax = sum(netsalespretax)
@@ -378,7 +381,7 @@ class ItemStatsHandler(BaseHandler):
 			statsengine = sqlalchemy.create_engine(statsengine_url)
 			statssession = scoped_session(sessionmaker(bind=statsengine))
 
-			dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status.in_(relevantStates + [2]), order.date_add <= parsedenddate, order.date_add >= parsedstartdate)
+			dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate)
 
 			dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
 
@@ -458,7 +461,7 @@ class UserStatsHandler(BaseHandler):
 			statsengine = sqlalchemy.create_engine(statsengine_url)
 			statssession = scoped_session(sessionmaker(bind=statsengine))
 
-			dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status, order.date_add <= parsedenddate, order.date_add >= parsedstartdate)
+			dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate)
 			dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
 			orderdetailsquery = statssession.query(orderdetail).filter(orderdetail.order_id.in_(dailyorderids))
 			orderdetailslookup = {thisorder.order_id: [] for thisorder in dailyordersquery}
@@ -866,7 +869,7 @@ class AnalyticsHandler(BaseHandler):
 
 			totalcount = getTotalCount(parsedstartdate, parsedenddate, daterange, statssession)
 
-			dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status.in_(relevantStates), order.date_add <= parsedenddate, order.date_add >= parsedstartdate).all()
+			dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate).all()
 
 			detailedordercounts = getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, statssession)
 
