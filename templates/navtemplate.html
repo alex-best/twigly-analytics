@@ -16,9 +16,9 @@
       <ul class="nav navbar-nav">
         <li><a href="/stats" style="color: #FFFFFF;">Vital Stats</a></li>
         <li><a href="/itemstats" style="color: #FFFFFF;">Item Stats</a></li>
-        <li><a href="/userstats" style="color: #FFFFFF;">User Stats</a></li>
+        {% if user=="admin" %}<li><a href="/userstats" style="color: #FFFFFF;">User Stats</a></li>{% end %}
         <li><a href="/storeitems" style="color: #FFFFFF;">Update Menu</a></li>
-        <li><a href="/sendmail" style="color: #FFFFFF;">Send Email</a></li>
+        {% if user=="admin" %}<li><a href="/sendmail" style="color: #FFFFFF;">Send Email</a></li>{% end %}
       </ul>
     </div><!-- /.navbar-collapse -->
   </div><!-- /.container-fluid -->
