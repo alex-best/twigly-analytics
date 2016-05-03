@@ -30,7 +30,7 @@ from oauth2client import file
 from oauth2client import tools
 
 settings = {
-    "cookie_secret": "twiglyrocks",
+    "cookie_secret": "twiglyr0x",
     "login_url": "/"
 }
 statsBase = declarative_base()
