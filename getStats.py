@@ -115,7 +115,7 @@ class menuitem(statsBase):
 	is_combo = Column("is_combo", Integer)
 
 def authenticate(thisusername, thispassword):
-	if (thisusername == "admin" and thispassword == "tw1gl7st4ts") or (thisusername == "review" and thispassword == "h1twigl7") or (thisusername == "chef" and thispassword == "twigly123")  or (thisusername == "headchef" and thispassword == "rahulonly"):
+	if (thisusername == "admin" and thispassword == "tw1gl7h1") or (thisusername == "review" and thispassword == "rvwdash") or (thisusername == "chef" and thispassword == "twigly123")  or (thisusername == "headchef" and thispassword == "rahulonly"):
 		return {"result": True}
 	else:
 		return {"result": False}
@@ -972,7 +972,7 @@ class SendMailHandler(BaseHandler):
 		if current_user != "admin":
 			self.redirect('/stats')
 		else:
-			activelist = getStoreItems()[0]
+			activelist, inactivelist = getStoreItems()
 			vegitems, nonvegitems, eggitems = getDishType()
 
 			for activeitem in activelist:
@@ -984,10 +984,20 @@ class SendMailHandler(BaseHandler):
 					activeitem["type"] = "e"
 				else:
 					activeitem["type"] = ""
-			self.render("templates/sendmailtemplate.html", activelist = activelist, user=current_user)
+
+			for inactiveitem in inactivelist:
+				if inactiveitem["menu_item_id"] in vegitems:
+					inactiveitem["type"] = "v"
+				elif inactiveitem["menu_item_id"] in nonvegitems:
+					inactiveitem["type"] = "n"
+				elif inactiveitem["menu_item_id"] in eggitems:
+					inactiveitem["type"] = "e"
+				else:
+					inactiveitem["type"] = ""
+			self.render("templates/sendmailtemplate.html", activelist = activelist, inactivelist = inactivelist, user=current_user)
 
 def createMail(itemlist):
-	activelist = getStoreItems()[0]
+	activelist, inactivelist = getStoreItems()
 	itemlist = [int(x) for x in itemlist.split(",")]
 
 	vegitems, nonvegitems, eggitems = getDishType()
@@ -1002,7 +1012,19 @@ def createMail(itemlist):
 		else:
 			activeitem["type"] = ""
 
+	for inactiveitem in inactivelist:
+		if inactiveitem["menu_item_id"] in vegitems:
+			inactiveitem["type"] = "v"
+		elif inactiveitem["menu_item_id"] in nonvegitems:
+			inactiveitem["type"] = "n"
+		elif inactiveitem["menu_item_id"] in eggitems:
+			inactiveitem["type"] = "e"
+		else:
+			inactiveitem["type"] = ""
+
 	itemlookup = {item["store_menu_item_id"]: item for item in activelist}
+	inactiveitemlookup = {item["store_menu_item_id"]: item for item in inactivelist}
+	itemlookup.update(inactiveitemlookup)
 	finallist = [itemlookup[x] for x in itemlist]
 	return finallist
 

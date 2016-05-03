@@ -112,6 +112,22 @@
 					</div>
 				</li>
 			{% end %}
+			{% for i in range(0, len(inactivelist)) %}
+				<li class="list-group-item clearfix" data-storemenuitemid="{{ inactivelist[i]['store_menu_item_id'] }}" data-priority="{{ inactivelist[i]['priority'] }}">
+					<div class="col-xs-8">{{ inactivelist[i]["name"] }}</div>
+					<div class="col-xs-4" style="text-align: center;">
+						{% if inactivelist[i]["type"] == "v" %}
+							<image src="http://www.twigly.in/assets/img/vegicon.png" style="height: 25px;">
+						{% end %}
+						{% if inactivelist[i]["type"] == "n" %}
+							<image src="http://www.twigly.in/assets/img/nonvegicon.png" style="height: 25px;">
+						{% end %}
+						{% if inactivelist[i]["type"] == "e" %}
+							<image src="http://www.twigly.in/assets/img/eggicon.png" style="height: 25px;">
+						{% end %}
+					</div>
+				</li>
+			{% end %}
 		</ul>
 	</div>
 </div>
