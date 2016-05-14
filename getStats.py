@@ -963,6 +963,8 @@ class AnalyticsHandler(BaseHandler):
 			webconversion = sum(detailedordercounts["weborders"])/sum(platformintermediate["Web"])
 			iosconversion = sum(detailedordercounts["iosorders"])/sum(platformintermediate["iOS"])
 
+			statssession.remove()
+
 			self.render("templates/userstatstemplate.html", daterange=daterange, userslist=userslist, newuserslist=newuserslist, totalusers=totalusers, totalnewusers=totalnewusers, dailyconversion=dailyconversion, newconversion=newconversion, overallconversion=overallconversion, overallnewconversion=overallnewconversion, trafficdatatodisplay=dumps(trafficdatatodisplay), platformdatatoshow=dumps(platformdatatoshow), androidconversionseries=androidconversionseries, webconversionseries=webconversionseries, iosconversionseries=iosconversionseries, androidconversion=androidconversion, webconversion=webconversion, iosconversion=iosconversion, user=current_user)
 
 class SendMailHandler(BaseHandler):
@@ -1079,6 +1081,25 @@ class MailchimpHandler(BaseHandler):
 			else:
 				self.write({"result": True})
 
+class FeedbackHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		current_user = self.get_current_user().decode()
+		if current_user not in ("admin", "headchef"):
+			self.redirect('/stats')
+		
+		page = int(self.get_argument('p', 0))
+		pagesize = 30
+
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
+
+		results = statssession.query(feedback).order_by(feedback.feedback_id.desc()).slice(page*pagesize, (page+1)*pagesize)
+
+		statssession.remove()
+
+		self.render("templates/feedbacktemplate.html", results=results, page=page, user=current_user)
+
 current_path = path.dirname(path.abspath(__file__))
 static_path = path.join(current_path, "static")
 
@@ -1096,6 +1117,7 @@ application = tornado.web.Application([
 	(r"/sendmail", SendMailHandler),
 	(r"/getpreview", MailPreviewHandler),
 	(r"/sendtomailchimp", MailchimpHandler),
+	(r"/feedbacks", FeedbackHandler),
 	(r'/static/(.*)', tornado.web.StaticFileHandler, {'path': static_path})
 ], **settings)
 
