@@ -64,18 +64,34 @@
         <table class="table table-striped table-hover">
             <thead>
                 <tr>
-                    <th style="width: 15%;">Food Rating</td>
-                    <th style="width: 15%;">Delivery Rating</td>
-                    <th style="width: 15%;">Order Id</td>
-                    <th style="width: 55%;">Comment</td>
+                    <th style="width: 10%;">Customer</th>
+                    <th style="width: 7%;">Food Rating</th>
+                    <th style="width: 7%;">Delivery Rating</th>
+                    <th style="width: 25%;">Order Details</th>
+                    <th style="width: 25%;">Delivery Address</th>
+                    <th style="width: 26%;">Comment</th>
                 </tr>
             </thead>
             {% for result in results %}
                 <tr>
-                    <td style="width: 15%;">{{result.food_rating}}</td>
-                    <td style="width: 15%;">{{result.delivery_rating}}</td>
-                    <td style="width: 15%;"><a href="http://www.twigly.in/admin/orders?f={{result.order_id}}&storeId=-1&status=&numResults=10">{{result.order_id}}</a></td>
-                    <td style="width: 55%;">{{result.comment}}</td>
+                    <td style="width: 10%;">
+                        {% if user=="admin" %}
+                            <a href='http://www.twigly.in/admin/orders?f={{result["order"].mobile_number}}&storeId=-1&status=&numResults=10'>
+                                {{userlookup[result["order"].user_id].name}}<br>{{result["order"].mobile_number}}
+                            </a>
+                        {% else %}
+                            {{userlookup[result["order"].user_id].name}}<br>{{result["order"].mobile_number}}
+                        {% end %}
+                    </td>
+                    <td style="width: 7%;">{{result["feedback"].food_rating}}</td>
+                    <td style="width: 7%;">{{result["feedback"].delivery_rating}}</td>
+                    <td style="width: 25%;">
+                        {% for orderdetail in result["orderdetails"] %}
+                            {{orderdetail.quantity}} x {{menuitems[orderdetail.menu_item_id]}}<br>
+                        {% end %}
+                    </td>
+                    <td style="width: 25%;">{{result["order"].delivery_address}}</td>
+                    <td style="width: 26%;">{{result["feedback"].comment}}</td>
                 </tr>
             {% end %}
         </table>

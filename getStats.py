@@ -114,6 +114,11 @@ class menuitem(statsBase):
 	category = Column("category", Integer)
 	is_combo = Column("is_combo", Integer)
 
+class user(statsBase):
+	__tablename__ = "users"
+	user_id = Column("user_id", Integer, primary_key=True)
+	name = Column("name", String)
+
 def authenticate(thisusername, thispassword):
 	if (thisusername == "admin" and thispassword == "tw1gl7h1") or (thisusername == "review" and thispassword == "rvwdash") or (thisusername == "chef" and thispassword == "twigly123")  or (thisusername == "headchef" and thispassword == "rahulonly"):
 		return {"result": True}
@@ -1094,11 +1099,25 @@ class FeedbackHandler(BaseHandler):
 		statsengine = sqlalchemy.create_engine(statsengine_url)
 		statssession = scoped_session(sessionmaker(bind=statsengine))
 
-		results = statssession.query(feedback).order_by(feedback.feedback_id.desc()).slice(page*pagesize, (page+1)*pagesize)
+		feedbacks = statssession.query(feedback).order_by(feedback.feedback_id.desc()).slice(page*pagesize, (page+1)*pagesize)
+		relevantorders = [thisfeedback.order_id for thisfeedback in feedbacks]
+
+		thisorders = statssession.query(order).filter(order.order_id.in_(relevantorders))
+		orderslookup = {thisorder.order_id: thisorder for thisorder in thisorders}
+		thisorderdetails = statssession.query(orderdetail).filter(orderdetail.order_id.in_(relevantorders))
+		orderdetailslookup = {thisorder.order_id: [thisorderdetail for thisorderdetail in thisorderdetails if thisorderdetail.order_id == thisorder.order_id] for thisorder in thisorders}
+		relevantmenuitems = [thisorderdetail.menu_item_id for thisorderdetail in thisorderdetails]
+		menuitemdetails = statssession.query(menuitem).filter(menuitem.menu_item_id.in_(relevantmenuitems))
+		menuitemlookup = {thismenuitem.menu_item_id: thismenuitem.name for thismenuitem in menuitemdetails}
+		relevantusers = [thisorder.user_id for thisorder in thisorders]
+		users = statssession.query(user).filter(user.user_id.in_(relevantusers))
+		userlookup = {thisuser.user_id: thisuser for thisuser in users}
+
+		results = [{"feedback": thisfeedback, "order": orderslookup[thisfeedback.order_id], "orderdetails": orderdetailslookup[thisfeedback.order_id]} for thisfeedback in feedbacks]
 
 		statssession.remove()
 
-		self.render("templates/feedbacktemplate.html", results=results, page=page, user=current_user)
+		self.render("templates/feedbacktemplate.html", results=results, menuitems=menuitemlookup, userlookup=userlookup, page=page, user=current_user)
 
 current_path = path.dirname(path.abspath(__file__))
 static_path = path.join(current_path, "static")
