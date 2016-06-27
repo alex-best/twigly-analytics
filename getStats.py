@@ -119,8 +119,14 @@ class user(statsBase):
 	user_id = Column("user_id", Integer, primary_key=True)
 	name = Column("name", String)
 
+def getRedirect(username):
+	if (username in ["chef", "chef03", "headchef"]):
+		return "storeitems"
+	else:
+		return "stats"
+
 def authenticate(thisusername, thispassword):
-	if (thisusername == "admin" and thispassword == "tw1gl7h1") or (thisusername == "review" and thispassword == "rvwdash") or (thisusername == "chef" and thispassword == "twigly123")  or (thisusername == "headchef" and thispassword == "rahulonly"):
+	if (thisusername == "admin" and thispassword == "tw1gl7h1") or (thisusername == "review" and thispassword == "rvwdash") or (thisusername == "chef" and thispassword == "twigly123") or (thisusername == "chef03" and thispassword == "twiglychef03") or (thisusername == "headchef" and thispassword == "rahulonly"):
 		return {"result": True}
 	else:
 		return {"result": False}
@@ -139,6 +145,8 @@ class LoginHandler(BaseHandler):
 		authresult = authenticate(thisuser, thispassword)
 		if (authresult["result"]):
 			self.set_secure_cookie("user", thisuser)
+
+		authresult["redirect"] = getRedirect(thisuser)
 		self.write(authresult)
 
 def getTotalCount(parsedstartdate, parsedenddate, daterange, statssession):
@@ -564,6 +572,12 @@ class storemenuitem(statsBase):
 	is_active = Column("is_active", Integer)
 	priority = Column("priority", Integer)
 
+class store(statsBase):
+	__tablename__ = "stores"
+	store_id = Column("store_id", Integer, primary_key=True)
+	name = Column("name", String)
+	is_active = Column("is_active", Boolean)
+	
 def getDishType():
 	statsengine = sqlalchemy.create_engine(statsengine_url)
 	statssession = scoped_session(sessionmaker(bind=statsengine))
@@ -588,11 +602,11 @@ def getDishType():
 	statssession.remove()
 	return (vegitems, nonvegitems, eggitems)
 
-def getStoreItems():
+def getStoreItems(current_store):
 	statsengine = sqlalchemy.create_engine(statsengine_url)
 	statssession = scoped_session(sessionmaker(bind=statsengine))
 
-	store_items = statssession.query(storemenuitem).all()
+	store_items = statssession.query(storemenuitem).filter(storemenuitem.store_id == current_store).all()
 	menu_items = statssession.query(menuitem).all()
 
 	menu_item_mapping = {thismenuitem.menu_item_id: thismenuitem for thismenuitem in menu_items}
@@ -601,8 +615,18 @@ def getStoreItems():
 	inactivelist = [{"name": menu_item_mapping[x.menu_item_id].name, "menu_item_id": x.menu_item_id, "store_menu_item_id": x.store_menu_item_id, "quantity": x.avl_quantity, "is_active": isActiveItem(x), "priority": x.priority, "image": menu_item_mapping[x.menu_item_id].img_url, "description": menu_item_mapping[x.menu_item_id].description} for x in store_items if not isActiveItem(x)]
 	# for i in store_items:
 	# 	print (menu_item_mapping[i.menu_item_id].name, format(i.is_active, '08b'), bool(int(format(i.is_active, '08b')[-1])))
+	
+	active_stores = statssession.query(store).filter(store.is_active == True).all()
+
+	current_store_name = ""
+	for thisstore in active_stores:
+		if thisstore.store_id == current_store:
+			current_store_name = thisstore.name
+			break
+
 	statssession.remove()
-	return (activelist, inactivelist)
+
+	return (activelist, inactivelist, active_stores, current_store_name)
 
 def isActiveItem(store_item):
 	return bool(int(format(store_item.is_active, '08b')[-1]))
@@ -611,11 +635,19 @@ class StoreItemsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
 		current_user = self.get_current_user().decode()
-		if current_user not in ("headchef", "chef", "admin"):
+		if current_user not in ("headchef", "chef", "chef03", "admin"):
 			self.redirect('/stats')
 		else:
-			storeitems = getStoreItems()
-			self.render("templates/storeitems.html", activelist = storeitems[0], inactivelist = storeitems[1], activeitems = len(storeitems[0]), user=current_user)
+			current_store = self.get_argument("store", 2)
+			if current_user == "chef03":
+				current_store = 3
+			if current_user == "chef":
+				current_store = 2
+
+			current_store = int(current_store)
+
+			storeitems = getStoreItems(current_store)
+			self.render("templates/storeitems.html", activelist = storeitems[0], inactivelist = storeitems[1], activeitems = len(storeitems[0]), active_stores=storeitems[2], current_store=current_store, current_store_name=storeitems[3], user=current_user)
 
 class TodayMenuHandler(BaseHandler):
 	@tornado.web.authenticated
