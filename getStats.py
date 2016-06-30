@@ -656,7 +656,8 @@ class TodayMenuHandler(BaseHandler):
 		if current_user != "chef":
 			self.redirect('/stats')
 		else:
-			storeitems = getStoreItems()
+			current_store = 2
+			storeitems = getStoreItems(current_store)
 			self.render("templates/todaysmenu.html", activelist = storeitems[0], activeitems = len(storeitems[0]), user=current_user)
 
 def flip(input, status):
@@ -1011,7 +1012,10 @@ class SendMailHandler(BaseHandler):
 		if current_user != "admin":
 			self.redirect('/stats')
 		else:
-			activelist, inactivelist = getStoreItems()
+			current_store = 2
+			current_store_item_details = getStoreItems(current_store)
+			activelist = current_store_item_details[0]
+			inactivelist = current_store_item_details[1]
 			vegitems, nonvegitems, eggitems = getDishType()
 
 			for activeitem in activelist:
@@ -1036,8 +1040,10 @@ class SendMailHandler(BaseHandler):
 			self.render("templates/sendmailtemplate.html", activelist = activelist, inactivelist = inactivelist, user=current_user)
 
 def createMail(itemlist):
-	activelist, inactivelist = getStoreItems()
-	itemlist = [int(x) for x in itemlist.split(",")]
+	current_store = 2
+	current_store_item_details = getStoreItems(current_store)
+	activelist = current_store_item_details[0]
+	inactivelist = current_store_item_details[1]
 
 	vegitems, nonvegitems, eggitems = getDishType()
 
@@ -1089,7 +1095,8 @@ class MailchimpHandler(BaseHandler):
 		if current_user != "admin":
 			self.redirect('/stats')
 		else:
-			activelist = getStoreItems()[0]
+			current_store = 2
+			activelist = getStoreItems(current_store)[0]
 			subject = parse.unquote(self.get_argument("subject"))
 			header = parse.unquote(self.get_argument("header"))
 			length = int(self.get_argument("items"))
