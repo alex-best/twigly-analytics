@@ -1070,7 +1070,7 @@ def createMail(itemlist):
 	itemlookup = {item["store_menu_item_id"]: item for item in activelist}
 	inactiveitemlookup = {item["store_menu_item_id"]: item for item in inactivelist}
 	itemlookup.update(inactiveitemlookup)
-	finallist = [itemlookup[x] for x in itemlist]
+	finallist = [itemlookup[int(x)] for x in itemlist.split(",")]
 	return finallist
 
 class MailPreviewHandler(BaseHandler):
@@ -1084,6 +1084,7 @@ class MailPreviewHandler(BaseHandler):
 			header = parse.unquote(self.get_argument("header"))
 			length = int(self.get_argument("items"))
 			itemlist = self.get_argument("itemlist")
+			print (itemlist)
 			finallist = createMail(itemlist)
 
 			self.render(template_name = "templates/mailtemplate.html", activeitems = finallist, header = header, length = length)
@@ -1106,7 +1107,7 @@ class MailchimpHandler(BaseHandler):
 			content = self.render_string(template_name = "templates/mailtemplate.html", activeitems = finallist, header = header, length = length)
 
 			#Change this variable to change the list
-			list_id = "ea0d1e3356"	
+			list_id = "ea0d1e3356"
 			# ea0d1e3356 is the main Twigly list
 			#list_id = "d2a7019f47"
 			# d2a7019f47 is the test list
