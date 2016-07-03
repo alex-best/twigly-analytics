@@ -1084,7 +1084,6 @@ class MailPreviewHandler(BaseHandler):
 			header = parse.unquote(self.get_argument("header"))
 			length = int(self.get_argument("items"))
 			itemlist = self.get_argument("itemlist")
-			print (itemlist)
 			finallist = createMail(itemlist)
 
 			self.render(template_name = "templates/mailtemplate.html", activeitems = finallist, header = header, length = length)
