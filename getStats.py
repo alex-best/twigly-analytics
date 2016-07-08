@@ -439,7 +439,7 @@ class ItemStatsHandler(BaseHandler):
 
 			current_store_name = "All"
 			for thisstore in active_stores:
-				if thisstore.store_id == current_store:
+				if [thisstore.store_id] == current_store:
 					current_store_name = thisstore.name
 					break
 
