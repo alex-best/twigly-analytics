@@ -64,6 +64,7 @@ class order(statsBase):
 	date_add = Column("date_add", DateTime)
 	date_upd = Column("date_upd", DateTime)
 	source = Column("source", Integer)
+	store_id = Column("store_id", Integer)
 
 class orderdetail(statsBase):
 	__tablename__ = "order_details"
@@ -365,12 +366,25 @@ class ItemStatsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
 		current_user = self.get_current_user().decode()
-		if current_user not in ["admin", "headchef", "chef"]:
+		if current_user not in ["admin", "headchef", "chef", "chef03"]:
 			self.redirect('/stats')
 		else:
 			horizon = self.get_argument("horizon", None)
 			startdate = self.get_argument("startdate", None)
 			enddate = self.get_argument("enddate", None)
+			current_store = self.get_argument("store", "All")
+			
+			if current_user == "chef03":
+				current_store = [3]
+			elif current_user == "chef":
+				current_store = [2]
+			else:
+				if current_store == "All":
+					current_store = [2,3]
+				else:
+					current_store = [int(current_store)]
+
+
 			if startdate is None:
 				if horizon is None:
 					horizon = 7
@@ -394,16 +408,17 @@ class ItemStatsHandler(BaseHandler):
 			statsengine = sqlalchemy.create_engine(statsengine_url)
 			statssession = scoped_session(sessionmaker(bind=statsengine))
 
-			dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate)
+			dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.store_id.in_(current_store))
 
 			dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
+			dailyordersdatelookup = {thisorder.order_id: thisorder.date_add.strftime("%a %b %d, %Y") for thisorder in dailyordersquery}
 
 			tags = statssession.query(tag).all()
 			tagsmap = []
 
 			for thistag in tags:
 				relevantmenuitems = statssession.query(menu_item_tag.menu_item_id).filter(menu_item_tag.tag_id == thistag.tag_id)
-				thiscountquery = statssession.query(orderdetail.date_add, sqlalchemy.func.sum(orderdetail.quantity)).filter(orderdetail.date_add <= parsedenddate, orderdetail.date_add >= parsedstartdate, orderdetail.order_id.in_(dailyorderids), orderdetail.menu_item_id.in_(relevantmenuitems)).group_by(sqlalchemy.func.year(orderdetail.date_add), sqlalchemy.func.month(orderdetail.date_add), sqlalchemy.func.day(orderdetail.date_add))
+				thiscountquery = statssession.query(orderdetail.date_add, sqlalchemy.func.sum(orderdetail.quantity), orderdetail.order_id).filter(orderdetail.order_id.in_(dailyorderids), orderdetail.menu_item_id.in_(relevantmenuitems)).group_by(sqlalchemy.func.year(orderdetail.date_add), sqlalchemy.func.month(orderdetail.date_add), sqlalchemy.func.day(orderdetail.date_add))
 				thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): int(thisresult[1]) for thisresult in thiscountquery}
 				thistaglist = []
 				for thisdate in daterange:
@@ -417,8 +432,16 @@ class ItemStatsHandler(BaseHandler):
 
 			menuitems = {thismenuitem.menu_item_id: {"name": thismenuitem.name, "total": 0, "datelookup": {thisdate: 0 for thisdate in daterange}} for thismenuitem in statssession.query(menuitem)}
 			for suborder in statssession.query(orderdetail).filter(orderdetail.order_id.in_(dailyorderids)):
-				menuitems[suborder.menu_item_id]["datelookup"][suborder.date_add.strftime("%a %b %d, %Y")] += suborder.quantity
+				menuitems[suborder.menu_item_id]["datelookup"][dailyordersdatelookup[suborder.order_id]] += suborder.quantity
 				menuitems[suborder.menu_item_id]["total"] += suborder.quantity
+
+			active_stores = statssession.query(store).filter(store.is_active == True).all()
+
+			current_store_name = "All"
+			for thisstore in active_stores:
+				if thisstore.store_id == current_store:
+					current_store_name = thisstore.name
+					break
 
 			itemhtml = "<table class='table table-striped table-hover tablesorter' style='width: 100%;'><thead><tr><th>Dish</th><th>Total</th>"
 			for thisdate in daterange:
@@ -439,7 +462,7 @@ class ItemStatsHandler(BaseHandler):
 			itemhtml += "</tbody></table>"
 
 			statssession.remove()
-			self.render("templates/itemstatstemplate.html", daterange=daterange, tagsmap=tagsmap, itemhtml=itemhtml, user=current_user)
+			self.render("templates/itemstatstemplate.html", daterange=daterange, tagsmap=tagsmap, itemhtml=itemhtml, active_stores=active_stores, current_store=current_store, current_store_name=current_store_name, user=current_user)
 
 class UserStatsHandler(BaseHandler):
 	@tornado.web.authenticated

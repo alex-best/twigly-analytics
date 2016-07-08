@@ -59,6 +59,30 @@
 	{% if (user=="admin" or user=="headchef" or user=="chef") %}
 		{% include "navtemplate.html" %}
 	{% end %}
+	<div class="row" style="margin-bottom: 40px; margin-top: 40px;">
+		<div class="col-xs-12 col-md-6" style="text-align: left; font-size: 17px;">
+			Dishwise sales numbers in <span style="font-weight: bold;">{{ current_store_name }}</span>
+		</div>
+		{% if (user=="admin" or user=="headchef") %}
+		<div class="col-xs-12 col-md-6" style="text-align: right;">
+			<select id="storeselect">
+				<option value="All" 
+					{% if current_store == "All" %}
+						selected="selected"
+					{% end %}>
+					All
+				</option>
+				{% for store in active_stores %}
+					<option value="{{ store.store_id }}" 
+					{% if [store.store_id] == current_store %}
+						selected="selected"
+					{% end %}>
+					{{ store.name }}</option>
+				{% end %}
+			</select>
+		</div>
+		{% end %}
+	</div>
     <div class="row" style="margin-bottom: 40px;" id="tagsheader">
     	<h2>Tags Data</h2>
     </div>
@@ -184,6 +208,13 @@
 			$('#horizon').fadeToggle();
 		});
         $('.tablesorter').tablesorter({sortList: [[1,1], [0,0]]});
+        $(document).on('change', '#storeselect', function() {
+			if ($("#startdate").val() == "" || $("#enddate").val() == "") {
+				window.location = "/itemstats?store=" + $(this).val();
+			} else {
+				window.location = "/itemstats?store=" + $(this).val() + "&startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val();
+			}
+		});
 	});
 	
 </script>
