@@ -313,7 +313,7 @@ class StatsHandler(BaseHandler):
 		totalorders = len(dailyorderids)
 
 		try:
-			averageapc = totalsalesvalue/totalorders
+			averageapc = totalgrosssales/totalorders
 		except ZeroDivisionError:
 			averageapc = 0
 
@@ -1096,6 +1096,14 @@ def createMail(itemlist):
 	finallist = [itemlookup[int(x)] for x in itemlist.split(",")]
 	return finallist
 
+def getMailTemplate(template):
+	if (template == 2):
+		return "templates/mailtemplate2.html"
+	elif (template == 3):
+		return "templates/mailtemplate3.html"
+	else:
+		return "templates/mailtemplate.html"
+
 class MailPreviewHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
@@ -1108,8 +1116,10 @@ class MailPreviewHandler(BaseHandler):
 			length = int(self.get_argument("items"))
 			itemlist = self.get_argument("itemlist")
 			finallist = createMail(itemlist)
-
-			self.render(template_name = "templates/mailtemplate.html", activeitems = finallist, header = header, length = length)
+			sod = int(self.get_argument("sod", "-1"))
+			dod = int(self.get_argument("dod", "-1"))
+			template = int(self.get_argument("template", "1"))
+			self.render(template_name = getMailTemplate(template), activeitems = finallist, header = header, length = length, sod=sod, dod=dod)
 
 class MailchimpHandler(BaseHandler):
 	@tornado.web.authenticated
@@ -1125,8 +1135,11 @@ class MailchimpHandler(BaseHandler):
 			length = int(self.get_argument("items"))
 			itemlist = self.get_argument("itemlist")
 			finallist = createMail(itemlist)
+			sod = int(self.get_argument("sod", "-1"))
+			dod = int(self.get_argument("dod", "-1"))
+			template = int(self.get_argument("template", "1"))
 			
-			content = self.render_string(template_name = "templates/mailtemplate.html", activeitems = finallist, header = header, length = length)
+			content = self.render_string(template_name = getMailTemplate(template), activeitems = finallist, header = header, length = length, sod=sod, dod=dod)
 
 			#Change this variable to change the list
 			list_id = "ea0d1e3356"

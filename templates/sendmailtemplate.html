@@ -92,14 +92,31 @@
 		<div class="col-sm-9"><input type="number" class="form-control" id="items" style="width: 100%;" value="4" /></div>
 	</div>
 	<div class="row" style="margin-top: 20px;margin-bottom: 20px;">
+		<div class="col-sm-3">Mail template</div>
+		<div class="col-sm-9">
+			<select id="mailtemplate">
+				<option selected="selected" value="1">Default</option>
+				<option value="2">What's Cooking</option>
+				<option value="3">Retro 8Bit</option>
+			</select>
+		</div>
+	</div>
+	<div class="row" style="margin-top: 20px;margin-bottom: 20px;">
 		<div class="col-sm-12" style="text-align: center;"><button id="preview" class="btn btn-primary">Preview</button></div>
 	</div>
 	<div class="row" style="margin-bottom: 40px; margin-top: 40px;">
 		<ul id="activelist" class="list-group">
 			{% for i in range(0, len(activelist)) %}
 				<li class="list-group-item clearfix" data-storemenuitemid="{{ activelist[i]['store_menu_item_id'] }}" data-priority="{{ activelist[i]['priority'] }}">
-					<div class="col-xs-8">{{ activelist[i]["name"] }}</div>
-					<div class="col-xs-4" style="text-align: center;">
+					<div class="col-xs-6">
+						{{ activelist[i]["name"] }}
+						{% if (i == 0) %}
+							<span class="badge item-badge">FEATURED</span>
+						{% else %}
+							<span class="badge item-badge" style="display: none;">FEATURED</span>
+						{% end %}
+					</div>
+					<div class="col-xs-2" style="text-align: center;">
 						{% if activelist[i]["type"] == "v" %}
 							<image src="http://www.twigly.in/assets/img/vegicon.png" style="height: 25px;">
 						{% end %}
@@ -110,12 +127,15 @@
 							<image src="http://www.twigly.in/assets/img/eggicon.png" style="height: 25px;">
 						{% end %}
 					</div>
+					<div class="col-xs-4 sod" style="text-align: center; display: none;">
+						SOTD: <input type="radio" name="sod">&nbsp;&nbsp;DOD: <input type="radio" name="dod">
+					</div>
 				</li>
 			{% end %}
 			{% for i in range(0, len(inactivelist)) %}
 				<li class="list-group-item clearfix" data-storemenuitemid="{{ inactivelist[i]['store_menu_item_id'] }}" data-priority="{{ inactivelist[i]['priority'] }}">
-					<div class="col-xs-8">{{ inactivelist[i]["name"] }}</div>
-					<div class="col-xs-4" style="text-align: center;">
+					<div class="col-xs-6">{{ inactivelist[i]["name"] }}</div>
+					<div class="col-xs-2" style="text-align: center;">
 						{% if inactivelist[i]["type"] == "v" %}
 							<image src="http://www.twigly.in/assets/img/vegicon.png" style="height: 25px;">
 						{% end %}
@@ -125,6 +145,9 @@
 						{% if inactivelist[i]["type"] == "e" %}
 							<image src="http://www.twigly.in/assets/img/eggicon.png" style="height: 25px;">
 						{% end %}
+					</div>
+					<div class="col-xs-4 sod" style="text-align: center; display: none;">
+						SOTD: <input type="radio" name="sod">&nbsp;&nbsp;DOD: <input type="radio" name="dod">
 					</div>
 				</li>
 			{% end %}
@@ -177,36 +200,97 @@
 <script type="text/javascript">
 	var el = document.getElementById('activelist');
 	var sortable = Sortable.create(el,{
-		draggable: '.list-group-item'
+		draggable: '.list-group-item',
+		onUpdate: function (evt) {
+			$('.item-badge').hide();
+			$('.item-badge').first().fadeIn();
+		}
 	});
+
+	function getURL() {
+		var subject = $("#subject").val();
+		var header = $("#header").val();
+		var length = $('#items').val();
+		if (subject == "" || header == "" || length == "") {
+			alert("Subject/header/items to include cannot be blank");
+			return false;
+		}
+		var checkvar = 1;
+		var template = $("#mailtemplate").val();
+		if (template == "2") {
+			checkvar = 0;
+		}
+		if (parseInt(length) % 2 == checkvar || parseInt(length) < 1) {
+			var required = "even";
+			if (checkvar == 0) {
+				required = "odd";
+			}
+			alert ("For this template, number of selected items should be " + required);
+			$('#items').focus();
+			return false;
+		}
+		$('.cover').show();
+		var sendlist = "";
+		var separator = "";
+		var items = $('.list-group-item');
+		for(var i=0; i<length;i++) {
+			sendlist += (separator + $(items[i]).attr('data-storemenuitemid'));
+			separator = ",";
+		}
+
+		var sodradio = $('input[name="sod"]:checked');
+		var sodButtons = $("input[name='sod']");
+		var sodIndex = sodButtons.index(sodradio);
+		if (template == "2" && sodIndex == 0) {
+			alert ("First item is featured item and cannot be Sandwich of the Day");
+			return false;
+		}
+		var sod = -1;
+		if (sodradio.length) {
+			sod = sodradio.closest('.list-group-item').attr('data-storemenuitemid');
+		}
+		var dodradio = $('input[name="dod"]:checked');
+		var dodButtons = $("input[name='dod']");
+		var dodIndex = dodButtons.index(dodradio);
+		if (dodIndex == 0) {
+			alert ("First item is featured item and cannot be Dish of the Day");
+			return false;
+		}
+		var dod = -1;
+		if (dodradio.length) {
+			dod = dodradio.closest('.list-group-item').attr('data-storemenuitemid');
+		}
+
+		if (dod == sod && dod != -1) {
+			alert("Sandwich of the Day and Dish of the Day cannot be the same.");
+			return false;
+		}
+
+		var sendurl = "itemlist=" + sendlist + "&subject=" + encodeURIComponent(subject) + "&header=" + encodeURIComponent(header) + "&items=" + length + "&template=" + template;
+		
+		if (sod > -1) {
+			sendurl += "&sod=" + sod;
+		}
+		if (dod > -1) {
+			sendurl += "&dod=" + dod;
+		}
+
+		return sendurl;
+	}
+
 	$(document).ready(function() {
 		$("#preview").on('click', function() {
-			var subject = $("#subject").val();
-			var header = $("#header").val();
-			var length = $('#items').val();
-			if (subject == "" || header == "" || length == "") {
-				alert("Subject/header/items to include cannot be blank");
+			var sendurl = getURL();
+			if (!sendurl) {
+				$('.cover').hide();
 				return false;
-			}
-			if (parseInt(length) % 2 == 1 || parseInt(length) < 1) {
-				alert ("Items to include must be an even integer greater than 0");
-				$('#items').focus();
-				return false;
-			}
-			$('.cover').show();
-			var sendlist = "";
-			var separator = "";
-			var items = $('.list-group-item');
-			for(var i=0; i<length;i++) {
-				sendlist += (separator + $(items[i]).attr('data-storemenuitemid'));
-				separator = ",";
 			}
 			$.ajax({
-	            url: "/getpreview?itemlist=" + sendlist + "&subject=" + encodeURIComponent(subject) + "&header=" + encodeURIComponent(header) + "&items=" + length,
+	            url: "/getpreview?" + sendurl,
 	            type: "GET",
 	            success: function(response) {
 	                $('.cover').hide();
-	                $('#subjectpreview').text(subject);
+	                $('#subjectpreview').text($("#subject").val());
 	                $('#emailcontent').html(response);
 	                $('#previewmail').modal('show');
 	            },
@@ -225,34 +309,32 @@
 				$(this).addClass('web').text('Switch to Mobile View');
 			}
 		});
+		$('#mailtemplate').on('change', function() {
+			if($(this).val()=="2" || $(this).val()=="3") {
+				$('.sod').show();
+			} else {
+				$('.sod').hide();
+			}
+			if($(this).val()=="2") {
+				$('#items').val(5);
+			} else {
+				$('#items').val(4);
+			}
+		});
 		$("#sendmail").on('click', function() {
-			var subject = $("#subject").val();
-			var header = $("#header").val();
-			var length = $('#items').val();
-			if (subject == "" || header == "" || length == "") {
-				alert("Subject/header/items to include cannot be blank");
-				return false;
-			}
-			if (parseInt(length) % 2 == 1 || parseInt(length) < 1) {
-				alert ("Items to include must be an even integer greater than 0");
-				$('#items').focus();
-				return false;
-			}
-			$('.cover').show();
-			var sendlist = "";
-			var separator = "";
-			var items = $('.list-group-item');
-			for(var i=0; i<length;i++) {
-				sendlist += (separator + $(items[i]).attr('data-storemenuitemid'));
-				separator = ",";
-			}
 			var reallysend = confirm("Are you sure? This cannot be undone!");
 			if (!reallysend) {
 				$('.cover').hide();
 				return false;
 			}
+			var sendurl = getURL();
+			if (!sendurl) {
+				$('.cover').hide();
+				return false;
+			}
+
 			$.ajax({
-	            url: "/sendtomailchimp?itemlist=" + sendlist + "&subject=" + encodeURIComponent(subject) + "&header=" + encodeURIComponent(header) + "&items=" + length,
+	            url: "/sendtomailchimp?" + sendurl,
 	            type: "GET",
 	            success: function(response) {
 	                if (response.result) {
