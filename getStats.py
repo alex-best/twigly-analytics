@@ -274,7 +274,7 @@ class StatsHandler(BaseHandler):
 
 		dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
 
-		grosssalesquery = statssession.query(orderdetail.date_add, orderdetail.quantity, orderdetail.price).filter(orderdetail.date_add <= parsedenddate, orderdetail.date_add >= parsedstartdate, orderdetail.order_id.in_(dailyorderids))
+		grosssalesquery = statssession.query(orderdetail.date_add, orderdetail.quantity, orderdetail.price).filter(orderdetail.order_id.in_(dailyorderids))
 		grosssaleslookup = {}
 		for grossdetail in grosssalesquery:
 			if grossdetail.date_add.strftime("%a %b %d, %Y") in grosssaleslookup:
@@ -1194,6 +1194,152 @@ class FeedbackHandler(BaseHandler):
 
 		self.render("templates/feedbacktemplate.html", results=results, menuitems=menuitemlookup, userlookup=userlookup, page=page, user=current_user)
 
+class datewise_store_menu_item(statsBase):
+	__tablename__ = "datewise_store_menu"
+	datewise_store_menu_item_id = Column("datewise_store_menu_item_id", Integer, primary_key=True)
+	store_menu_item_id = Column("store_menu_item_id", Integer)
+	date_effective = Column("date_effective", DateTime)
+	priority = Column("priority", Integer)
+	avl_quantity = Column("avl_quantity", Integer)
+	is_active = Column("is_active", Boolean)
+
+class WastageHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		current_user = self.get_current_user().decode()
+		if current_user not in ("admin", "headchef"):
+			self.redirect('/stats')
+
+		horizon = self.get_argument("horizon", None)
+		startdate = self.get_argument("startdate", None)
+		enddate = self.get_argument("enddate", None)
+		if startdate is None:
+			if horizon is None:
+				horizon = 7
+			else:
+				horizon = int(horizon)
+
+			parsedenddate = datetime.date.today()
+			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
+			daterange = [parsedstartdate.strftime("%a %b %d, %Y")]
+			for c in range(horizon-1):
+				daterange.append((parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%a %b %d, %Y"))
+		
+		else:
+			parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date()
+			parsedenddate = parsedenddate + datetime.timedelta(days=1)
+			parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
+			daterange = []
+			for c in range((parsedenddate - parsedstartdate).days):
+				daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%a %b %d, %Y"))
+
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
+
+		active_stores = statssession.query(store).filter(store.is_active == True).all()
+
+		dwactivestates = [1,3,5,7,9]
+		dwstoreitemsquery = statssession.query(datewise_store_menu_item).filter(datewise_store_menu_item.date_effective < parsedenddate, datewise_store_menu_item.date_effective >= parsedstartdate, datewise_store_menu_item.is_active.in_(dwactivestates))
+		
+		storeitemsquery = statssession.query(storemenuitem).all()
+		storeitemslookup = {x.store_menu_item_id: x for x in storeitemsquery}
+		menuitemsquery = statssession.query(menuitem).all()
+		menuitemlookup = {x.menu_item_id: x for x in menuitemsquery}
+
+		dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate).all()
+
+		#dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
+
+		grosssales = []
+		predictedsales = []
+		wastage = []
+		stores = []
+
+		for thisstore in active_stores:
+			#### First looking at production
+			peritemwastage = {dr: {} for dr in daterange}
+			thisdwsmis = [dwsmi for dwsmi in dwstoreitemsquery if storeitemslookup[dwsmi.store_menu_item_id].store_id == thisstore.store_id and storeitemslookup[dwsmi.store_menu_item_id].selling_price > 0]
+			dwsmilookup = {}
+			for dwsmi in thisdwsmis:
+				if dwsmi.date_effective.strftime("%a %b %d, %Y") in dwsmilookup:
+					dwsmilookup[dwsmi.date_effective.strftime("%a %b %d, %Y")] += (dwsmi.avl_quantity*storeitemslookup[dwsmi.store_menu_item_id].selling_price)
+				else:
+					dwsmilookup[dwsmi.date_effective.strftime("%a %b %d, %Y")] = (dwsmi.avl_quantity*storeitemslookup[dwsmi.store_menu_item_id].selling_price)
+
+				if storeitemslookup[dwsmi.store_menu_item_id].menu_item_id in peritemwastage[dwsmi.date_effective.strftime("%a %b %d, %Y")]:
+					peritemwastage[dwsmi.date_effective.strftime("%a %b %d, %Y")][storeitemslookup[dwsmi.store_menu_item_id].menu_item_id] += dwsmi.avl_quantity
+				else:
+					peritemwastage[dwsmi.date_effective.strftime("%a %b %d, %Y")][storeitemslookup[dwsmi.store_menu_item_id].menu_item_id] = dwsmi.avl_quantity
+
+			#### Now looking at actual sales
+
+			thisstoreorders = [thisorder.order_id for thisorder in dailyordersquery if thisorder.store_id == thisstore.store_id]
+			grosssalesquery = statssession.query(orderdetail.date_add, orderdetail.quantity, orderdetail.price, orderdetail.menu_item_id).filter(orderdetail.order_id.in_(thisstoreorders))
+			
+			grosssaleslookup = {}
+			for grossdetail in grosssalesquery:
+				if grossdetail.date_add.strftime("%a %b %d, %Y") in grosssaleslookup:
+					grosssaleslookup[grossdetail.date_add.strftime("%a %b %d, %Y")] += (grossdetail.quantity*grossdetail.price)
+				else:
+					grosssaleslookup[grossdetail.date_add.strftime("%a %b %d, %Y")] = (grossdetail.quantity*grossdetail.price)
+
+				if grossdetail.menu_item_id in peritemwastage[grossdetail.date_add.strftime("%a %b %d, %Y")]:
+					peritemwastage[grossdetail.date_add.strftime("%a %b %d, %Y")][grossdetail.menu_item_id] -= grossdetail.quantity
+
+			wastagelookup = {dr: 0 for dr in daterange}
+			midlookup = {smi.menu_item_id: smi for smi in storeitemsquery if smi.store_id == thisstore.store_id}
+			for dr in peritemwastage:
+				for menuitemid in peritemwastage[dr]:
+					if peritemwastage[dr][menuitemid] > 0:
+						wastagelookup[dr] += (peritemwastage[dr][menuitemid]*midlookup[menuitemid].cost_price)
+
+			thisgrosssales = []
+			thispredictedsales = []
+			thiswastage = []
+			for c in range(0, len(daterange)):
+				try:
+					thispredictedsales.append(float(dwsmilookup[daterange[c]]))
+				except KeyError:
+					thispredictedsales.append(0.0)
+
+				try:
+					thisgrosssales.append(float(grosssaleslookup[daterange[c]]))
+				except KeyError:
+					thisgrosssales.append(0.0)
+
+				try:
+					thiswastage.append(float(wastagelookup[daterange[c]]))
+				except KeyError:
+					thiswastage.append(0.0)	
+
+			grosssales.append(thisgrosssales)
+			predictedsales.append(thispredictedsales)
+			wastage.append(thiswastage)
+			stores.append({"store_id": thisstore.store_id, "name": thisstore.name, "grosssales": sum(thisgrosssales), "predictedsales": sum(thispredictedsales), "wastage": sum(thiswastage)})
+
+		totalgrosssales = 0
+		totalpredictedsales = 0
+		totalwastage = 0
+		companygrosssales = [0 for dr in daterange]
+		companypredictedsales = [0 for dr in daterange]
+		companywastage = [0 for dr in daterange]
+		for i in range(len(stores)):
+			totalgrosssales += stores[i]["grosssales"]
+			totalpredictedsales += stores[i]["predictedsales"]
+			totalwastage += stores[i]["wastage"]
+		
+			for j in range(len(daterange)):
+				companygrosssales[j] += grosssales[i][j]
+				companypredictedsales[j] += predictedsales[i][j]
+				companywastage[j] += wastage[i][j]
+		
+		stores.insert(0, {"store_id": 0, "name": "Twigly", "grosssales": totalgrosssales, "predictedsales": totalpredictedsales, "wastage": totalwastage})
+		grosssales.insert(0, companygrosssales)
+		predictedsales.insert(0, companypredictedsales)
+		wastage.insert(0, companywastage)
+
+		self.render("templates/wastagetemplate.html", daterange=daterange, grosssales=grosssales, predictedsales=predictedsales, wastage=wastage, stores=stores, numstores=len(stores), user=current_user)
+
 current_path = path.dirname(path.abspath(__file__))
 static_path = path.join(current_path, "static")
 
@@ -1212,6 +1358,7 @@ application = tornado.web.Application([
 	(r"/getpreview", MailPreviewHandler),
 	(r"/sendtomailchimp", MailchimpHandler),
 	(r"/feedbacks", FeedbackHandler),
+	(r"/wastage", WastageHandler),
 	(r'/static/(.*)', tornado.web.StaticFileHandler, {'path': static_path})
 ], **settings)
 

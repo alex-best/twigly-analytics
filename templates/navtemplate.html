@@ -20,6 +20,7 @@
         <li><a href="/storeitems" style="color: #FFFFFF;">Update Menu</a></li>
         {% if user=="admin" %}<li><a href="/sendmail" style="color: #FFFFFF;">Send Email</a></li>{% end %}
         {% if user=="admin" or user == "headchef" %}<li><a href="/feedbacks" style="color: #FFFFFF;">Feedbacks</a></li>{% end %}
+        {% if user=="admin" or user == "headchef" %}<li><a href="/wastage" style="color: #FFFFFF;">Wastage Tracker</a></li>{% end %}
       </ul>
     </div><!-- /.navbar-collapse -->
   </div><!-- /.container-fluid -->
