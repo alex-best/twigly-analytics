@@ -870,7 +870,7 @@ def getPlatform(input):
 		return "Web"
 	elif (input.count(".") == 2):
 		return "Android"
-	elif (input.count(".") == 1):
+	elif (input.count(".") < 2):
 		return "iOS"
 	else:
 		return input
