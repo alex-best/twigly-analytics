@@ -12,9 +12,10 @@ from sqlalchemy import (
 from sqlalchemy.orm.exc import NoResultFound
 import datetime
 from os import path
-from json import dumps
+from json import dumps, loads
 from urllib import parse
 from mailchimp import Mailchimp
+from re import sub
 
 import tornado.ioloop
 import tornado.web
@@ -114,6 +115,12 @@ class menuitem(statsBase):
 	is_active = Column("is_active", Integer)
 	category = Column("category", Integer)
 	is_combo = Column("is_combo", Integer)
+
+	def getJson(self):
+		return {
+			"menu_item_id": self.menu_item_id,
+			"name": self.name
+		}
 
 class user(statsBase):
 	__tablename__ = "users"
@@ -594,6 +601,13 @@ class storemenuitem(statsBase):
 	packaging_cost = Column("packaging_cost", Integer)
 	is_active = Column("is_active", Integer)
 	priority = Column("priority", Integer)
+
+	def getJson(self):
+		return {
+			"store_menu_item_id": self.store_menu_item_id,
+			"store_id": self.store_id,
+			"menu_item_id": self.menu_item_id
+		}
 
 class store(statsBase):
 	__tablename__ = "stores"
@@ -1337,8 +1351,65 @@ class WastageHandler(BaseHandler):
 		grosssales.insert(0, companygrosssales)
 		predictedsales.insert(0, companypredictedsales)
 		wastage.insert(0, companywastage)
+		statssession.remove()
 
 		self.render("templates/wastagetemplate.html", daterange=daterange, grosssales=grosssales, predictedsales=predictedsales, wastage=wastage, stores=stores, numstores=len(stores), user=current_user)
+
+class GetStoreItemsHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
+
+		storeitems = statssession.query(storemenuitem).all()
+		menuitems = statssession.query(menuitem).all()
+
+		response = {"storeitems": [x.getJson() for x in storeitems], "menuitems": [y.getJson() for y in menuitems]}
+
+		statssession.remove()
+
+		self.write(response)
+
+class SetDateWiseMenuHandler(BaseHandler):
+	@tornado.web.authenticated
+	def post(self):
+		thisdate = datetime.datetime.strptime(self.get_argument("date"), "%Y-%m-%d").date()
+		thisdata = loads(self.get_argument("data"))
+		
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
+
+		storeitems = statssession.query(storemenuitem).all()
+		storeitemslookup = {x.store_menu_item_id: x for x in storeitems}
+
+		currentdwitems = statssession.query(datewise_store_menu_item).filter(datewise_store_menu_item.date_effective == thisdate).delete(synchronize_session=False)
+
+		statssession.commit()
+
+		storedata = {}
+		for storeitem in storeitems:
+			if storeitem.store_id in storedata:
+				pass
+			else:
+				storedata[storeitem.store_id] = []
+
+		for item in thisdata:
+			thisdatewiseitem = datewise_store_menu_item()
+			thisdatewiseitem.date_effective = thisdate
+			thisdatewiseitem.store_menu_item_id = item["store_menu_item_id"]
+			thisdatewiseitem.avl_quantity = item["avl_quantity"]
+			thisdatewiseitem.is_active = True
+			thisstoreid = storeitemslookup[item["store_menu_item_id"]].store_id
+			storedata[thisstoreid].append(thisdatewiseitem)
+			statssession.add(thisdatewiseitem)
+
+		for store in storedata:
+			thisstoreitems = len(storedata[store])
+			for i in range(0, thisstoreitems):
+				storedata[store][i].priority = 100000*store + (thisstoreitems - i)*100
+
+		statssession.commit()
+		statssession.remove()
 
 current_path = path.dirname(path.abspath(__file__))
 static_path = path.join(current_path, "static")
@@ -1359,6 +1430,8 @@ application = tornado.web.Application([
 	(r"/sendtomailchimp", MailchimpHandler),
 	(r"/feedbacks", FeedbackHandler),
 	(r"/wastage", WastageHandler),
+	(r"/getstoreitems", GetStoreItemsHandler),
+	(r"/setdatewisestoremenu", SetDateWiseMenuHandler),
 	(r'/static/(.*)', tornado.web.StaticFileHandler, {'path': static_path})
 ], **settings)
 
