@@ -1158,7 +1158,7 @@ class MailchimpHandler(BaseHandler):
 			#Change this variable to change the list
 			list_id = "ea0d1e3356"
 			# ea0d1e3356 is the main Twigly list
-			#list_id = "d2a7019f47"
+			# list_id = "d2a7019f47"
 			# d2a7019f47 is the test list
 
 			mailerror = False

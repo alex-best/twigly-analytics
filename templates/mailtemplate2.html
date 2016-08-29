@@ -69,11 +69,11 @@
             </td>
           </tr>
         </table>
-        <table width="100%" border="0" cellspacing="0" cellpadding="0" bgcolor="#FFFFFF" style="padding: 15px 0;">
+        <table width="70%" border="0" cellspacing="0" cellpadding="0" bgcolor="#FFFFFF" style="padding: 15px 0;">
           <tr>
             <td width="100%" align="center" height="70" style="font-family:sans-serif; font-size:20px; line-height:24px; color:#606060; text-align:center;">
-              <span style="font-size: 20px; color: #000000;">{{ activeitems[0]['name'] }}</span><br>
-              <span style="font-size: 14px; line-height: 14px;">{{ activeitems[0]['description'] }}</span>
+              <br><span style="font-size: 20px; color: #000000;">{{ activeitems[0]['name'] }}</span><br>
+              <span style="font-size: 14px; line-height: 14px;">{{ activeitems[0]['description'] }}</span><br><br>
                                                                 
             </td>
           </tr>
@@ -91,40 +91,55 @@
                   <td width="10" bgcolor="#FFFFFF"></td>
                   <td width="280" bgcolor="#FFFFFF">
 
-                  <table width="100%" border="0" cellspacing="0" cellpadding="0">
-                    <tr>
-                      <td align="center"><img border="0" src='http://www.twigly.in{{ activeitems[i]["image"] }}' width="280" height="187" alt="{{ activeitems[i]['name'] }}" title="{{ activeitems[i]['name'] }}"></td>
-                    </tr>
-                  </table>
                   {% if (sod == activeitems[i]["store_menu_item_id"]) %}
                   <table width="100%" border="0" cellspacing="0" cellpadding="0">
                     <tr>
-                      <td align="center"><img border="0" src="http://twigly.in/assets/images/emails/template2/sodheader.jpg" width="280" alt="Sandwich of the Day" title="Sandwich of the Day"></td>
+                      <td align="center" height="50"><img border="0" src="http://twigly.in/assets/images/emails/template2/sodheader.jpg" width="280" alt="Sandwich of the Day" title="Sandwich of the Day"></td>
                     </tr>
                   </table>
-                  {% end %}
-                  
-                  {% if (dod == activeitems[i]["store_menu_item_id"]) %}
+                  {% elif (dod == activeitems[i]["store_menu_item_id"]) %}
                   <table width="100%" border="0" cellspacing="0" cellpadding="0">
                     <tr>
-                      <td align="center"><img border="0" src="http://twigly.in/assets/images/emails/template2/dodheader.jpg" width="280" alt="Dish of the Day - 10% Off" title="Dish of the Day - 10% Off"></td>
+                      <td align="center" height="50"><img border="0" src="http://twigly.in/assets/images/emails/template2/dodheader.jpg" width="280" alt="Dish of the Day - 10% Off" title="Dish of the Day - 10% Off"></td>
+                    </tr>
+                  </table>
+                  {% else %}
+                  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                    <tr>
+                      <td align="center" height="50"></td>
                     </tr>
                   </table>
                   {% end %}
+
+                  
+                  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                    <tr>
+                      <td align="center"><img border="0" src='http://www.twigly.in{{ activeitems[i]["image"] }}' style="margin:10px 0px" width="280" height="187" alt="{{ activeitems[i]['name'] }}" title="{{ activeitems[i]['name'] }}"></td>
+                    </tr>
+                  </table>
+                  
+                  
                   <table width="100%" border="0" cellspacing="0" cellpadding="0">
                     <tr>  
-                      <td valign="top" width="280"><table style="padding-bottom: 10px; padding-top: 5px;"><tr><td width="10%" valign="top" align="center">
-                        {% if activeitems[i]["type"] == "n" %}
-                          <img alt="Non Veg" title="Non Veg" src="http://www.twigly.in/assets/img/nonvegicon.png" height="18" style="height: 18px; vertical-align: middle;">
-                        {% end %}
-                        {% if activeitems[i]["type"] == "v" %}
-                          <img alt="Veg" title="Veg" src="http://www.twigly.in/assets/img/vegicon.png" height="18" style="height: 18px; vertical-align: middle;">
-                        {% end %}
-                        {% if activeitems[i]["type"] == "e" %}
-                          <img alt="Contains Egg" title="Contains Egg" src="http://www.twigly.in/assets/img/eggicon.png" height="18" style="height: 18px; vertical-align: middle;">
-                        {% end %}
-                      </td><td valign="top" style="font-family:serif; font-size:18px; line-height:24px; background:#FFFFFF; color: #000000; text-align:center; padding-left: 5px;">{{ activeitems[i]['name'] }}</td></tr></table>
-</td> 
+                      <td valign="top" width="100%">
+                        <table style="padding-bottom: 10px; padding-top: 5px;">
+                          <tr>
+                            <td width="10%" valign="top" align="left">
+                              {% if activeitems[i]["type"] == "n" %}
+                              <img alt="Non Veg" title="Non Veg" src="http://www.twigly.in/assets/img/nonvegicon.png" height="18" style="height: 18px; vertical-align: middle;">
+                              {% end %}
+                              {% if activeitems[i]["type"] == "v" %}
+                                <img alt="Veg" title="Veg" src="http://www.twigly.in/assets/img/vegicon.png" height="18" style="height: 18px; vertical-align: middle;">
+                              {% end %}
+                              {% if activeitems[i]["type"] == "e" %}
+                                <img alt="Contains Egg" title="Contains Egg" src="http://www.twigly.in/assets/img/eggicon.png" height="18" style="height: 18px; vertical-align: middle;">
+                              {% end %}
+                            </td>
+                            <td width="90%" valign="top" align="right" style="font-family:sans-serif; font-size:18px; line-height:24px; background:#FFFFFF; color: #000000; text-align:center; padding-left: 5px;">{{ activeitems[i]['name'] }}
+                            </td>
+                          </tr>
+                        </table>
+                      </td> 
                     </tr>
                   </table>
                   </td>
@@ -140,49 +155,57 @@
                   <td width="10" bgcolor="#FFFFFF"></td>
                   <td width="280" bgcolor="#FFFFFF">
 
-                  <table width="100%" border="0" cellspacing="0" cellpadding="0">
-                    <tr>
-                      <td align="center"><img border="0" src="http://twigly.in{{ activeitems[i+1]['image'] }}" width="280" height="187" alt="{{ activeitems[i+1]['name'] }}" title="{{ activeitems[i+1]['name'] }}"></td>
-                    </tr>
-                  </table>
-
                   {% if (sod == activeitems[i+1]["store_menu_item_id"]) %}
                   <table width="100%" border="0" cellspacing="0" cellpadding="0">
                     <tr>
-                      <td align="center"><img border="0" src="http://twigly.in/assets/images/emails/template2/sodheader.jpg" width="280" alt="Sandwich of the Day" title="Sandwich of the Day"></td>
+                      <td align="center" height="50"><img border="0" src="http://twigly.in/assets/images/emails/template2/sodheader.jpg" width="280" alt="Sandwich of the Day" title="Sandwich of the Day"></td>
                     </tr>
                   </table>
-                  {% end %}
-                  
-                  {% if (dod == activeitems[i+1]["store_menu_item_id"]) %}
+                  {% elif (dod == activeitems[i+1]["store_menu_item_id"]) %}
                   <table width="100%" border="0" cellspacing="0" cellpadding="0">
                     <tr>
-                      <td align="center"><img border="0" src="http://twigly.in/assets/images/emails/template2/dodheader.jpg" width="280" alt="Dish of the Day - 10% Off" title="Dish of the Day - 10% Off"></td>
+                      <td align="center" height="50"><img border="0" src="http://twigly.in/assets/images/emails/template2/dodheader.jpg" width="280" alt="Dish of the Day - 10% Off" title="Dish of the Day - 10% Off"></td>
+                    </tr>
+                  </table>
+                  {% else %}
+                  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                    <tr>
+                      <td align="center" height="50"></td>
                     </tr>
                   </table>
                   {% end %}
+                  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                    <tr>
+                      <td align="center"><img border="0" src="http://twigly.in{{ activeitems[i+1]['image'] }}" width="280" style="margin:10px 0px" height="187" alt="{{ activeitems[i+1]['name'] }}" title="{{ activeitems[i+1]['name'] }}"></td>
+                    </tr>
+                  </table>
+
 
                   <table width="100%" border="0" cellspacing="0" cellpadding="0">
                     <tr>  
-                      <td valign="top" width="280"><table style="padding-bottom: 10px; padding-top: 5px;"><tr><td width="10%" valign="top" align="center">
-                        {% if activeitems[i+1]["type"] == "n" %}
-                          <img alt="Non Veg" title="Non Veg" src="http://www.twigly.in/assets/img/nonvegicon.png" height="18" style="height: 18px; vertical-align: middle;">
-                        {% end %}
-                        {% if activeitems[i+1]["type"] == "v" %}
-                          <img alt="Veg" title="Veg" src="http://www.twigly.in/assets/img/vegicon.png" height="18" style="height: 18px; vertical-align: middle;">
-                        {% end %}
-                        {% if activeitems[i+1]["type"] == "e" %}
-                          <img alt="Contains Egg" title="Contains Egg" src="http://www.twigly.in/assets/img/eggicon.png" height="18" style="height: 18px; vertical-align: middle;">
-                        {% end %}
-                      </td><td valign="top" style="font-family:serif; font-size:18px; line-height:24px; background:#FFFFFF; color: #000000; text-align:center; padding-left: 5px;">{{ activeitems[i+1]['name'] }}</td></tr></table>
-</td> 
+                      <td valign="top" width="100%">
+                        <table style="padding-bottom: 10px; padding-top: 5px;">
+                          <tr>
+                            <td width="10%" valign="top" align="left">
+                              {% if activeitems[i+1]["type"] == "n" %}
+                              <img alt="Non Veg" title="Non Veg" src="http://www.twigly.in/assets/img/nonvegicon.png" height="18" style="height: 18px; vertical-align: middle;">
+                              {% end %}
+                              {% if activeitems[i+1]["type"] == "v" %}
+                                <img alt="Veg" title="Veg" src="http://www.twigly.in/assets/img/vegicon.png" height="18" style="height: 18px; vertical-align: middle;">
+                              {% end %}
+                              {% if activeitems[i+1]["type"] == "e" %}
+                                <img alt="Contains Egg" title="Contains Egg" src="http://www.twigly.in/assets/img/eggicon.png" height="18" style="height: 18px; vertical-align: middle;">
+                              {% end %}
+                            </td>
+                            <td width="90%" valign="top" align="right" style="font-family:sans-serif; font-size:18px; line-height:24px; background:#FFFFFF; color: #000000; text-align:center; padding-left: 5px;">{{ activeitems[i+1]['name'] }}
+                            </td>
+                          </tr>
+                        </table>
+                      </td> 
                     </tr>
                   </table>
                   </td>
                   <td width="10" bgcolor="#FFFFFF"></td>
-                </tr>
-                <tr>
-                  <td height="10" width="100%" colspan="3"></td>
                 </tr>
              </table>
             </td>
