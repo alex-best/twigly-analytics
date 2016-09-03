@@ -1297,8 +1297,12 @@ class WastageHandler(BaseHandler):
 				else:
 					grosssaleslookup[grossdetail.date_add.strftime("%a %b %d, %Y")] = (grossdetail.quantity*grossdetail.price)
 
-				if grossdetail.menu_item_id in peritemwastage[grossdetail.date_add.strftime("%a %b %d, %Y")]:
-					peritemwastage[grossdetail.date_add.strftime("%a %b %d, %Y")][grossdetail.menu_item_id] -= grossdetail.quantity
+				if grossdetail.date_add.strftime("%a %b %d, %Y") in peritemwastage:
+					if grossdetail.menu_item_id in peritemwastage[grossdetail.date_add.strftime("%a %b %d, %Y")]:
+						peritemwastage[grossdetail.date_add.strftime("%a %b %d, %Y")][grossdetail.menu_item_id] -= grossdetail.quantity
+				else:
+					peritemwastage[grossdetail.date_add.strftime("%a %b %d, %Y")] = {}
+					peritemwastage[grossdetail.date_add.strftime("%a %b %d, %Y")][grossdetail.menu_item_id] = -grossdetail.quantity
 
 			wastagelookup = {dr: 0 for dr in daterange}
 			midlookup = {smi.menu_item_id: smi for smi in storeitemsquery if smi.store_id == thisstore.store_id}
