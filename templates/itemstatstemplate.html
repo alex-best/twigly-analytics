@@ -181,7 +181,11 @@
 
 	$(document).ready(function() {
 		$('#horizonselect').on('change', function() {
-			window.location.href = "/itemstats?horizon=" + $(this).val();
+			var storeid = $('#storeselect').val();
+			if (storeid == "") {
+				storeid = "All";
+			}
+			window.location.href = "/itemstats?horizon=" + $(this).val() + "&store=" + storeid;
 		});
 		var thishorizon = getUrlParameter("horizon");
 		if (thishorizon) {
@@ -195,6 +199,10 @@
 		if (thisenddate) {
 			$('#enddate').val(thisenddate);
 		}
+		var thisstore = getUrlParameter("store");
+		if (thisstore) {
+			$('#storeselect').val(thisstore);
+		}
 		$('.input-daterange').datepicker({
 		    todayBtn: "linked",
 		    autoclose: true,
@@ -202,7 +210,11 @@
 		    format: "dd/mm/yy",
 		});
 		$('#setDates').on('click', function() {
-			window.location.href = "/itemstats?startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val();
+			var storeid = $('#storeselect').val();
+			if (storeid == "") {
+				storeid = 2;
+			}
+			window.location.href = "/itemstats?startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val() + "&store=" + storeid;
 		});
 		$('.showFilters').on('click', function() {
 			$('#horizon').fadeToggle();
