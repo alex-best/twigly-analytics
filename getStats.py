@@ -15,6 +15,7 @@ from os import path
 from json import dumps, loads
 from mailchimp import Mailchimp
 from re import sub
+from urllib.parse import unquote
 
 import tornado.ioloop
 import tornado.web
@@ -1140,8 +1141,8 @@ class MailPreviewHandler(BaseHandler):
 		if current_user != "admin":
 			self.redirect('/stats')
 		else:
-			subject = parse.unquote(self.get_argument("subject"))
-			header = parse.unquote(self.get_argument("header"))
+			subject = unquote(self.get_argument("subject"))
+			header = unquote(self.get_argument("header"))
 			length = int(self.get_argument("items"))
 			itemlist = self.get_argument("itemlist")
 			finallist = createMail(itemlist)
