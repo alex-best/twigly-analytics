@@ -1160,8 +1160,8 @@ class MailchimpHandler(BaseHandler):
 		else:
 			current_store = 2
 			activelist = getStoreItems(current_store)[0]
-			subject = parse.unquote(self.get_argument("subject"))
-			header = parse.unquote(self.get_argument("header"))
+			subject = unquote(self.get_argument("subject"))
+			header = unquote(self.get_argument("header"))
 			length = int(self.get_argument("items"))
 			itemlist = self.get_argument("itemlist")
 			finallist = createMail(itemlist)
