@@ -1386,6 +1386,18 @@ class GetStoreItemsHandler(BaseHandler):
 
 		response = {"storeitems": [x.getJson() for x in storeitems], "menuitems": [y.getJson() for y in menuitems]}
 
+		active_stores = statssession.query(store).filter(store.is_active == True).all()
+		active_stores_list = [x.store_id for x in active_stores]
+
+		enddate = self.get_argument("date", None)
+		parsedenddate = datetime.datetime.strptime(enddate, "%Y-%m-%d").date()
+		parsedenddate = parsedenddate - datetime.timedelta(days=6)
+		parsedstartdate = parsedenddate - datetime.timedelta(days=1)
+		daterange = [parsedstartdate.strftime("%a %b %d, %Y")]
+
+		totalcount = getTotalCount(parsedstartdate, parsedenddate, daterange, statssession, active_stores_list)
+		response["last_week"] = totalcount[0]
+
 		statssession.remove()
 
 		self.write(response)
