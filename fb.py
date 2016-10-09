@@ -65,9 +65,13 @@ class FBBaseHandler(tornado.web.RequestHandler):
 class VanvaasHandler(FBBaseHandler):
     def get(self):
         thisuser = self.get_current_user()
+        print (thisuser)
+        reactionsresult = {}
+        commentsresult = {}
         if thisuser:
             graph = facebook.GraphAPI(thisuser.access_token)
             posts = graph.get_object("me/posts?fields=object_id,message,story,comments.limit(999),reactions.limit(999)&limit=20me/posts?fields=object_id,message,story,comments.limit(999),reactions.limit(999)&limit=20")
+            print (posts)
             reactions = {}
             comments = {}
             lookup = {}
@@ -88,7 +92,15 @@ class VanvaasHandler(FBBaseHandler):
                             else:
                                 comments[comment["from"]["id"]] = 1
 
-            reactionsresult = sorted([{"id": x, "count": reactions[x], "name": lookup[x]} for x in reactions], key=lambda x: -x["count"])[0]
-            commentsresult = sorted([{"id": x, "count": comments[x], "name": lookup[x]} for x in comments], key=lambda x: -x["count"])[0]
+            reactionslist = sorted([{"id": x, "count": reactions[x], "name": lookup[x]} for x in reactions], key=lambda x: -x["count"])
+            reactionsresult = reactionslist[0]
 
+            commentslist = sorted([{"id": x, "count": comments[x], "name": lookup[x]} for x in comments], key=lambda x: -x["count"])[0]
+            commentsresult = commentslist[0]
+            if reactionsresult["id"] == commentsresult["id"]:
+                if len(commentslist) > 1:
+                    commentsresult = commentslist[1]
+                else:
+                    commentsresult = {}
+            
         self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=reactionsresult, commentsresult=commentsresult)
