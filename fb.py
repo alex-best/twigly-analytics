@@ -3,6 +3,7 @@ import facebook
 import sqlalchemy
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import (
     Column,
     Integer,
@@ -41,7 +42,11 @@ class FBBaseHandler(tornado.web.RequestHandler):
         if not cookie:
             return None
 
-        user = fbsession.query(fb_user).filter(fb_user.id == cookie["uid"]).one()
+        try:
+            user = fbsession.query(fb_user).filter(fb_user.id == cookie["uid"]).one()
+        except NoResultFound:
+            user = None
+        
         if not user:
             # TODO: Make this fetch async rather than blocking
             graph = facebook.GraphAPI(cookie["access_token"])
