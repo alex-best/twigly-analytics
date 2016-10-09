@@ -5,7 +5,7 @@
     <title>Facebook Example</title>
   </head>
   <body>
-    <fb:login-button autologoutlink="true"></fb:login-button>
+    <fb:login-button autologoutlink="true" scope="public_profile,email,user_posts,user_birthday"></fb:login-button>
 
     {% if current_user %}
       <p><a href="{{ current_user.profile_url }}"><img src="https://graph.facebook.com/{{ current_user.id }}/picture?type=square"/></a></p>
