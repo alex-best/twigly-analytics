@@ -44,7 +44,7 @@ class FBBaseHandler(tornado.web.RequestHandler):
         if not user:
             # TODO: Make this fetch async rather than blocking
             graph = facebook.GraphAPI(cookie["access_token"])
-            profile = graph.get_object("me")
+            profile = graph.get_object("me?fields=email,link,birthday,name")
             newUser = fb_user()
             newUser.id = profile["id"]
             newUser.name = profile["name"]
