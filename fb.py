@@ -95,7 +95,7 @@ class VanvaasHandler(FBBaseHandler):
             print (reactionslist)
             reactionsresult = reactionslist[0]
 
-            commentslist = sorted([{"id": x, "count": comments[x], "name": lookup[x]} for x in comments], key=lambda x: -x["count"])[0]
+            commentslist = sorted([{"id": x, "count": comments[x], "name": lookup[x]} for x in comments], key=lambda x: -x["count"])
             print (commentslist)
             commentsresult = commentslist[0]
             if reactionsresult["id"] == commentsresult["id"]:
