@@ -69,7 +69,7 @@ class VanvaasHandler(FBBaseHandler):
         reactionsresult = {}
         commentsresult = {}
         if thisuser:
-            graph = facebook.GraphAPI(thisuser.access_token)
+            graph = facebook.GraphAPI(access_token=thisuser.access_token, version="2.8")
             posts = graph.get_object("me/posts?fields=object_id,message,story,comments.limit(999),reactions.limit(999)&limit=20me/posts?fields=object_id,message,story,comments.limit(999),reactions.limit(999)&limit=20")
             print (posts)
             reactions = {}
@@ -102,5 +102,5 @@ class VanvaasHandler(FBBaseHandler):
                     commentsresult = commentslist[1]
                 else:
                     commentsresult = {}
-            
+
         self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=reactionsresult, commentsresult=commentsresult)
