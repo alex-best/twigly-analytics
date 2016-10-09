@@ -10,6 +10,11 @@
     {% if current_user %}
       <p><a href="{{ current_user.profile_url }}"><img src="https://graph.facebook.com/{{ current_user.id }}/picture?type=square"/></a></p>
       <p>Hello, {{ escape(current_user.name) }}</p>
+
+      {{ reactionsresult }}
+      <img src='https://graph.facebook.com/{{ reactionsresult["id"] }}/picture?type=square' />
+      {{ commentsresult }}
+      <img src='https://graph.facebook.com/{{ commentsresult["id"] }}/picture?type=square' />
     {% end %}
 
     <div id="fb-root"></div>

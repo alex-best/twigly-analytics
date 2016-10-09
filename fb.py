@@ -46,7 +46,6 @@ class FBBaseHandler(tornado.web.RequestHandler):
             # TODO: Make this fetch async rather than blocking
             graph = facebook.GraphAPI(cookie["access_token"])
             profile = graph.get_object("me?fields=email,link,birthday,name")
-            print (profile)
             newUser = fb_user()
             newUser.id = profile["id"]
             newUser.name = profile["name"]
@@ -59,8 +58,37 @@ class FBBaseHandler(tornado.web.RequestHandler):
         elif user.access_token != cookie["access_token"]:
             user.access_token = cookie["access_token"]
             fbsession.commit()
+        
+        fbsession.remove()
         return user
 
 class VanvaasHandler(FBBaseHandler):
     def get(self):
-        self.render("templates/fbexample.html", facebook_app_id=facebook_app_id)
+        thisuser = self.get_current_user()
+        if thisuser:
+            graph = facebook.GraphAPI(thisuser.access_token)
+            posts = graph.get_object("me/posts?fields=object_id,message,story,comments.limit(999),reactions.limit(999)&limit=20me/posts?fields=object_id,message,story,comments.limit(999),reactions.limit(999)&limit=20")
+            reactions = {}
+            comments = {}
+            lookup = {}
+            if posts:
+                for post in posts["data"]:
+                    if "reactions" in post:
+                        for reaction in post["reactions"]["data"]:
+                            lookup[reaction["id"]] = reaction["name"]
+                            if reaction["id"] in reactions:
+                                reactions[reaction["id"]] += 1
+                            else:
+                                reactions[reaction["id"]] = 1
+                    if "comments" in post:
+                        for comment in post["comments"]["data"]:
+                            lookup[comment["from"]["id"]] = comment["from"]["name"]
+                            if comment["from"]["id"] in comments:
+                                comments[comment["from"]["id"]] += 1
+                            else:
+                                comments[comment["from"]["id"]] = 1
+
+            reactionsresult = sorted([{"id": x, "count": reactions[x], "name": lookup[x]} for x in reactions], key=lambda x: -x["count"])[0]
+            commentsresult = sorted([{"id": x, "count": comments[x], "name": lookup[x]} for x in comments], key=lambda x: -x["count"])[0]
+
+        self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=reactionsresult, commentsresult=commentsresult)
