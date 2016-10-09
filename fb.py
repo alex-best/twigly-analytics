@@ -19,6 +19,8 @@ facebook_app_secret = "***REMOVED***"
 
 fbBase = declarative_base()
 fbengine_url = 'mysql+pymysql://root:***REMOVED***@localhost/fb?charset=utf8'
+fbengine = sqlalchemy.create_engine(fbengine_url)
+fbsession = scoped_session(sessionmaker(bind=fbengine))
 
 class fb_user(fbBase):
     __tablename__ = "fb_users"
@@ -39,8 +41,6 @@ class FBBaseHandler(tornado.web.RequestHandler):
         if not cookie:
             return None
 
-        fbengine = sqlalchemy.create_engine(fbengine_url)
-        fbsession = scoped_session(sessionmaker(bind=fbengine))
         user = fbsession.query(fb_user).filter(fb_user.id == cookie["uid"]).one()
         if not user:
             # TODO: Make this fetch async rather than blocking
@@ -59,7 +59,6 @@ class FBBaseHandler(tornado.web.RequestHandler):
             user.access_token = cookie["access_token"]
             fbsession.commit()
         
-        fbsession.remove()
         return user
 
 class VanvaasHandler(FBBaseHandler):
