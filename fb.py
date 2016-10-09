@@ -70,7 +70,6 @@ class VanvaasHandler(FBBaseHandler):
         if thisuser:
             graph = facebook.GraphAPI(access_token=thisuser.access_token, version="2.7")
             posts = graph.get_object("me/posts?fields=object_id,message,story,comments.limit(999),reactions.limit(999)&limit=20me/posts?fields=object_id,message,story,comments.limit(999),reactions.limit(999)&limit=20")
-            print (posts)
             reactions = {}
             comments = {}
             lookup = {}
@@ -92,16 +91,16 @@ class VanvaasHandler(FBBaseHandler):
                                 comments[comment["from"]["id"]] = 1
 
             reactionslist = sorted([{"id": x, "count": reactions[x], "name": lookup[x]} for x in reactions], key=lambda x: -x["count"])
-            print (reactionslist)
             reactionsresult = reactionslist[0]
+            print (reactionsresult)
 
             commentslist = sorted([{"id": x, "count": comments[x], "name": lookup[x]} for x in comments], key=lambda x: -x["count"])
-            print (commentslist)
             commentsresult = commentslist[0]
             if reactionsresult["id"] == commentsresult["id"]:
                 if len(commentslist) > 1:
                     commentsresult = commentslist[1]
                 else:
                     commentsresult = {}
-
+            print (commentsresult)
+            
         self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=reactionsresult, commentsresult=commentsresult)
