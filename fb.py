@@ -64,7 +64,6 @@ class FBBaseHandler(tornado.web.RequestHandler):
 class VanvaasHandler(FBBaseHandler):
     def get(self):
         thisuser = self.get_current_user()
-        print (thisuser)
         reactionsresult = {}
         commentsresult = {}
         if thisuser:
@@ -92,8 +91,7 @@ class VanvaasHandler(FBBaseHandler):
 
             reactionslist = sorted([{"id": x, "count": reactions[x], "name": lookup[x]} for x in reactions], key=lambda x: -x["count"])
             reactionsresult = reactionslist[0]
-            print (reactionsresult)
-
+        
             commentslist = sorted([{"id": x, "count": comments[x], "name": lookup[x]} for x in comments], key=lambda x: -x["count"])
             commentsresult = commentslist[0]
             if reactionsresult["id"] == commentsresult["id"]:
@@ -101,6 +99,4 @@ class VanvaasHandler(FBBaseHandler):
                     commentsresult = commentslist[1]
                 else:
                     commentsresult = {}
-            print (commentsresult)
-
         self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=reactionsresult, commentsresult=commentsresult, thisuser=thisuser)
