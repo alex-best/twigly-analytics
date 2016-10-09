@@ -102,5 +102,5 @@ class VanvaasHandler(FBBaseHandler):
                 else:
                     commentsresult = {}
             print (commentsresult)
-            
-        self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=reactionsresult, commentsresult=commentsresult)
+
+        self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=reactionsresult, commentsresult=commentsresult, thisuser=thisuser)

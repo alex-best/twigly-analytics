@@ -7,9 +7,9 @@
   <body>
     <fb:login-button autologoutlink="true" scope="public_profile,email,user_posts,user_birthday"></fb:login-button>
 
-    {% if current_user %}
-      <p><a href="{{ current_user.profile_url }}"><img src="https://graph.facebook.com/{{ current_user.id }}/picture?type=square"/></a></p>
-      <p>Hello, {{ escape(current_user.name) }}</p>
+    {% if thisuser %}
+      <p><a href="{{ thisuser.profile_url }}"><img src="https://graph.facebook.com/{{ thisuser.id }}/picture?type=square"/></a></p>
+      <p>Hello, {{ escape(thisuser.name) }}</p>
 
       {{ reactionsresult }}
       <img src='https://graph.facebook.com/{{ reactionsresult["id"] }}/picture?type=square' />
@@ -22,7 +22,7 @@
       window.fbAsyncInit = function() {
         FB.init({appId: '{{ facebook_app_id }}', status: true,
                  cookie: true, xfbml: true});
-        FB.Event.subscribe('{% if current_user %}auth.logout{% else %}auth.login{% end %}', function(response) {
+        FB.Event.subscribe('{% if thisuser %}auth.logout{% else %}auth.login{% end %}', function(response) {
           window.location.reload();
         });
       };
