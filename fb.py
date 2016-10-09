@@ -41,7 +41,7 @@ class FBBaseHandler(tornado.web.RequestHandler):
 
         fbengine = sqlalchemy.create_engine(fbengine_url)
         fbsession = scoped_session(sessionmaker(bind=fbengine))
-        user = fbsession.query(fb_user).filter(fb_user.id == cookie["uid"]).all()
+        user = fbsession.query(fb_user).filter(fb_user.id == cookie["uid"]).one()
         if not user:
             # TODO: Make this fetch async rather than blocking
             graph = facebook.GraphAPI(cookie["access_token"])
