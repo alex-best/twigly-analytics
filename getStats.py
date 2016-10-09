@@ -17,6 +17,8 @@ from mailchimp import Mailchimp
 from re import sub
 from urllib.parse import unquote
 
+from fb import *
+
 import tornado.ioloop
 import tornado.web
 
@@ -1546,6 +1548,7 @@ application = tornado.web.Application([
 	(r"/getstoreitems", GetStoreItemsHandler),
 	(r"/setdatewisestoremenu", SetDateWiseMenuHandler),
 	(r"/deliveries", DeliveryHandler),
+	(r"/vanvaas", VanvaasHandler),
 	(r'/static/(.*)', tornado.web.StaticFileHandler, {'path': static_path})
 ], **settings)
 
