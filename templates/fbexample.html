@@ -11,8 +11,8 @@
       <p><a href="{{ thisuser.profile_url }}"><img src="https://graph.facebook.com/{{ thisuser.id }}/picture?type=square"/></a></p>
       <p>Hello, {{ escape(thisuser.name) }}</p>
       <p>You could take {{ reactionsresult["name"] }} - You can count on him reacting to your discoveries and thoughts.</p>
-      <p><img src='https://graph.facebook.com/{{ reactionsresult["id"] }}/picture?type=square' />
-      Or you could take {{ commentsresult["name"] }} - They are most likely to engage with you in a stimulating conversation!</p>
+      <p><img src='https://graph.facebook.com/{{ reactionsresult["id"] }}/picture?type=square' /></p>
+      <p>Or you could take {{ commentsresult["name"] }} - They are most likely to engage with you in a stimulating conversation!</p>
       <p><img src='https://graph.facebook.com/{{ commentsresult["id"] }}/picture?type=square' /></p>
     {% end %}
 
