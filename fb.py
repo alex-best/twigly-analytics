@@ -119,12 +119,10 @@ class VanvaasHandler(FBBaseHandler):
                 if reaction["id"] not in commentslookup and reaction["id"] != thisuser.id:
                     reaction["character"] = reactioncharacters[counter]["character"]
                     reaction["image"] = reactioncharacters[counter]["image"]
-                    reaction["description"] = commentcharacters[counter]["description"]
+                    reaction["description"] = reactioncharacters[counter]["description"]
                     reactionsresult.append(reaction)
                     counter += 1
                 if counter == 3:
                     break
         
-        print (commentsresult)
-        print (reactionsresult)
         self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=reactionsresult, commentsresult=commentsresult, thisuser=thisuser)
