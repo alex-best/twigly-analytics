@@ -84,7 +84,7 @@
           <div class="hidden-xs hidden-sm col-md-4"></div>
           <div class="col-xs-12" style="text-align: center; font-size: 1.5em; margin-top: 15px; color: #FFFFFF;">
             Welcome to Twigly Vanvaas. 
-            {% if type=="Your" %}
+            {% if type=="Your" and (len(commentsresult) > 0 or len(reactionsresult) > 0) %}
               Here are some suggestions for your Vanvaas Team based on your interactions on Facebook.
             {% end %}
             {% if type=="Their" %}
@@ -138,6 +138,13 @@
                 </div>
               </div>
             {% end %}
+          </div>
+        {% end %}
+        {% if len(commentsresult) == 0 and len(reactionsresult) == 0 %}
+          <div class="row" style="margin-top: 20px;">
+            <div class="col-xs-12" style="color: #ffffff; margin-bottom: 10px; text-align: center;">
+              We need access to your posts to show our suggestions for who you can take along for your Vanvaas. Please logout and login again, and this time give us access to your posts. We will never post on your behalf, nor store your posts.
+            </div>
           </div>
         {% end %}
         <div class="col-xs-12" style="text-align: center; margin: 15px 0 30px 0;">

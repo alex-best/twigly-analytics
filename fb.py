@@ -59,7 +59,8 @@ class FBBaseHandler(tornado.web.RequestHandler):
             newUser.profile_url = profile["link"]
             newUser.access_token = cookie["access_token"]
             newUser.email = profile["email"]
-            newUser.birthday = datetime.datetime.strptime(profile["birthday"], "%m/%d/%Y").date()
+            if "birthday" in profile:
+                newUser.birthday = datetime.datetime.strptime(profile["birthday"], "%m/%d/%Y").date()
             fbsession.add(newUser)
             fbsession.commit()
         elif user.access_token != cookie["access_token"]:
@@ -79,7 +80,7 @@ class VanvaasHandler(FBBaseHandler):
             reactions = {}
             comments = {}
             lookup = {}
-            if posts:
+            if "data" in posts:
                 for post in posts["data"]:
                     if "reactions" in post:
                         for reaction in post["reactions"]["data"]:
@@ -127,8 +128,9 @@ class VanvaasHandler(FBBaseHandler):
                 if counter == 3:
                     break
 
-            thisuser.frienddata = str({"reactionsresult": reactionsresult, "commentsresult": commentsresult})
-            fbsession.commit()
+            if (len(reactionsresult) > 0 or len(commentsresult) > 0):
+                thisuser.frienddata = str({"reactionsresult": reactionsresult, "commentsresult": commentsresult})
+                fbsession.commit()
         
         self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=reactionsresult, commentsresult=commentsresult, thisuser=thisuser, type="Your")
 
