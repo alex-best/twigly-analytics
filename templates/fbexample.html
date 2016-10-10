@@ -87,7 +87,8 @@
             {% end %}
           </div>
         {% end %}
-        <div class="col-xs-12">
+        <div class="col-xs-12" style="text-align: center;">
+          <div class="fb-share-button" data-href="http://blog.twigly.in:8080/vanvaas/{{ thisuser.id }}" data-layout="button" data-size="small" data-mobile-iframe="true"><a class="fb-xfbml-parse-ignore" target="_blank" href="https://www.facebook.com/sharer/sharer.php?u=http%3A%2F%2Fblog.twigly.in%3A8080%2Fvanvaas%2F{{ thisuser.id }}&amp;src=sdkpreparse">Share</a></div>
           <fb:login-button autologoutlink="true" scope="public_profile,email,user_posts,user_birthday"></fb:login-button>
         </div>
       {% end %}
