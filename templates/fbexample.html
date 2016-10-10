@@ -18,7 +18,7 @@
             <tr>
               {% for comment in commentsresult %}
                 <td>
-                  <img src='https://graph.facebook.com/{{ comment["id"] }}/picture?type=square' />
+                  <img src='https://graph.facebook.com/{{ comment["id"] }}/picture?type=square' /><br>
                   {{ escape(comment["name"]) }}
                 </td>
               {% end %}
@@ -34,7 +34,7 @@
           <tr>
             {% for reaction in reactionsresult %}
               <td>
-                <img src='https://graph.facebook.com/{{ reaction["id"] }}/picture?type=square' />
+                <img src='https://graph.facebook.com/{{ reaction["id"] }}/picture?type=square' /><br>
                 {{ escape(reaction["name"]) }}
               </td>
             {% end %}
