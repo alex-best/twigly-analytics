@@ -10,24 +10,27 @@
     {% if thisuser %}
       <p><a href="{{ thisuser.profile_url }}"><img src="https://graph.facebook.com/{{ thisuser.id }}/picture?type=square"/></a></p>
       <p>Hey, {{ escape(thisuser.name) }} - Based on your interactions on Facebook, here are our suggestions for who you could take along with you for your Vanvaas:</p>
-      <div style="text-align: center;">
-        Your Laxmans<br>
-        They are most likely to engage with you in a stimulating conversation!<br>
-        <table>
-          <tr>
-            {% for comment in commentsresult %}
-              <td>
-                <img src='https://graph.facebook.com/{{ comment["id"] }}/picture?type=square' />
-                {{ escape(comment["name"]) }}
-              </td>
-            {% end %}
-          </tr>
-        </table>
-      </div>
+      {% if len(commentsresult) > 0 %}  
+        <div style="text-align: center;">
+          Your Laxmans<br>
+          They are most likely to engage with you in a stimulating conversation!<br>
+          <table style="display: inline-block;">
+            <tr>
+              {% for comment in commentsresult %}
+                <td>
+                  <img src='https://graph.facebook.com/{{ comment["id"] }}/picture?type=square' />
+                  {{ escape(comment["name"]) }}
+                </td>
+              {% end %}
+            </tr>
+          </table>
+        </div>
+      {% end %}
+      {% if len(reactionsresult) > 0 %}  
       <div style="text-align: center;">
         Your Hanuman<br>
         You can count on them for reacting to your discoveries and thoughts.<br>
-        <table>
+        <table style="display: inline-block;">
           <tr>
             {% for reaction in reactionsresult %}
               <td>
@@ -38,6 +41,7 @@
           </tr>
         </table>
       </div>
+      {% end %}
     {% end %}
 
     <div id="fb-root"></div>
