@@ -4,6 +4,11 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
     <title>Twigly Presents: Vanvaas!</title>
     <link href="https://fonts.googleapis.com/css?family=Handlee" rel="stylesheet">
+    <style type="text/css">
+      .friendimage {
+        padding: 20px;
+      }
+    </style>
   </head>
   <body style="background: url(http://twigly.in/assets/images/vbackground.jpg)">
     <div style="text-align: center;">
@@ -25,7 +30,7 @@
           <table style="display: inline-block;">
             <tr>
               {% for comment in commentsresult %}
-                <td>
+                <td class="friendimage">
                   <img src='https://graph.facebook.com/{{ comment["id"] }}/picture?type=square' /><br>
                   {{ escape(comment["name"]) }}
                 </td>
@@ -35,13 +40,13 @@
         </div>
       {% end %}
       {% if len(reactionsresult) > 0 %}  
-      <div style="text-align: center;">
+      <div style="text-align: center; font-family: 'Handlee', cursive;">
         <span style="font-size: 1.5em;">Your Hanumans</span><br>
         You can count on them for reacting to your discoveries and thoughts.<br>
         <table style="display: inline-block;">
           <tr>
             {% for reaction in reactionsresult %}
-              <td>
+              <td class="friendimage">
                 <img src='https://graph.facebook.com/{{ reaction["id"] }}/picture?type=square' /><br>
                 {{ escape(reaction["name"]) }}
               </td>
