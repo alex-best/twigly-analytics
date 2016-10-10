@@ -122,7 +122,9 @@ class VanvaasHandler(FBBaseHandler):
                     reaction["description"] = commentcharacters[counter]["description"]
                     reactionsresult.append(reaction)
                     counter += 1
-                if counter == 2:
+                if counter == 3:
                     break
-            
+        
+        print (commentsresult)
+        print (reactionsresult)
         self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=reactionsresult, commentsresult=commentsresult, thisuser=thisuser)
