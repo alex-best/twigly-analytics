@@ -100,7 +100,7 @@ class VanvaasHandler(FBBaseHandler):
             counter = 0
             commentsresult = []
             for comment in commentslist:
-                if comment["id"] = thisuser.id:
+                if comment["id"] != thisuser.id:
                     commentsresult.append(comment)
                 if counter == 3:
                     break
