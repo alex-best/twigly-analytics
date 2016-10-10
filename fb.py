@@ -14,6 +14,7 @@ from sqlalchemy import (
     )
 import tornado.web
 import datetime
+from ast import literat_eval as le
 
 facebook_app_id = "***REMOVED***"
 facebook_app_secret = "***REMOVED***"
@@ -32,6 +33,7 @@ class fb_user(fbBase):
     access_token = Column("access_token", String)
     birthday = Column("birthday", Date)
     updated = Column("updated", TIMESTAMP)
+    frienddata = Column("frienddata", String)
 
 class FBBaseHandler(tornado.web.RequestHandler):
     """Implements authentication via the Facebook JavaScript SDK cookie."""
@@ -124,5 +126,18 @@ class VanvaasHandler(FBBaseHandler):
                     counter += 1
                 if counter == 3:
                     break
+
+            user.frienddata = str({"reactionsresult": reactionsresult, "commentsresult": commentsresult})
+            fbsession.commit()
         
-        self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=reactionsresult, commentsresult=commentsresult, thisuser=thisuser)
+        self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=reactionsresult, commentsresult=commentsresult, thisuser=thisuser, type="self")
+
+class VanvaasViewHandler(FBBaseHandler):
+    def get(self, id):
+        try:
+            thisuser = fbsession.query(fb_user).filter(fb_user.id == id).one()
+        except NoResultFound:
+            self.write("Page not found - Please check the id given")
+        else:
+            resultdata = le(thisuser.frienddata)
+            self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=resultdata["reactionsresult"], commentsresult=resultdata["commentsresult"], thisuser=thisuser, type="other")
