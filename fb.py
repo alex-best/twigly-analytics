@@ -127,7 +127,7 @@ class VanvaasHandler(FBBaseHandler):
                 if counter == 3:
                     break
 
-            user.frienddata = str({"reactionsresult": reactionsresult, "commentsresult": commentsresult})
+            thisuser.frienddata = str({"reactionsresult": reactionsresult, "commentsresult": commentsresult})
             fbsession.commit()
         
         self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=reactionsresult, commentsresult=commentsresult, thisuser=thisuser, type="self")
