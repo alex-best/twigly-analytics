@@ -5,6 +5,26 @@
     <title>Twigly Presents: Vanvaas!</title>
     <link href="https://fonts.googleapis.com/css?family=Handlee|Shadows+Into+Light+Two" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+    {% if thisuser %}
+      <meta property="og:url" content="http://blog.twigly.in:8080/vanvaas/{{ thisuser.id }}" />
+    {% else %}
+      <meta property="og:url" content="http://blog.twigly.in:8080/vanvaas" />
+    {% end %}
+    <meta property="og:type" content="article" />
+    {% if thisuser %}
+      <meta property="og:title" content="{{ thisuser.name }}'s Vanvaas Team" />
+    {% else %}
+      <meta property="og:title" content="Twigly Presents Vanvaas!" />
+    {% end %}
+    {% if thisuser and type=="Their" %}
+      <meta property="og:description" content="This is who {{ thisuser.name }} would take along if they had to go for Vanvaas" />
+
+    {% elif thisuser and type=="Your" %}
+      <meta property="og:description" content="Check out who I would take along if I had to go for Vanvaas today" />
+    {% else %}
+      <meta property="og:description" content="Who would you take along if you had to go for Vanvaas today" />
+    {% end %}
+    <meta property="og:image" content="http://www.twigly.in/assets/images/vanvaas.jpg" />
     <style type="text/css">
       .friendimage {
         padding: 20px;
