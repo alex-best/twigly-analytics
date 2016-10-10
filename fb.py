@@ -14,7 +14,7 @@ from sqlalchemy import (
     )
 import tornado.web
 import datetime
-from ast import literat_eval as le
+from ast import literal_eval as le
 
 facebook_app_id = "***REMOVED***"
 facebook_app_secret = "***REMOVED***"
