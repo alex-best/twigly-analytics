@@ -74,7 +74,7 @@
           <div class="row" style="margin-top: 20px;">
             {% for reaction in reactionsresult %}
               <div class="col-xs-12 col-md-4" style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive;">
-                <div class="col-xs-12" style="color: #ffffff;">
+                <div class="col-xs-12" style="color: #ffffff; margin-bottom: 10px; text-align: center;">
                   {{ type }} {{ reaction["character"] }} could be {{ reaction["name"] }}
                 </div>
                 <div class="col-xs-6">
@@ -87,7 +87,7 @@
                     <img src='https://graph.facebook.com/{{ reaction["id"] }}/picture?type=square&height=100' style="height: 100px;">
                   </div>
                 </div>
-                <div class="col-xs-12" style="text-align: center; font-family: sans-serif; color: #ffffff; font-size: 13px;">
+                <div class="col-xs-12" style="text-align: center; font-family: sans-serif; color: #ffffff; font-size: 13px; margin-top: 10px;">
                   {{ reaction["description"] }}
                 </div>
               </div>
@@ -98,7 +98,7 @@
           <div class="row" style="margin-top: 20px;">
             {% for comment in commentsresult %}
               <div class="col-xs-12 col-md-4" style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive;">
-                <div class="col-xs-12">
+                <div class="col-xs-12" style="color: #ffffff; margin-bottom: 10px; text-align: center;">
                   {{ type }} {{ comment["character"] }} could be {{ comment["name"] }}
                 </div>
                 <div class="col-xs-6">
@@ -111,7 +111,7 @@
                     <img src='https://graph.facebook.com/{{ comment["id"] }}/picture?type=square&height=100' style="height: 100px;">
                   </div>
                 </div>
-                <div class="col-xs-12" style="text-align: center; font-family: sans-serif; color: #ffffff; font-size: 13px;">
+                <div class="col-xs-12" style="text-align: center; font-family: sans-serif; color: #ffffff; font-size: 13px; margin-top: 10px;">
                   {{ comment["description"] }}
                 </div>
               </div>
