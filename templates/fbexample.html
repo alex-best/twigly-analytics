@@ -9,7 +9,7 @@
     <div style="text-align: center;">
       <img src="http://twigly.in/images/vanvaas.jpg" style="width: 50%;">
     </div>
-    {% if !thisuser %}
+    {% if not thisuser %}
       <fb:login-button autologoutlink="true" scope="public_profile,email,user_posts,user_birthday"></fb:login-button>
     {% end %}
     {% if thisuser %}
