@@ -102,9 +102,9 @@ class VanvaasHandler(FBBaseHandler):
             for comment in commentslist:
                 if comment["id"] != thisuser.id:
                     commentsresult.append(comment)
-                if counter == 3:
+                    counter += 1
+                if counter == 4:
                     break
-                counter += 1
 
             reactionslist = sorted([{"id": x, "count": reactions[x], "name": lookup[x]} for x in reactions], key=lambda x: -x["count"])
             reactionsresult = []
@@ -112,8 +112,8 @@ class VanvaasHandler(FBBaseHandler):
             for reaction in reactionslist:
                 if reaction["id"] not in commentslookup and reaction["id"] != thisuser.id:
                     reactionsresult.append(reaction)
-                if counter == 3:
+                    counter += 1
+                if counter == 4:
                     break
-                counter += 1
             
         self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=reactionsresult, commentsresult=commentsresult, thisuser=thisuser)
