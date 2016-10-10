@@ -11,14 +11,32 @@
       <p><a href="{{ thisuser.profile_url }}"><img src="https://graph.facebook.com/{{ thisuser.id }}/picture?type=square"/></a></p>
       <p>Hey, {{ escape(thisuser.name) }} - Based on your interactions on Facebook, here are our suggestions for who you could take along with you for your Vanvaas:</p>
       <div style="text-align: center;">
-        Your Laxman - You could take {{ escape(commentsresult["name"]) }}<br>
+        Your Laxmans<br>
         They are most likely to engage with you in a stimulating conversation!<br>
-        <img src='https://graph.facebook.com/{{ commentsresult["id"] }}/picture?type=square' />
+        <table>
+          <tr>
+            {% for comment in commentsresult %}
+              <td>
+                <img src='https://graph.facebook.com/{{ comment["id"] }}/picture?type=square' />
+                {{ escape(comment["name"]) }}
+              </td>
+            {% end %}
+          </tr>
+        </table>
       </div>
       <div style="text-align: center;">
-        Your Hanuman - You could take {{ escape(reactionsresult["name"]) }}<br>
+        Your Hanuman<br>
         You can count on them for reacting to your discoveries and thoughts.<br>
-        <img src='https://graph.facebook.com/{{ reactionsresult["id"] }}/picture?type=square' />
+        <table>
+          <tr>
+            {% for reaction in reactionsresult %}
+              <td>
+                <img src='https://graph.facebook.com/{{ reaction["id"] }}/picture?type=square' />
+                {{ escape(reaction["name"]) }}
+              </td>
+            {% end %}
+          </tr>
+        </table>
       </div>
     {% end %}
 
