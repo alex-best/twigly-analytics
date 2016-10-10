@@ -3,16 +3,24 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
     <title>Twigly Presents: Vanvaas!</title>
+    <link href="https://fonts.googleapis.com/css?family=Handlee" rel="stylesheet">
   </head>
-  <body>
-    <fb:login-button autologoutlink="true" scope="public_profile,email,user_posts,user_birthday"></fb:login-button>
-
+  <body style="background: url(http://twigly.in/assets/images/vbackground.jpg)">
+    <div style="text-align: center;">
+      <img src="http://twigly.in/images/vanvaas.jpg" style="width: 50%;">
+    </div>
+    {% if !thisuser %}
+      <fb:login-button autologoutlink="true" scope="public_profile,email,user_posts,user_birthday"></fb:login-button>
+    {% end %}
     {% if thisuser %}
-      <p><a href="{{ thisuser.profile_url }}"><img src="https://graph.facebook.com/{{ thisuser.id }}/picture?type=square"/></a></p>
-      <p>Hey, {{ escape(thisuser.name) }} - Based on your interactions on Facebook, here are our suggestions for who you could take along with you for your Vanvaas:</p>
+      <div style="text-align: center; font-family: 'Handlee', cursive;">
+        <span style="font-size: 1.5em;">Hey {{ escape(thisuser.name) }}</span><br>
+        <img src="https://graph.facebook.com/{{ thisuser.id }}/picture?type=square"/><br>
+        Welcome to Twigly Vanvaas. Here are some suggestions for your Vanvaas Team based on your interactions on Facebook.
+      </div>
       {% if len(commentsresult) > 0 %}  
-        <div style="text-align: center;">
-          Your Laxmans<br>
+        <div style="text-align: center; font-family: 'Handlee', cursive;">
+          <span style="font-size: 1.5em;">Your Laxmans</span><br>
           They are most likely to engage with you in a stimulating conversation!<br>
           <table style="display: inline-block;">
             <tr>
@@ -28,7 +36,7 @@
       {% end %}
       {% if len(reactionsresult) > 0 %}  
       <div style="text-align: center;">
-        Your Hanuman<br>
+        <span style="font-size: 1.5em;">Your Hanumans</span><br>
         You can count on them for reacting to your discoveries and thoughts.<br>
         <table style="display: inline-block;">
           <tr>
@@ -42,6 +50,7 @@
         </table>
       </div>
       {% end %}
+      <fb:login-button autologoutlink="true" scope="public_profile,email,user_posts,user_birthday"></fb:login-button>
     {% end %}
 
     <div id="fb-root"></div>
