@@ -58,8 +58,14 @@
         <span style="font-family: 'Shadows Into Light Two', cursive; font-size: 3em;">Vanvaas</span><br>
       </div>
       {% if not thisuser %}
-        <div class="row" style="text-align: center;">
+        <div class="row" style="text-align: center; font-family: 'Handlee', cursive; margin-top: 20px;">
+          <div class="col-xs-12">
+            Let us help you figure out who you should take along with you if you had to go for a  Vanvaas.
+          </div>
+        </div>
+        <div class="row" style="text-align: center; margin-top: 20px;">
           <fb:login-button autologoutlink="true" scope="public_profile,email,user_posts,user_birthday"></fb:login-button>
+        </div>
         </div>
       {% end %}
       {% if thisuser %}
@@ -143,7 +149,7 @@
         {% if len(commentsresult) == 0 and len(reactionsresult) == 0 %}
           <div class="row" style="margin-top: 20px;">
             <div class="col-xs-12" style="color: #ffffff; margin-bottom: 10px; text-align: center;">
-              We need access to your posts to show our suggestions for who you can take along for your Vanvaas. Please logout and login again, and this time give us access to your posts. We will never post on your behalf, nor store your posts.
+              We need access to your posts to show our suggestions for who you can take along for your Vanvaas. Please login again, and this time give us access to your posts. We will never post on your behalf, nor store your posts.
             </div>
           </div>
         {% end %}
