@@ -130,7 +130,7 @@ class VanvaasHandler(FBBaseHandler):
             thisuser.frienddata = str({"reactionsresult": reactionsresult, "commentsresult": commentsresult})
             fbsession.commit()
         
-        self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=reactionsresult, commentsresult=commentsresult, thisuser=thisuser, type="self")
+        self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=reactionsresult, commentsresult=commentsresult, thisuser=thisuser, type="Your")
 
 class VanvaasViewHandler(FBBaseHandler):
     def get(self, id):
@@ -140,4 +140,4 @@ class VanvaasViewHandler(FBBaseHandler):
             self.write("Page not found - Please check the id given")
         else:
             resultdata = le(thisuser.frienddata)
-            self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=resultdata["reactionsresult"], commentsresult=resultdata["commentsresult"], thisuser=thisuser, type="other")
+            self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=resultdata["reactionsresult"], commentsresult=resultdata["commentsresult"], thisuser=thisuser, type="Their")
