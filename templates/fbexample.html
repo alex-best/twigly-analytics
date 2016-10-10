@@ -35,44 +35,44 @@
           </div>
         </div>
         {% if len(reactionsresult) > 0 %}
-          {% for reaction in reactionsresult %}
-          <div class="row">
-            <div class="col-xs-12 col-md-4" style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive;">
-              <div class="col-xs-12">
-                Your {{ reaction["character"] }} could be {{ reaction["name"] }}
+          <div class="row" style="margin-top: 20px;">
+            {% for reaction in reactionsresult %}
+              <div class="col-xs-12 col-md-4" style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive;">
+                <div class="col-xs-12">
+                  Your {{ reaction["character"] }} could be {{ reaction["name"] }}
+                </div>
+                <div class="col-xs-6">
+                  <img src='/static/img/{{ reaction["image"] }}' style="height: 100px;">
+                </div>
+                <div class="col-xs-6">
+                  <img src='https://graph.facebook.com/{{ reaction["id"] }}/picture?type=square&height=100' style="height: 100px;">
+                </div>
+                <div class="col-xs-12" style="text-align: center;">
+                  {{ reaction["description"] }}
+                </div>
               </div>
-              <div class="col-xs-6">
-                <img src='/static/img/{{ reaction["image"] }}' style="height: 100px;">
-              </div>
-              <div class="col-xs-6">
-                <img src='https://graph.facebook.com/{{ reaction["id"] }}/picture?type=square&height=100' style="height: 100px;">
-              </div>
-              <div class="col-xs-12" style="text-align: center;">
-                {{ reaction["description"] }}
-              </div>
-            </div>
+            {% end %}
           </div>
-          {% end %}
         {% end %}
         {% if len(commentsresult) > 0 %}
-          {% for comment in commentsresult %}
-          <div class="row">
-            <div class="col-xs-12 col-md-4" style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive;">
-              <div class="col-xs-12">
-                Your {{ comment["character"] }} could be {{ comment["name"] }}
+          <div class="row" style="margin-top: 20px;">
+            {% for comment in commentsresult %}
+              <div class="col-xs-12 col-md-4" style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive;">
+                <div class="col-xs-12">
+                  Your {{ comment["character"] }} could be {{ comment["name"] }}
+                </div>
+                <div class="col-xs-6">
+                  <img src='/static/img/{{ comment["image"] }}' style="height: 100px;">
+                </div>
+                <div class="col-xs-6">
+                  <img src='https://graph.facebook.com/{{ comment["id"] }}/picture?type=square&height=100' style="height: 100px;">
+                </div>
+                <div class="col-xs-12" style="text-align: center;">
+                  {{ comment["description"] }}
+                </div>
               </div>
-              <div class="col-xs-6">
-                <img src='/static/img/{{ comment["image"] }}' style="height: 100px;">
-              </div>
-              <div class="col-xs-6">
-                <img src='https://graph.facebook.com/{{ comment["id"] }}/picture?type=square' style="height: 100px;">
-              </div>
-              <div class="col-xs-12" style="text-align: center;">
-                {{ comment["description"] }}
-              </div>
-            </div>
+            {% end %}
           </div>
-          {% end %}
         {% end %}
         <div class="col-xs-12">
           <fb:login-button autologoutlink="true" scope="public_profile,email,user_posts,user_birthday"></fb:login-button>
