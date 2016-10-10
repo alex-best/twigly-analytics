@@ -2,18 +2,24 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
-    <title>Facebook Example</title>
+    <title>Twigly Presents: Vanvaas!</title>
   </head>
   <body>
     <fb:login-button autologoutlink="true" scope="public_profile,email,user_posts,user_birthday"></fb:login-button>
 
     {% if thisuser %}
       <p><a href="{{ thisuser.profile_url }}"><img src="https://graph.facebook.com/{{ thisuser.id }}/picture?type=square"/></a></p>
-      <p>Hello, {{ escape(thisuser.name) }}</p>
-      <p>You could take {{ reactionsresult["name"] }} - You can count on him reacting to your discoveries and thoughts.</p>
-      <p><img src='https://graph.facebook.com/{{ reactionsresult["id"] }}/picture?type=square' /></p>
-      <p>Or you could take {{ commentsresult["name"] }} - They are most likely to engage with you in a stimulating conversation!</p>
-      <p><img src='https://graph.facebook.com/{{ commentsresult["id"] }}/picture?type=square' /></p>
+      <p>Hey, {{ escape(thisuser.name) }} - Based on your interactions on Facebook, here are our suggestions for who you could take along with you for your Vanvaas:</p>
+      <div style="text-align: center;">
+        Your Laxman - You could take {{ escape(commentsresult["name"]) }}<br>
+        They are most likely to engage with you in a stimulating conversation!<br>
+        <img src='https://graph.facebook.com/{{ commentsresult["id"] }}/picture?type=square' />
+      </div>
+      <div style="text-align: center;">
+        Your Hanuman - You could take {{ escape(reactionsresult["name"]) }}<br>
+        You can count on them for reacting to your discoveries and thoughts.<br>
+        <img src='https://graph.facebook.com/{{ reactionsresult["id"] }}/picture?type=square' />
+      </div>
     {% end %}
 
     <div id="fb-root"></div>
