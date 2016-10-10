@@ -95,7 +95,7 @@ class VanvaasHandler(FBBaseHandler):
                                 comments[comment["from"]["id"]] = 1
 
             commentslist = sorted([{"id": x, "count": comments[x], "name": lookup[x]} for x in comments], key=lambda x: -x["count"])
-            commentsresult = commentslist[0:3]
+            commentsresult = commentslist[0:4]
             commentslookup = [x["id"] for x in commentsresult]
 
             reactionslist = sorted([{"id": x, "count": reactions[x], "name": lookup[x]} for x in reactions], key=lambda x: -x["count"])
