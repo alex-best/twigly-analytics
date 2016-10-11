@@ -97,7 +97,7 @@ class VanvaasHandler(FBBaseHandler):
                             else:
                                 comments[comment["from"]["id"]] = 1
 
-            commentcharacters = [{"character": "Sugriv", "image": "v4.jpg", "description": "A great friend and always ready with their opinion"},{"character": "Jamvant", "image": "v5.jpg", "description": "You can always trust their advice"},{"character": "Vibhishana", "image": "v6.jpg", "description": "Always available when you need their opinion"}]
+            commentcharacters = [{"character": "Sugriv", "image": "v4.jpg", "description": "A great friend and always ready with their opinion"},{"character": "Jambavan", "image": "v5.jpg", "description": "You can always trust their advice"},{"character": "Vibhishan", "image": "v6.jpg", "description": "Always available when you need their opinion"}]
             reactioncharacters = [{"character": "Hanuman", "image": "v3.jpg", "description": "Fiercely loyal and happy to help"},{"character": "Laxman", "image": "v2.jpg", "description": "Viciously opinionated and quick to respond"},{"character": "Angad", "image": "v7.jpg", "description": "A bit hot headed but a true friend"}]
 
             commentslist = sorted([{"id": x, "count": comments[x], "name": lookup[x]} for x in comments], key=lambda x: -x["count"])
