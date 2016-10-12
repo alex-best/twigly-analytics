@@ -7,18 +7,18 @@
     <link rel="stylesheet" href="http://blog.twigly.in:8080/static/css/bootstrap.min.css">
     <link rel="shortcut icon" type="image/png" href='http://twigly.in/assets/images/favicon.png'>
     {% if thisuser %}
-      <meta property="og:url" content="http://blog.twigly.in:8080/vanvaas/{{ thisuser.id }}" />
+      <meta property="og:url" content="http://blog.twigly.in:8080/vanvaas/{{ thisuser['id'] }}" />
     {% else %}
       <meta property="og:url" content="http://blog.twigly.in:8080/vanvaas" />
     {% end %}
     <meta property="og:type" content="website" />
     {% if thisuser %}
-      <meta property="og:title" content="{{ thisuser.name }}'s Vanvaas Team" />
+      <meta property="og:title" content="{{ thisuser['name'] }}'s Vanvaas Team" />
     {% else %}
       <meta property="og:title" content="Twigly Presents Vanvaas!" />
     {% end %}
     {% if thisuser and type=="Their" %}
-      <meta property="og:description" content="This is who {{ thisuser.name }} would take along if they had to go for Vanvaas" />
+      <meta property="og:description" content='This is who {{ thisuser["name"] }} would take along if they had to go for Vanvaas' />
 
     {% elif thisuser and type=="Your" %}
       <meta property="og:description" content="Check out who I would take along if I had to go for Vanvaas today" />
@@ -72,7 +72,7 @@
         <div class="row" style="text-align: center; font-family: 'Handlee', cursive; margin-top: 20px;">
           
           {% if type=="Your" %}
-            <div class="col-xs-12" style="font-size: 1.5em; margin-bottom: 15px; color: #ffffff;">Hey {{ escape(thisuser.name) }}</div>
+            <div class="col-xs-12" style="font-size: 1.5em; margin-bottom: 15px; color: #ffffff;">Hey {{ escape(thisuser["name"]) }}</div>
           {% end %}
           <div class="hidden-xs hidden-sm col-md-4"></div>
           <div class="col-xs-12 col-md-4">
@@ -94,7 +94,7 @@
               Here are some suggestions for your Vanvaas Team based on your interactions on Facebook.
             {% end %}
             {% if type=="Their" %}
-              Here are our suggestions for {{ escape(thisuser.name) }}'s Vanvaas Team based on their interactions on Facebook.
+              Here are our suggestions for {{ escape(thisuser["name"]) }}'s Vanvaas Team based on their interactions on Facebook.
             {% end %}
           </div>
         </div>

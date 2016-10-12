@@ -21,8 +21,6 @@ facebook_app_secret = "***REMOVED***"
 
 fbBase = declarative_base()
 fbengine_url = 'mysql+pymysql://root:***REMOVED***@localhost/fb?charset=utf8'
-fbengine = sqlalchemy.create_engine(fbengine_url)
-fbsession = scoped_session(sessionmaker(bind=fbengine))
 
 class fb_user(fbBase):
     __tablename__ = "fb_users"
@@ -35,6 +33,9 @@ class fb_user(fbBase):
     updated = Column("updated", TIMESTAMP)
     frienddata = Column("frienddata", String)
 
+    def getDetails(self):
+        return {"id": self.id, "name": self.name, "profile_url": self.profile_url, "email": self.email, "access_token": self.access_token, "birthday": self.birthday, "updated": self.updated, "frienddata": self.frienddata}
+
 class FBBaseHandler(tornado.web.RequestHandler):
     """Implements authentication via the Facebook JavaScript SDK cookie."""
     def get_current_user(self):
@@ -43,6 +44,9 @@ class FBBaseHandler(tornado.web.RequestHandler):
             cookies, facebook_app_id, facebook_app_secret)
         if not cookie:
             return None
+
+        fbengine = sqlalchemy.create_engine(fbengine_url)
+        fbsession = scoped_session(sessionmaker(bind=fbengine))
 
         try:
             user = fbsession.query(fb_user).filter(fb_user.id == cookie["uid"]).one()
@@ -67,7 +71,9 @@ class FBBaseHandler(tornado.web.RequestHandler):
             user.access_token = cookie["access_token"]
             fbsession.commit()
         
-        return user
+        fbsession.remove()
+
+        return user.getDetails()
 
 class VanvaasHandler(FBBaseHandler):
     def get(self):
@@ -75,7 +81,7 @@ class VanvaasHandler(FBBaseHandler):
         reactionsresult = {}
         commentsresult = {}
         if thisuser:
-            graph = facebook.GraphAPI(access_token=thisuser.access_token, version="2.7")
+            graph = facebook.GraphAPI(access_token=thisuser["access_token"], version="2.7")
             posts = graph.get_object("me/posts?fields=object_id,message,story,comments.limit(999),reactions.limit(999)&limit=20me/posts?fields=object_id,message,story,comments.limit(999),reactions.limit(999)&limit=100")
             reactions = {}
             comments = {}
@@ -106,7 +112,7 @@ class VanvaasHandler(FBBaseHandler):
             counter = 0
             commentsresult = []
             for comment in commentslist:
-                if comment["id"] != thisuser.id:
+                if comment["id"] != thisuser["id"]:
                     comment["character"] = commentcharacters[counter]["character"]
                     comment["image"] = commentcharacters[counter]["image"]
                     comment["description"] = commentcharacters[counter]["description"]
@@ -119,7 +125,7 @@ class VanvaasHandler(FBBaseHandler):
             reactionsresult = []
             counter = 0
             for reaction in reactionslist:
-                if reaction["id"] not in commentslookup and reaction["id"] != thisuser.id:
+                if reaction["id"] not in commentslookup and reaction["id"] != thisuser["id"]:
                     reaction["character"] = reactioncharacters[counter]["character"]
                     reaction["image"] = reactioncharacters[counter]["image"]
                     reaction["description"] = reactioncharacters[counter]["description"]
@@ -129,13 +135,18 @@ class VanvaasHandler(FBBaseHandler):
                     break
 
             if (len(reactionsresult) > 0 or len(commentsresult) > 0):
+                fbengine = sqlalchemy.create_engine(fbengine_url)
+                fbsession = scoped_session(sessionmaker(bind=fbengine))
                 thisuser.frienddata = str({"reactionsresult": reactionsresult, "commentsresult": commentsresult})
                 fbsession.commit()
-        
+                fbsession.remove()
+
         self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=reactionsresult, commentsresult=commentsresult, thisuser=thisuser, type="Your")
 
 class VanvaasViewHandler(FBBaseHandler):
     def get(self, id):
+        fbengine = sqlalchemy.create_engine(fbengine_url)
+        fbsession = scoped_session(sessionmaker(bind=fbengine))
         try:
             thisuser = fbsession.query(fb_user).filter(fb_user.id == id).one()
         except NoResultFound:
@@ -143,3 +154,5 @@ class VanvaasViewHandler(FBBaseHandler):
         else:
             resultdata = le(thisuser.frienddata)
             self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=resultdata["reactionsresult"], commentsresult=resultdata["commentsresult"], thisuser=thisuser, type="Their")
+
+        fbsession.remove()
