@@ -138,7 +138,7 @@ class VanvaasHandler(FBBaseHandler):
             if (len(reactionsresult) > 0 or len(commentsresult) > 0):
                 fbengine = sqlalchemy.create_engine(fbengine_url)
                 fbsession = scoped_session(sessionmaker(bind=fbengine))
-                thisuser.frienddata = str({"reactionsresult": reactionsresult, "commentsresult": commentsresult})
+                thisuser["frienddata"] = str({"reactionsresult": reactionsresult, "commentsresult": commentsresult})
                 fbsession.commit()
                 fbsession.remove()
 
