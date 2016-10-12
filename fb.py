@@ -67,13 +67,14 @@ class FBBaseHandler(tornado.web.RequestHandler):
                 newUser.birthday = datetime.datetime.strptime(profile["birthday"], "%m/%d/%Y").date()
             fbsession.add(newUser)
             fbsession.commit()
+            return newUser.getDetails()
         elif user.access_token != cookie["access_token"]:
             user.access_token = cookie["access_token"]
             fbsession.commit()
+            return user.getDetails()
         
         fbsession.remove()
 
-        return user.getDetails()
 
 class VanvaasHandler(FBBaseHandler):
     def get(self):
