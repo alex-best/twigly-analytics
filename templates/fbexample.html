@@ -35,7 +35,7 @@
           padding: 10px 10px 10px 10px;
           border: 1px solid #BFBFBF;
           background-color: white;
-          box-shadow: 5px 5px 5px #aaaaaa;
+          box-shadow: 5px 5px 5px #444444;
       }
 
       div.rotate_right {
@@ -78,7 +78,7 @@
           <div class="col-xs-12 col-md-4">
             <div class="col-xs-6" style="text-align: center;">
               <div class="polaroid rotate_left">
-                <img src="https://graph.facebook.com/{{ thisuser['id'] }}/picture?type=square&height=100"/>
+                <img src="https://graph.facebook.com/{{ thisuser['id'] }}/picture?type=square&height=100&width=100"/>
               </div>
             </div>
             <div class="col-xs-6" style="text-align: center;">
@@ -112,7 +112,7 @@
                 </div>
                 <div class="col-xs-6">
                   <div class="polaroid rotate_right">
-                    <img src='https://graph.facebook.com/{{ reaction["id"] }}/picture?type=square&height=100' style="height: 100px;">
+                    <img src='https://graph.facebook.com/{{ reaction["id"] }}/picture?type=square&height=100&width=100' style="height: 100px;">
                   </div>
                 </div>
                 <div class="col-xs-12" style="text-align: center; font-family: sans-serif; color: #ffffff; font-size: 13px; margin-top: 10px;">
@@ -136,7 +136,7 @@
                 </div>
                 <div class="col-xs-6">
                   <div class="polaroid rotate_right">
-                    <img src='https://graph.facebook.com/{{ comment["id"] }}/picture?type=square&height=100' style="height: 100px;">
+                    <img src='https://graph.facebook.com/{{ comment["id"] }}/picture?type=square&height=100&width=100' style="height: 100px;">
                   </div>
                 </div>
                 <div class="col-xs-12" style="text-align: center; font-family: sans-serif; color: #ffffff; font-size: 13px; margin-top: 10px;">
@@ -155,8 +155,32 @@
         {% end %}
         <div class="col-xs-12" style="text-align: center; margin: 15px 0 30px 0;">
           <div style="width: 50%; display: inline-block; text-align: center; background: rgba(255,255,255,0.5); padding: 20px 0 20px 0;">
-            <div class="fb-share-button" data-href="http://twigly.in/vanvaas/{{ thisuser['id'] }}" data-layout="button" data-size="large" data-mobile-iframe="true"><a class="fb-xfbml-parse-ignore" target="_blank" href="https://www.facebook.com/sharer/sharer.php?u=http%3A%2F%2Ftwigly.in%2Fvanvaas%2F{{ thisuser['id'] }}">Share</a></div>
-            <fb:login-button autologoutlink="true" scope="public_profile,email,user_posts"></fb:login-button>
+            <div style="color: #333333; font-size: 2em; text-align: center;">
+              Share your Vanvaas team and get a two nights stay at a heritage resort for two!<br>Two additional lucky winners get 1,000 Twigly Wallet Money!
+            </div>
+            <div>
+              <div class="fb-share-button" data-href="http://twigly.in/vanvaas/{{ thisuser['id'] }}" data-layout="button" data-size="large" data-mobile-iframe="true"><a class="fb-xfbml-parse-ignore" target="_blank" href="https://www.facebook.com/sharer/sharer.php?u=http%3A%2F%2Ftwigly.in%2Fvanvaas%2F{{ thisuser['id'] }}">Share</a></div>
+              <fb:login-button autologoutlink="true" scope="public_profile,email,user_posts"></fb:login-button>
+            </div>
+            <div style="color: #333333; font-size: 0.7em; text-align: left;">
+              Terms & Conditions:
+              <ul>
+                <li>To be considered a winner, participants must be a customer of Twigly. This will be verified based on order history</li> 
+                <li>There will be 1 winner in this contest, and this winner will be selected based on a lucky draw.</li>
+                <li>The heritage resort will be a three-star resort of Twigly's selection. This will be finalized with the winner. The maximum amount of reimursement will be Rs. 11,000</li>
+                <li>The resort stay must be utilized in November 2016.</li>
+                <li>Twigly reserves the right to disqualify any participants that is found to conduct suspicious behaviour.</li>
+                <li>If the Winner is unable to send his/her details within 10 days of announcement, the Winner will not be eligible for the prize.</li>
+                <li>By sharing or entering into the contest in any way, participants are deemed to have accepted these terms & conditions.</li>
+                <li>The prize under the contest is non-transferable and non-substitutable and under no circumstances will be exchanged with cash.</li>
+                <li>Winners will have to provide necessary ID proof before receiving the prize. Twigly may not disburse the prize if the ID is suspect.</li>
+                <li>Twigly reserves the right to terminate, modify or extend the prize and the terms and conditions of the prize including offer terms and conditions at any time without prior notice at its absolute discretion and without assigning any reason.</li>
+                <li>In case of any dispute or difference in respect of or in connection with the offer and/or the prizes therein, the decision of Twigly shall be final and binding on all concerned and no correspondence or appeals will be entertained in this regard.</li>
+                <li>Unless otherwise indicated, Twigly shall deem any information voluntarily supplied during the course of the Offer/program and/or personal information provided by the participants as non-confidential, which hereby discharges all obligations of confidentiality.</li>
+                <li>Twigly is not liable for any losses, delay or damages incurred by the participant due to force majeure events.</li>
+                <li>MakeMyTrip shall not be liable for any direct indirect, consequential, incidental loss, damage or injury suffered by the winner or any companion thereof while availing the prize.</li>
+              </ul>
+            </div>
           </div>
         </div>
       {% end %}
