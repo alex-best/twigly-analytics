@@ -7,9 +7,9 @@
     <link rel="stylesheet" href="http://blog.twigly.in:8080/static/css/bootstrap.min.css">
     <link rel="shortcut icon" type="image/png" href='http://twigly.in/assets/images/favicon.png'>
     {% if thisuser %}
-      <meta property="og:url" content="http://blog.twigly.in:8080/vanvaas/{{ thisuser['id'] }}" />
+      <meta property="og:url" content="http://twigly.in/vanvaas/{{ thisuser['id'] }}" />
     {% else %}
-      <meta property="og:url" content="http://blog.twigly.in:8080/vanvaas" />
+      <meta property="og:url" content="http://twigly.in/vanvaas" />
     {% end %}
     <meta property="og:type" content="website" />
     {% if thisuser %}
@@ -60,7 +60,7 @@
       {% if not thisuser %}
         <div class="row" style="text-align: center; font-family: 'Handlee', cursive; margin-top: 20px; font-size: 2em; color: #FFFFFF;">
           <div class="col-xs-12">
-            Let us help you figure out who you should take along with you if you had to go for a  Vanvaas.
+            Let us help you figure out who you should take along with you if you had to go for a  Vanvaas. Share your Vanvaas Team with #TwiglyVanvaas and win two nights at a Heritage Resort!
           </div>
         </div>
         <div class="row" style="text-align: center; margin-top: 20px;">
@@ -103,7 +103,7 @@
             {% for reaction in reactionsresult %}
               <div class="col-xs-12 col-md-4" style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive;">
                 <div class="col-xs-12" style="color: #ffffff; margin-bottom: 10px; text-align: center;">
-                  {{ type }} {{ reaction["character"] }} could be {{ reaction["name"] }}
+                  {{ type }} {{ reaction["character"] }} {% if type=="Their" %}is{% end %} {% if type=="Your" %}could be{% end %} {{ reaction["name"] }}
                 </div>
                 <div class="col-xs-6">
                   <div class="polaroid rotate_left">
@@ -154,18 +154,18 @@
           </div>
         {% end %}
         <div class="col-xs-12" style="text-align: center; margin: 15px 0 30px 0;">
-          <div style="width: 50%; display: inline-block; text-align: center; background: rgba(255,255,255,0.5); padding: 20px 0 20px 0;">
+          <div style="width: 50%; display: inline-block; text-align: center; background: rgba(255,255,255,0.5); padding: 20px 10px 20px 10px;">
             <div style="color: #333333; font-size: 2em; text-align: center;">
-              Share your Vanvaas team and get a two nights stay at a heritage resort for two!<br>Two additional lucky winners get 1,000 Twigly Wallet Money!
+              Share your Vanvaas team with #TwiglyVanvaas and get a two nights stay at a heritage resort for two!<br>Two additional lucky winners get 1,000 Twigly Wallet Money!
             </div>
             <div>
               <div class="fb-share-button" data-href="http://twigly.in/vanvaas/{{ thisuser['id'] }}" data-layout="button" data-size="large" data-mobile-iframe="true"><a class="fb-xfbml-parse-ignore" target="_blank" href="https://www.facebook.com/sharer/sharer.php?u=http%3A%2F%2Ftwigly.in%2Fvanvaas%2F{{ thisuser['id'] }}">Share</a></div>
-              <fb:login-button autologoutlink="true" scope="public_profile,email,user_posts"></fb:login-button>
             </div>
             <div style="color: #333333; font-size: 0.7em; text-align: left;">
               Terms & Conditions:
               <ul>
                 <li>To be considered a winner, participants must be a customer of Twigly. This will be verified based on order history</li> 
+                <li>Participants must share their team page with #TwiglyVanvaas so that it can be tracked.</li>
                 <li>There will be 1 winner in this contest, and this winner will be selected based on a lucky draw.</li>
                 <li>The heritage resort will be a three-star resort of Twigly's selection. This will be finalized with the winner. The maximum amount of reimursement will be Rs. 11,000</li>
                 <li>The resort stay must be utilized in November 2016.</li>
@@ -194,6 +194,7 @@
         FB.Event.subscribe('{% if thisuser %}auth.logout{% else %}auth.login{% end %}', function(response) {
           window.location.reload();
         });
+        FB.AppEvents.logPageView();
       };
       (function() {
         var e = document.createElement('script');
