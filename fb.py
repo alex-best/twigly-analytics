@@ -154,6 +154,6 @@ class VanvaasViewHandler(FBBaseHandler):
             self.write("Page not found - Please check the id given")
         else:
             resultdata = le(thisuser.frienddata)
-            self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=resultdata["reactionsresult"], commentsresult=resultdata["commentsresult"], thisuser=thisuser, type="Their")
+            self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=resultdata["reactionsresult"], commentsresult=resultdata["commentsresult"], thisuser=thisuser.getDetails(), type="Their")
 
         fbsession.remove()
