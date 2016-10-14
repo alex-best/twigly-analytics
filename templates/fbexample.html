@@ -158,9 +158,9 @@
             <div style="color: #333333; font-size: 2em; text-align: center;">
               Share your Vanvaas team with #TwiglyVanvaas and get a two nights stay at a heritage resort for two!<br>Two additional lucky winners get 1,000 Twigly Wallet Money!
             </div>
-            <div>
-              <a href='http://www.facebook.com/share.php?u=http://twigly.in/vanvaas/{{ thisuser["id"] }}'>
-                <img alt='Facebook'src='http://blog.twigly.in:8080/static/img/fb_share.png'/>
+            <div style="text-align: center;">
+              <a href="javascript:fbShare('http://jsfiddle.net/stichoza/EYxTJ/', 'Fb Share', 'Facebook share popup', 'http://goo.gl/dS52U', 520, 350)">
+                <img alt='Facebook Share' src='http://blog.twigly.in:8080/static/img/fb_share.png' style="cursor: pointer;" />
               </a>
               <!--<div class="fb-share-button" data-href="http://twigly.in/vanvaas/{{ thisuser['id'] }}" data-layout="button" data-size="large" data-mobile-iframe="true"><a class="fb-xfbml-parse-ignore" target="_blank" href="https://www.facebook.com/sharer/sharer.php?u=http%3A%2F%2Ftwigly.in%2Fvanvaas%2F{{ thisuser['id'] }}">Share</a></div>-->
             </div>
@@ -206,6 +206,13 @@
         e.async = true;
         document.getElementById('fb-root').appendChild(e);
       }());
+
+      function fbShare() {
+        var winTop = 100;
+        var winLeft = 100;
+        window.open('http://www.facebook.com/sharer.php?url=http://twigly.in/vanvaas/{{ thisuser["id"] }}', 'sharer', 'top=100,left=100,toolbar=0,status=0');
+      }
+
     </script>
   </body>
 </html>
