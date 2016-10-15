@@ -137,8 +137,14 @@ class VanvaasHandler(FBBaseHandler):
 
             fbengine = sqlalchemy.create_engine(fbengine_url)
             fbsession = scoped_session(sessionmaker(bind=fbengine))
-            thisuser["frienddata"] = str({"reactionsresult": reactionsresult, "commentsresult": commentsresult})
-            fbsession.commit()
+            #thisuser["frienddata"] = str({"reactionsresult": reactionsresult, "commentsresult": commentsresult})
+            try:
+                thisdbuser = fbsession.query(fb_user).filter(fb_user.id == thisuser["id"]).one()
+                thisdbuser.frienddata = str({"reactionsresult": reactionsresult, "commentsresult": commentsresult})
+                fbsession.commit()
+            except NoResultFound:
+                thisdbuser = None 
+                   
             fbsession.remove()
 
         self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=reactionsresult, commentsresult=commentsresult, thisuser=thisuser, type="Your")
