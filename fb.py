@@ -105,7 +105,7 @@ class VanvaasHandler(FBBaseHandler):
                                 comments[comment["from"]["id"]] = 1
 
             commentcharacters = [{"character": "Sugriv", "image": "v4.jpg", "description": "A great friend and always ready with their opinion"},{"character": "Jambavan", "image": "v5.jpg", "description": "You can always trust their advice"},{"character": "Vibhishan", "image": "v6.jpg", "description": "Always available when you need their opinion"}]
-            reactioncharacters = [{"character": "Hanuman", "image": "v3.jpg", "description": "Fiercely loyal and happy to help"},{"character": "Laxman", "image": "v2.jpg", "description": "Viciously opinionated and quick to respond"},{"character": "Angad", "image": "v7.jpg", "description": "A bit hot headed but a true friend"}]
+            reactioncharacters = [{"character": "Hanuman", "image": "v3.jpg", "description": "Fiercely loyal and happy to help", "sandwich": "Hummus & Peas Patty Sandwich"},{"character": "Laxman", "image": "v2.jpg", "description": "Viciously opinionated and quick to respond", "sandwich": "Great Rounds of Fire Sandwich"},{"character": "Angad", "image": "v7.jpg", "description": "A bit hot headed but a true friend", "sandwich": "Hummus & Peas Patty Sandwich"}]
 
             commentslist = sorted([{"id": x, "count": comments[x], "name": lookup[x]} for x in comments], key=lambda x: -x["count"])
             
@@ -135,12 +135,11 @@ class VanvaasHandler(FBBaseHandler):
                 if counter == 3:
                     break
 
-            if (len(reactionsresult) > 0 or len(commentsresult) > 0):
-                fbengine = sqlalchemy.create_engine(fbengine_url)
-                fbsession = scoped_session(sessionmaker(bind=fbengine))
-                thisuser["frienddata"] = str({"reactionsresult": reactionsresult, "commentsresult": commentsresult})
-                fbsession.commit()
-                fbsession.remove()
+            fbengine = sqlalchemy.create_engine(fbengine_url)
+            fbsession = scoped_session(sessionmaker(bind=fbengine))
+            thisuser["frienddata"] = str({"reactionsresult": reactionsresult, "commentsresult": commentsresult})
+            fbsession.commit()
+            fbsession.remove()
 
         self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=reactionsresult, commentsresult=commentsresult, thisuser=thisuser, type="Your")
 
