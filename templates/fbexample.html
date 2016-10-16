@@ -118,9 +118,11 @@
                 <div class="col-xs-12" style="text-align: center; font-family: sans-serif; color: #ffffff; font-size: 13px; margin-top: 10px;">
                   {{ reaction["description"] }}
                 </div>
-                <div class="col-xs-12" style="text-align: center; font-family: sans-serif; color: #ffffff; font-size: 13px; margin-top: 10px;">
-                  Favourite sandwich: {{ reaction["sandwich"] }}
-                </div>
+                {% if "sandwich" in reaction %}
+                  <div class="col-xs-12" style="text-align: center; font-family: sans-serif; color: #ffffff; font-size: 13px; margin-top: 10px;">
+                    Favourite sandwich: {{ reaction["sandwich"] }}
+                  </div>
+                {% end %}
               </div>
             {% end %}
           </div>
@@ -145,9 +147,11 @@
                 <div class="col-xs-12" style="text-align: center; font-family: sans-serif; color: #ffffff; font-size: 13px; margin-top: 10px;">
                   {{ comment["description"] }}
                 </div>
-                <div class="col-xs-12" style="text-align: center; font-family: sans-serif; color: #ffffff; font-size: 13px; margin-top: 10px;">
-                  Favourite sandwich: {{ comment["sandwich"] }}
-                </div>
+                {% if "sandwich" in comment %}
+                  <div class="col-xs-12" style="text-align: center; font-family: sans-serif; color: #ffffff; font-size: 13px; margin-top: 10px;">
+                    Favourite sandwich: {{ comment["sandwich"] }}
+                  </div>
+                {% end %}
               </div>
             {% end %}
           </div>
