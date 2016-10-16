@@ -117,6 +117,7 @@ class VanvaasHandler(FBBaseHandler):
                     comment["character"] = commentcharacters[counter]["character"]
                     comment["image"] = commentcharacters[counter]["image"]
                     comment["description"] = commentcharacters[counter]["description"]
+                    comment["sandwich"] = commentcharacters[counter]["sandwich"]
                     commentsresult.append(comment)
                     counter += 1
                 if counter == 3:
@@ -130,6 +131,7 @@ class VanvaasHandler(FBBaseHandler):
                     reaction["character"] = reactioncharacters[counter]["character"]
                     reaction["image"] = reactioncharacters[counter]["image"]
                     reaction["description"] = reactioncharacters[counter]["description"]
+                    reaction["sandwich"] = reactioncharacters[counter]["sandwich"]
                     reactionsresult.append(reaction)
                     counter += 1
                 if counter == 3:
