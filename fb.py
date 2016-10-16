@@ -104,8 +104,8 @@ class VanvaasHandler(FBBaseHandler):
                             else:
                                 comments[comment["from"]["id"]] = 1
 
-            commentcharacters = [{"character": "Sugriv", "image": "v4.jpg", "description": "A great friend and always ready with their opinion"},{"character": "Jambavan", "image": "v5.jpg", "description": "You can always trust their advice"},{"character": "Vibhishan", "image": "v6.jpg", "description": "Always available when you need their opinion"}]
-            reactioncharacters = [{"character": "Hanuman", "image": "v3.jpg", "description": "Fiercely loyal and happy to help", "sandwich": "Hummus & Peas Patty Sandwich"},{"character": "Laxman", "image": "v2.jpg", "description": "Viciously opinionated and quick to respond", "sandwich": "Great Rounds of Fire Sandwich"},{"character": "Angad", "image": "v7.jpg", "description": "A bit hot headed but a true friend", "sandwich": "Hummus & Peas Patty Sandwich"}]
+            commentcharacters = [{"character": "Sugriv", "image": "v4.jpg", "description": "A great friend and always ready with their opinion", "sandwich": "Don Corleone Cajun Chicken Sandwich"},{"character": "Jambavan", "image": "v5.jpg", "description": "You can always trust their advice", "sandwich": "Tunaah Sandwich"},{"character": "Vibhishan", "image": "v6.jpg", "description": "Always available when you need their opinion", "sandwich": "Root for Me Sandwich"}]
+            reactioncharacters = [{"character": "Hanuman", "image": "v3.jpg", "description": "Fiercely loyal and happy to help", "sandwich": "Hummus & Peas Patty Sandwich"},{"character": "Laxman", "image": "v2.jpg", "description": "Viciously opinionated and quick to respond", "sandwich": "Great Rounds of Fire Sandwich"},{"character": "Angad", "image": "v7.jpg", "description": "A bit hot headed but a true friend", "sandwich": "BBQ Chicken Sandwich"}]
 
             commentslist = sorted([{"id": x, "count": comments[x], "name": lookup[x]} for x in comments], key=lambda x: -x["count"])
             
@@ -144,7 +144,7 @@ class VanvaasHandler(FBBaseHandler):
                 fbsession.commit()
             except NoResultFound:
                 thisdbuser = None 
-                   
+
             fbsession.remove()
 
         self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=reactionsresult, commentsresult=commentsresult, thisuser=thisuser, type="Your")
