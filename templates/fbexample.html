@@ -106,8 +106,8 @@
         {% if len(reactionsresult) > 0 %}
           <ul>
             {% for index in range(len(reactionsresult)) %}
-            <li style="background: rgba(255,255,255,0.5);">
-              <div style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive;">
+            <li>
+              <div style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive; background: rgba(255,255,255,0.5);">
                 <div style="width: 100%; color: #333; margin-bottom: 10px; text-align: center;">
                   {{ type }} {{ reactionsresult[index]["character"] }} {% if type=="Their" %}is{% end %} {% if type=="Your" %}could be{% end %} <span id="reaction{{index}}name">{{ reactionsresult[index]["name"] }}</span>
                   {% if type=="Your" %}
@@ -144,8 +144,8 @@
         {% end %}
         {% if len(commentsresult) > 0 %}
             {% for index in range(len(commentsresult)) %}
-            <li style="background: rgba(255,255,255,0.5);">
-              <div style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive;">
+            <li>
+              <div style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive; background: rgba(255,255,255,0.5);">
                 <div style="width: 100%; color: #333; margin-bottom: 10px; text-align: center;">
                   {{ type }} {{ commentsresult[index]["character"] }} {% if type=="Their" %}is{% end %} {% if type=="Your" %}could be{% end %} <span id="comment{{index}}name">{{ commentsresult[index]["name"] }}</span> 
                   {% if type=="Your" %}
