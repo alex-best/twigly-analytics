@@ -59,7 +59,6 @@
     <div class="container">
       <div class="row" style="text-align: center; color: #ffffff;">
         <span style="font-family: 'Shadows Into Light Two', cursive; font-size: 2em;">Twigly Presents</span><br>
-        <span style="font-family: 'Shadows Into Light Two', cursive; font-size: 3em;">Vanvaas</span><br>
         <img src="http://blog.twigly.in:8080/static/img/shield.png" style="height: 200px;">
       </div>
       {% if not thisuser %}
@@ -108,7 +107,7 @@
           <ul>
             {% for index in range(len(reactionsresult)) %}
             <li>
-              <div class="header" style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive; background: rgba(255,255,255,0.5); padding: 15px;">
+              <div class="header" style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive; background: rgba(255,255,255,0.5); padding: 15px; width: 500px;">
                 <div style="width: 100%; color: #000; margin-bottom: 10px; text-align: center;">
                   {{ type }} {{ reactionsresult[index]["character"] }} {% if type=="Their" %}is{% end %} {% if type=="Your" %}could be{% end %} <span id="reaction{{index}}name">{{ reactionsresult[index]["name"] }}</span>
                   {% if type=="Your" %}
@@ -146,7 +145,7 @@
         {% if len(commentsresult) > 0 %}
             {% for index in range(len(commentsresult)) %}
             <li>
-              <div class="header" style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive; background: rgba(255,255,255,0.5); padding: 15px;">
+              <div class="header" style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive; background: rgba(255,255,255,0.5); padding: 15px; width: 500px;">
                 <div style="width: 100%; color: #000; margin-bottom: 10px; text-align: center;">
                   {{ type }} {{ commentsresult[index]["character"] }} {% if type=="Their" %}is{% end %} {% if type=="Your" %}could be{% end %} <span id="comment{{index}}name">{{ commentsresult[index]["name"] }}</span> 
                   {% if type=="Your" %}
