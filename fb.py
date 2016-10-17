@@ -139,7 +139,7 @@ class VanvaasHandler(FBBaseHandler):
 
             try:
                 resultdata = le(thisuser["frienddata"])
-            except ValueError, SyntaxError:
+            except (ValueError, SyntaxError) as e:
                 fbengine = sqlalchemy.create_engine(fbengine_url)
                 fbsession = scoped_session(sessionmaker(bind=fbengine))
                 #thisuser["frienddata"] = str({"reactionsresult": reactionsresult, "commentsresult": commentsresult})
