@@ -130,11 +130,11 @@
                 <div style="width: 49%; display: inline-block; text-align: center;">
                   <img class="friendphoto" src='https://graph.facebook.com/{{ reactionsresult[index]["id"] }}/picture?type=square&height=200&width=200' style="height: 200px; display: inline-block; max-width: none;">
                 </div>
-                <div style="width: 100%; text-align: center; font-family: sans-serif; color: #000; font-size: 13px; margin-top: 10px;">
+                <div style="width: 100%; text-align: center; font-family: sans-serif; color: #000; font-size: 15px; margin-top: 10px;">
                   {{ reactionsresult[index]["description"] }}
                 </div>
                 {% if "sandwich" in reactionsresult[index] %}
-                  <div style="width: 100%; text-align: center; font-family: sans-serif; color: #000; font-size: 13px; margin-top: 10px;">
+                  <div style="width: 100%; text-align: center; font-family: sans-serif; color: #000; font-size: 15px; margin-top: 5px;">
                     Favourite sandwich: {{ reactionsresult[index]["sandwich"] }}
                   </div>
                 {% end %}
@@ -168,11 +168,11 @@
                 <div style="width: 49%; display: inline-block; text-align: center;">
                   <img class="friendphoto" src='https://graph.facebook.com/{{ commentsresult[index]["id"] }}/picture?type=square&height=200&width=200' style="height: 200px; display: inline-block; max-width: none;">
                 </div>
-                <div style="width: 100%; text-align: center; font-family: sans-serif; color: #000; font-size: 13px; margin-top: 10px;">
+                <div style="width: 100%; text-align: center; font-family: sans-serif; color: #000; font-size: 15px; margin-top: 10px;">
                   {{ commentsresult[index]["description"] }}
                 </div>
                 {% if "sandwich" in commentsresult[index] %}
-                  <div style="width: 100%; text-align: center; font-family: sans-serif; color: #000; font-size: 13px; margin-top: 10px;">
+                  <div style="width: 100%; text-align: center; font-family: sans-serif; color: #000; font-size: 15px; margin-top: 5px;">
                     Favourite sandwich: {{ commentsresult[index]["sandwich"] }}
                   </div>
                 {% end %}
@@ -191,7 +191,7 @@
         {% end %}
         <div class="col-xs-12" style="text-align: center; margin: 15px 0 30px 0;">
           <div style="width: 50%; display: inline-block; text-align: center; background: rgba(255,255,255,0.5); padding: 20px 10px 20px 10px;">
-            <div style="color: #333333; font-size: 2em; text-align: center;">
+            <div style="color: #000; font-size: 2em; text-align: center;">
               {% if type=="Your" %}
                 Share your Vanvaas team with #TwiglyVanvaas and get a two nights stay at a heritage resort for two!<br>Two additional lucky winners get 1,000 Twigly Wallet Money!
               {% end %}
