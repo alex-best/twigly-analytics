@@ -125,10 +125,10 @@
                   {% end %}
                 </div>
                 <div style="width: 49%; display: inline-block; text-align: center;">
-                  <img src='http://blog.twigly.in:8080/static/img/{{ reactionsresult[index]["image"] }}' style="height: 100px; display: inline-block;">
+                  <img src='http://blog.twigly.in:8080/static/img/{{ reactionsresult[index]["image"].replace("jpg", "png") }}' style="height: 200px; display: inline-block;">
                 </div>
                 <div style="width: 49%; display: inline-block; text-align: center;">
-                  <img class="friendphoto" src='https://graph.facebook.com/{{ reactionsresult[index]["id"] }}/picture?type=square&height=100&width=100' style="height: 100px; display: inline-block;">
+                  <img class="friendphoto" src='https://graph.facebook.com/{{ reactionsresult[index]["id"] }}/picture?type=square&height=200&width=200' style="height: 200px; display: inline-block;">
                 </div>
                 <div style="width: 100%; text-align: center; font-family: sans-serif; color: #000; font-size: 13px; margin-top: 10px;">
                   {{ reactionsresult[index]["description"] }}
@@ -163,10 +163,10 @@
                   {% end %}
                 </div>
                 <div style="width: 49%; display: inline-block; text-align: center;">
-                  <img src='http://blog.twigly.in:8080/static/img/{{ commentsresult[index]["image"] }}' style="height: 100px; display: inline-block;">
+                  <img src='http://blog.twigly.in:8080/static/img/{{ commentsresult[index]["image"].replace("jpg", "png") }}' style="height: 200px; display: inline-block;">
                 </div>
                 <div style="width: 49%; display: inline-block; text-align: center;">
-                  <img class="friendphoto" src='https://graph.facebook.com/{{ commentsresult[index]["id"] }}/picture?type=square&height=100&width=100' style="height: 100px; display: inline-block;">
+                  <img class="friendphoto" src='https://graph.facebook.com/{{ commentsresult[index]["id"] }}/picture?type=square&height=200&width=200' style="height: 200px; display: inline-block;">
                 </div>
                 <div style="width: 100%; text-align: center; font-family: sans-serif; color: #000; font-size: 13px; margin-top: 10px;">
                   {{ commentsresult[index]["description"] }}
