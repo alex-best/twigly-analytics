@@ -5,6 +5,7 @@
     <title>Twigly Presents: Vanvaas!</title>
     <link href="https://fonts.googleapis.com/css?family=Handlee|Shadows+Into+Light+Two" rel="stylesheet">
     <link rel="stylesheet" href="http://blog.twigly.in:8080/static/css/bootstrap.min.css">
+    <link rel="stylesheet" href="http://blog.twigly.in:8080/static/css/jquery.flipster.min.css">
     <link rel="shortcut icon" type="image/png" href='http://twigly.in/assets/images/favicon.png'>
     {% if thisuser %}
       <meta property="og:url" content="http://twigly.in/vanvaas/{{ thisuser['id'] }}" />
@@ -101,9 +102,11 @@
             {% end %}
           </div>
         </div>
+        <div class="flipper">
         {% if len(reactionsresult) > 0 %}
-          <div class="row" style="margin-top: 20px;">
+          <ul>
             {% for index in range(len(reactionsresult)) %}
+            <li>
               <div class="col-xs-12 col-md-4 header" style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive;">
                 <div class="col-xs-12" style="color: #ffffff; margin-bottom: 10px; text-align: center;">
                   {{ type }} {{ reactionsresult[index]["character"] }} {% if type=="Their" %}is{% end %} {% if type=="Your" %}could be{% end %} <span id="reaction{{index}}name">{{ reactionsresult[index]["name"] }}</span>
@@ -140,12 +143,12 @@
                   </div>
                 {% end %}
               </div>
+            </li>
             {% end %}
-          </div>
         {% end %}
         {% if len(commentsresult) > 0 %}
-          <div class="row" style="margin-top: 20px;">
             {% for index in range(len(commentsresult)) %}
+            <li>
               <div class="col-xs-12 col-md-4 header" style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive;">
                 <div class="col-xs-12" style="color: #ffffff; margin-bottom: 10px; text-align: center;">
                   {{ type }} {{ commentsresult[index]["character"] }} {% if type=="Their" %}is{% end %} {% if type=="Your" %}could be{% end %} <span id="comment{{index}}name">{{ commentsresult[index]["name"] }}</span> 
@@ -182,9 +185,11 @@
                   </div>
                 {% end %}
               </div>
+            </li>
             {% end %}
-          </div>
+          </ul>
         {% end %}
+        </div>
         {% if len(commentsresult) == 0 and len(reactionsresult) == 0 %}
           <div class="row" style="margin-top: 20px;">
             <div class="col-xs-12" style="color: #ffffff; margin-bottom: 10px; text-align: center;">
@@ -242,6 +247,7 @@
     <script src="/assets/javascripts/jquery-2.1.4.min.js"></script>
     <script src="/assets/lib/bootstrap/js/bootstrap.min.js"></script>
     <script src="/assets/javascripts/bootstrap-combobox.js"></script>
+    <script src="http://blog.twigly.in:8080/static/js/jquery.flipster.min.js"></script>
     <script>
       window.fbAsyncInit = function() {
         FB.init({appId: '{{ facebook_app_id }}', status: true,
