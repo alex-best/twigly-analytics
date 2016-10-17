@@ -270,7 +270,7 @@
           source: substringMatcher(lookup),
           templates: {
             empty: '<div class="empty-message">Unable to find a friend with that name. They must have commented or reacted to a post in the recent past to be visible</div>',
-            suggestion: Handlebars.compile("<div><strong>{{name}}</strong></div>")
+            suggestion: Handlebars.compile("<div><strong>{{!name}}</strong></div>")
           }
         });
         $('.change').on('click', function() {
