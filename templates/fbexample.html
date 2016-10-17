@@ -107,7 +107,7 @@
                   {% if type=="Your" %}
                     <span class="label label-primary change" style="cursor: pointer; font-family: sans-serif; font-size: 10px;">Change</span>
                     <div class="frienddropdowncontainer" style="display: none; width: 100%;">
-                      <select id="comment{{index}}" class="frienddropdown" style="width: 100%;">
+                      <select id="comment{{index}}" class="frienddropdown" style="width: 100%; color: #000;">
                       {% for friend in friendlookup %}
                         <option value="{{friend['id']}}">{{friend['name']}}</option>
                       {% end %}
@@ -146,7 +146,7 @@
                   {% if type=="Your" %}
                     <span class="label label-primary change" style="cursor: pointer; font-family: sans-serif; font-size: 10px;">Change</span>
                     <div class="frienddropdowncontainer" style="display: none; width: 100%;">
-                      <select id="reaction{{index}}" class="frienddropdown" style="width: 100%;" >
+                      <select id="reaction{{index}}" class="frienddropdown" style="width: 100%; color: #000;" >
                       {% for friend in friendlookup %}
                         <option value="{{friend['id']}}">{{friend['name']}}</option>
                       {% end %}
