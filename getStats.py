@@ -1549,8 +1549,8 @@ application = tornado.web.Application([
 	(r"/setdatewisestoremenu", SetDateWiseMenuHandler),
 	(r"/deliveries", DeliveryHandler),
 	(r"/vanvaas", VanvaasHandler),
-	(r"/vanvaas/(.*)", VanvaasViewHandler),
 	(r"/vanvaas/update/", UpdateVanvaasHandler),
+	(r"/vanvaas/(.*)", VanvaasViewHandler),
 	(r'/static/(.*)', tornado.web.StaticFileHandler, {'path': static_path})
 ], **settings)
 
