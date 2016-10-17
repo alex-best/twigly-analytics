@@ -176,11 +176,11 @@ class UpdateVanvaasHandler(FBBaseHandler):
         change = self.get_argument("change")
         id = self.get_argument("id")
         name = self.get_argument("name")
-        thisuser = self.get_current_user()
+        selfid = self.get_argument("selfid")
         fbengine = sqlalchemy.create_engine(fbengine_url)
         fbsession = scoped_session(sessionmaker(bind=fbengine))
         try:
-            thisdbuser = fbsession.query(fb_user).filter(fb_user.id == thisuser["id"]).one()
+            thisdbuser = fbsession.query(fb_user).filter(fb_user.id == selfid).one()
         except NoResultFound:
             print ("user not found")
             self.write('{"status": "error"}')
