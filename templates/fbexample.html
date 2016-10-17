@@ -60,6 +60,7 @@
       <div class="row" style="text-align: center; color: #ffffff;">
         <span style="font-family: 'Shadows Into Light Two', cursive; font-size: 2em;">Twigly Presents</span><br>
         <span style="font-family: 'Shadows Into Light Two', cursive; font-size: 3em;">Vanvaas</span><br>
+        <img src="http://blog.twigly.in:8080/static/img/shield.png" style="height: 200px;">
       </div>
       {% if not thisuser %}
         <div class="row" style="text-align: center; font-family: 'Handlee', cursive; margin-top: 20px; font-size: 2em; color: #FFFFFF;">
@@ -106,8 +107,8 @@
         {% if len(reactionsresult) > 0 %}
           <ul>
             {% for index in range(len(reactionsresult)) %}
-            <li style="padding: 15px;">
-              <div class="header" style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive; background: rgba(255,255,255,0.5);">
+            <li>
+              <div class="header" style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive; background: rgba(255,255,255,0.5); padding: 15px;">
                 <div style="width: 100%; color: #000; margin-bottom: 10px; text-align: center;">
                   {{ type }} {{ reactionsresult[index]["character"] }} {% if type=="Their" %}is{% end %} {% if type=="Your" %}could be{% end %} <span id="reaction{{index}}name">{{ reactionsresult[index]["name"] }}</span>
                   {% if type=="Your" %}
@@ -128,7 +129,7 @@
                   <img src='http://blog.twigly.in:8080/static/img/{{ reactionsresult[index]["image"].replace("jpg", "png") }}' style="height: 200px; display: inline-block;">
                 </div>
                 <div style="width: 49%; display: inline-block; text-align: center;">
-                  <img class="friendphoto" src='https://graph.facebook.com/{{ reactionsresult[index]["id"] }}/picture?type=square&height=200&width=200' style="height: 200px; display: inline-block;">
+                  <img class="friendphoto" src='https://graph.facebook.com/{{ reactionsresult[index]["id"] }}/picture?type=square&height=200&width=200' style="height: 200px; display: inline-block; max-width: none;">
                 </div>
                 <div style="width: 100%; text-align: center; font-family: sans-serif; color: #000; font-size: 13px; margin-top: 10px;">
                   {{ reactionsresult[index]["description"] }}
@@ -144,8 +145,8 @@
         {% end %}
         {% if len(commentsresult) > 0 %}
             {% for index in range(len(commentsresult)) %}
-            <li style="padding: 15px;">
-              <div class="header" style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive; background: rgba(255,255,255,0.5);">
+            <li>
+              <div class="header" style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive; background: rgba(255,255,255,0.5); padding: 15px;">
                 <div style="width: 100%; color: #000; margin-bottom: 10px; text-align: center;">
                   {{ type }} {{ commentsresult[index]["character"] }} {% if type=="Their" %}is{% end %} {% if type=="Your" %}could be{% end %} <span id="comment{{index}}name">{{ commentsresult[index]["name"] }}</span> 
                   {% if type=="Your" %}
@@ -166,7 +167,7 @@
                   <img src='http://blog.twigly.in:8080/static/img/{{ commentsresult[index]["image"].replace("jpg", "png") }}' style="height: 200px; display: inline-block;">
                 </div>
                 <div style="width: 49%; display: inline-block; text-align: center;">
-                  <img class="friendphoto" src='https://graph.facebook.com/{{ commentsresult[index]["id"] }}/picture?type=square&height=200&width=200' style="height: 200px; display: inline-block;">
+                  <img class="friendphoto" src='https://graph.facebook.com/{{ commentsresult[index]["id"] }}/picture?type=square&height=200&width=200' style="height: 200px; display: inline-block; max-width: none;">
                 </div>
                 <div style="width: 100%; text-align: center; font-family: sans-serif; color: #000; font-size: 13px; margin-top: 10px;">
                   {{ commentsresult[index]["description"] }}
@@ -269,7 +270,7 @@
         $('.flipper').flipster({
           start: 1,
           loop: true
-        });
+        }).focus();
         $(".frienddropdown").combobox();
         $('.change').on('click', function() {
           $(this).fadeOut(function() {
@@ -286,7 +287,7 @@
           var header = $(this).closest('.header');
           $(header).find('.loading').fadeIn();
           $(header).find('#' + $(thiselem).attr('id') + 'name').text(lookup[$(thiselem).val()]);
-          $(header).find('.friendphoto').attr('src', 'https://graph.facebook.com/' + $(thiselem).val() + '/picture?type=square&height=100&width=100');
+          $(header).find('.friendphoto').attr('src', 'https://graph.facebook.com/' + $(thiselem).val() + '/picture?type=square&height=200&width=200');
           $.ajax({
             type: "GET",
             url: "/vanvaas/update/?change=" + $(thiselem).attr('id') + "&name=" + lookup[$(thiselem).val()] + "&id=" + $(thiselem).val() + "&selfid=" + selfid,
