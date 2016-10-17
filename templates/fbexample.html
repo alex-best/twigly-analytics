@@ -100,27 +100,27 @@
         </div>
         {% if len(reactionsresult) > 0 %}
           <div class="row" style="margin-top: 20px;">
-            {% for reaction in reactionsresult %}
+            {% for index in range(len(reactionsresult)) %}
               <div class="col-xs-12 col-md-4" style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive;">
                 <div class="col-xs-12" style="color: #ffffff; margin-bottom: 10px; text-align: center;">
-                  {{ type }} {{ reaction["character"] }} {% if type=="Their" %}is{% end %} {% if type=="Your" %}could be{% end %} {{ reaction["name"] }}
+                  {{ type }} {{ reactionsresult[index]["character"] }} {% if type=="Their" %}is{% end %} {% if type=="Your" %}could be{% end %} <span id="reaction{{index}}name">{{ reactionsresult[index]["name"] }}</span> {% if type=="Your" %}<span class="label label-primary change">Change</span><input class="typeahead" id="reaction{{index}}" style="display: none;" /> {% end %}
                 </div>
                 <div class="col-xs-6">
                   <div class="polaroid rotate_left">
-                    <img src='http://blog.twigly.in:8080/static/img/{{ reaction["image"] }}' style="height: 100px;">
+                    <img src='http://blog.twigly.in:8080/static/img/{{ reactionsresult[index]["image"] }}' style="height: 100px;">
                   </div>
                 </div>
                 <div class="col-xs-6">
                   <div class="polaroid rotate_right">
-                    <img src='https://graph.facebook.com/{{ reaction["id"] }}/picture?type=square&height=100&width=100' style="height: 100px;">
+                    <img src='https://graph.facebook.com/{{ reactionsresult[index]["id"] }}/picture?type=square&height=100&width=100' style="height: 100px;">
                   </div>
                 </div>
                 <div class="col-xs-12" style="text-align: center; font-family: sans-serif; color: #ffffff; font-size: 13px; margin-top: 10px;">
-                  {{ reaction["description"] }}
+                  {{ reactionsresult[index]["description"] }}
                 </div>
-                {% if "sandwich" in reaction %}
+                {% if "sandwich" in reactionsresult[index] %}
                   <div class="col-xs-12" style="text-align: center; font-family: sans-serif; color: #ffffff; font-size: 13px; margin-top: 10px;">
-                    Favourite sandwich: {{ reaction["sandwich"] }}
+                    Favourite sandwich: {{ reactionsresult[index]["sandwich"] }}
                   </div>
                 {% end %}
               </div>
@@ -129,27 +129,27 @@
         {% end %}
         {% if len(commentsresult) > 0 %}
           <div class="row" style="margin-top: 20px;">
-            {% for comment in commentsresult %}
+            {% for index in range(len(commentsresult)) %}
               <div class="col-xs-12 col-md-4" style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive;">
                 <div class="col-xs-12" style="color: #ffffff; margin-bottom: 10px; text-align: center;">
-                  {{ type }} {{ comment["character"] }} could be {{ comment["name"] }}
+                  {{ type }} {{ commentsresult[index]["character"] }} {% if type=="Their" %}is{% end %} {% if type=="Your" %}could be{% end %} <span id="reaction{{index}}name">{{ commentsresult[index]["name"] }}</span> {% if type=="Your" %}<span class="label label-primary change">Change</span><input class="typeahead" id="reaction{{index}}" style="display: none;" /> {% end %}
                 </div>
                 <div class="col-xs-6">
                   <div class="polaroid rotate_left">
-                    <img src='http://blog.twigly.in:8080/static/img/{{ comment["image"] }}' style="height: 100px;">
+                    <img src='http://blog.twigly.in:8080/static/img/{{ commentsresult[index]["image"] }}' style="height: 100px;">
                   </div>
                 </div>
                 <div class="col-xs-6">
                   <div class="polaroid rotate_right">
-                    <img src='https://graph.facebook.com/{{ comment["id"] }}/picture?type=square&height=100&width=100' style="height: 100px;">
+                    <img src='https://graph.facebook.com/{{ commentsresult[index]["id"] }}/picture?type=square&height=100&width=100' style="height: 100px;">
                   </div>
                 </div>
                 <div class="col-xs-12" style="text-align: center; font-family: sans-serif; color: #ffffff; font-size: 13px; margin-top: 10px;">
-                  {{ comment["description"] }}
+                  {{ commentsresult[index]["description"] }}
                 </div>
-                {% if "sandwich" in comment %}
+                {% if "sandwich" in commentsresult[index] %}
                   <div class="col-xs-12" style="text-align: center; font-family: sans-serif; color: #ffffff; font-size: 13px; margin-top: 10px;">
-                    Favourite sandwich: {{ comment["sandwich"] }}
+                    Favourite sandwich: {{ commentsresult[index]["sandwich"] }}
                   </div>
                 {% end %}
               </div>
@@ -210,6 +210,8 @@
     </div>
 
     <div id="fb-root"></div>
+    <script src="http://blog.twigly.in:8080/static/js/jquery.min.js"></script>
+    <script src="http://blog.twigly.in:8080/static/js/typeahead.bundle.min.js"></script>
     <script>
       window.fbAsyncInit = function() {
         FB.init({appId: '{{ facebook_app_id }}', status: true,
@@ -233,6 +235,61 @@
         window.open("http://www.facebook.com/sharer.php?u=http://twigly.in/vanvaas/" + id, 'sharer', 'top=100,left=100,toolbar=0,status=0');
       }
 
+    </script>
+    <script type="text/javascript">
+      var lookup = {% raw lookup %};
+      var substringMatcher = function(strs) {
+        return function findMatches(q, cb) {
+          var matches, substringRegex;
+
+          // an array that will be populated with substring matches
+          matches = [];
+
+          // regex used to determine if a string contains the substring `q`
+          substrRegex = new RegExp(q, 'i');
+
+          // iterate through the pool of strings and for any string that
+          // contains the substring `q`, add it to the `matches` array
+          $.each(strs, function(i, str) {
+            if (substrRegex.test(str.name)) {
+              matches.push(str);
+            }
+          });
+
+          cb(matches);
+        };
+      };
+      $(document).ready(function() {
+        $('.typeahead').typeahead({
+          hint: true,
+          highlight: true,
+          minLength: 1
+        },{
+          name: 'friends',
+          display: 'name',
+          source: substringMatcher(lookup),
+          templates: {
+            empty: '<div class="empty-message">Unable to find a friend with that name. They must have commented or reacted to a post in the recent past to be visible</div>',
+            suggestion: Handlebars.compile("<div><strong>{{name}}</strong></div>")
+          }
+        });
+        $('.change').on('click', function() {
+          var thiselem = $(this);
+          $(this).fadeOut(function() {
+            $(thiselem).parent().find('.typeahead').fadeIn();
+          });
+        });
+        $('.typeahead').on('change', function() {
+          var thiselem = $(this);
+          $(this).fadeOut(function() {
+            $(thiselem).parent().find('.change').fadeIn();
+          });
+          // $.ajax({
+          //   type: "GET",
+          //   url: "/updatefriend?lookup="+$(thiselem).attr('id')+"&name="
+          // });
+        });
+      });
     </script>
   </body>
 </html>

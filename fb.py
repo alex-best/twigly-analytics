@@ -81,12 +81,12 @@ class VanvaasHandler(FBBaseHandler):
         thisuser = self.get_current_user()
         reactionsresult = {}
         commentsresult = {}
+        lookup = {}
         if thisuser:
             graph = facebook.GraphAPI(access_token=thisuser["access_token"], version="2.7")
             posts = graph.get_object("me/posts?fields=object_id,message,story,comments.limit(999),reactions.limit(999)&limit=100")
             reactions = {}
             comments = {}
-            lookup = {}
             if "data" in posts:
                 for post in posts["data"]:
                     if "reactions" in post:
@@ -149,7 +149,8 @@ class VanvaasHandler(FBBaseHandler):
 
             fbsession.remove()
 
-        self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=reactionsresult, commentsresult=commentsresult, thisuser=thisuser, type="Your")
+        friendlookup = [{"id": x, "name": lookup[x]} for x in lookup]
+        self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=reactionsresult, commentsresult=commentsresult, thisuser=thisuser, type="Your", friendlookup=friendlookup)
 
 class VanvaasViewHandler(FBBaseHandler):
     def get(self, id):
