@@ -137,17 +137,22 @@ class VanvaasHandler(FBBaseHandler):
                 if counter == 3:
                     break
 
-            fbengine = sqlalchemy.create_engine(fbengine_url)
-            fbsession = scoped_session(sessionmaker(bind=fbengine))
-            #thisuser["frienddata"] = str({"reactionsresult": reactionsresult, "commentsresult": commentsresult})
             try:
-                thisdbuser = fbsession.query(fb_user).filter(fb_user.id == thisuser["id"]).one()
-                thisdbuser.frienddata = str({"reactionsresult": reactionsresult, "commentsresult": commentsresult})
-                fbsession.commit()
-            except NoResultFound:
-                thisdbuser = None 
-
-            fbsession.remove()
+                resultdata = le(thisuser["frienddata"])
+            except ValueError, SyntaxError:
+                fbengine = sqlalchemy.create_engine(fbengine_url)
+                fbsession = scoped_session(sessionmaker(bind=fbengine))
+                #thisuser["frienddata"] = str({"reactionsresult": reactionsresult, "commentsresult": commentsresult})
+                try:
+                    thisdbuser = fbsession.query(fb_user).filter(fb_user.id == thisuser["id"]).one()
+                    thisdbuser.frienddata = str({"reactionsresult": reactionsresult, "commentsresult": commentsresult})
+                    fbsession.commit()
+                except NoResultFound:
+                    thisdbuser = None 
+                fbsession.remove()
+            else:
+                reactionsresult=resultdata["reactionsresult"]
+                commentsresult=resultdata["commentsresult"]
 
         friendlookup = [{"id": x, "name": lookup[x]} for x in lookup]
         self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=reactionsresult, commentsresult=commentsresult, thisuser=thisuser, type="Your", friendlookup=friendlookup, lookup=lookup)
