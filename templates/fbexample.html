@@ -108,7 +108,7 @@
             {% for index in range(len(reactionsresult)) %}
             <li>
               <div style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive; background: rgba(255,255,255,0.5);">
-                <div style="width: 100%; color: #333; margin-bottom: 10px; text-align: center;">
+                <div style="width: 100%; color: #000; margin-bottom: 10px; text-align: center;">
                   {{ type }} {{ reactionsresult[index]["character"] }} {% if type=="Their" %}is{% end %} {% if type=="Your" %}could be{% end %} <span id="reaction{{index}}name">{{ reactionsresult[index]["name"] }}</span>
                   {% if type=="Your" %}
                     <span class="label label-primary change" style="cursor: pointer; font-family: sans-serif; font-size: 10px;">Change</span>
@@ -125,16 +125,16 @@
                   {% end %}
                 </div>
                 <div style="width: 49%; display: inline-block; text-align: center;">
-                  <img src='http://blog.twigly.in:8080/static/img/{{ reactionsresult[index]["image"] }}' style="height: 100px;">
+                  <img src='http://blog.twigly.in:8080/static/img/{{ reactionsresult[index]["image"] }}' style="height: 100px; display: inline-block;">
                 </div>
                 <div style="width: 49%; display: inline-block; text-align: center;">
-                  <img class="friendphoto" src='https://graph.facebook.com/{{ reactionsresult[index]["id"] }}/picture?type=square&height=100&width=100' style="height: 100px;">
+                  <img class="friendphoto" src='https://graph.facebook.com/{{ reactionsresult[index]["id"] }}/picture?type=square&height=100&width=100' style="height: 100px; display: inline-block;">
                 </div>
-                <div style="width: 100%; text-align: center; font-family: sans-serif; color: #ffffff; font-size: 13px; margin-top: 10px;">
+                <div style="width: 100%; text-align: center; font-family: sans-serif; color: #000; font-size: 13px; margin-top: 10px;">
                   {{ reactionsresult[index]["description"] }}
                 </div>
                 {% if "sandwich" in reactionsresult[index] %}
-                  <div style="width: 100%; text-align: center; font-family: sans-serif; color: #ffffff; font-size: 13px; margin-top: 10px;">
+                  <div style="width: 100%; text-align: center; font-family: sans-serif; color: #000; font-size: 13px; margin-top: 10px;">
                     Favourite sandwich: {{ reactionsresult[index]["sandwich"] }}
                   </div>
                 {% end %}
@@ -146,7 +146,7 @@
             {% for index in range(len(commentsresult)) %}
             <li>
               <div style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive; background: rgba(255,255,255,0.5);">
-                <div style="width: 100%; color: #333; margin-bottom: 10px; text-align: center;">
+                <div style="width: 100%; color: #000; margin-bottom: 10px; text-align: center;">
                   {{ type }} {{ commentsresult[index]["character"] }} {% if type=="Their" %}is{% end %} {% if type=="Your" %}could be{% end %} <span id="comment{{index}}name">{{ commentsresult[index]["name"] }}</span> 
                   {% if type=="Your" %}
                     <span class="label label-primary change" style="cursor: pointer; font-family: sans-serif; font-size: 10px;">Change</span>
@@ -163,16 +163,16 @@
                   {% end %}
                 </div>
                 <div style="width: 49%; display: inline-block; text-align: center;">
-                  <img src='http://blog.twigly.in:8080/static/img/{{ commentsresult[index]["image"] }}' style="height: 100px;">
+                  <img src='http://blog.twigly.in:8080/static/img/{{ commentsresult[index]["image"] }}' style="height: 100px; display: inline-block;">
                 </div>
                 <div style="width: 49%; display: inline-block; text-align: center;">
                   <img class="friendphoto" src='https://graph.facebook.com/{{ commentsresult[index]["id"] }}/picture?type=square&height=100&width=100' style="height: 100px;">
                 </div>
-                <div style="width: 100%; text-align: center; font-family: sans-serif; color: #ffffff; font-size: 13px; margin-top: 10px;">
+                <div style="width: 100%; text-align: center; font-family: sans-serif; color: #000; font-size: 13px; margin-top: 10px;">
                   {{ commentsresult[index]["description"] }}
                 </div>
                 {% if "sandwich" in commentsresult[index] %}
-                  <div style="width: 100%; text-align: center; font-family: sans-serif; color: #ffffff; font-size: 13px; margin-top: 10px;">
+                  <div style="width: 100%; text-align: center; font-family: sans-serif; color: #000; font-size: 13px; margin-top: 10px;">
                     Favourite sandwich: {{ commentsresult[index]["sandwich"] }}
                   </div>
                 {% end %}
@@ -268,8 +268,7 @@
       $(document).ready(function() {
         $('.flipper').flipster({
           start: 1,
-          loop: true,
-          spacing: 0
+          loop: true
         });
         $(".frienddropdown").combobox();
         $('.change').on('click', function() {
