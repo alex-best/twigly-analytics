@@ -273,6 +273,8 @@
           $(this).closest('.header').find('.frienddropdowncontainer').fadeOut(function() {
             $(thiselem).closest('.header').find('.change').fadeIn();
           });
+          console.log(thiselem);
+          console.log($(thiselem).val());
           $(thiselem).closest('.header').find('#' + $(thiselem).attr('id') + 'name').text(lookup[$(thiselem).val()]);
         });
       });
