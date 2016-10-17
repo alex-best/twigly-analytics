@@ -150,7 +150,7 @@ class VanvaasHandler(FBBaseHandler):
             fbsession.remove()
 
         friendlookup = [{"id": x, "name": lookup[x]} for x in lookup]
-        self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=reactionsresult, commentsresult=commentsresult, thisuser=thisuser, type="Your", friendlookup=friendlookup)
+        self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=reactionsresult, commentsresult=commentsresult, thisuser=thisuser, type="Your", friendlookup=friendlookup, lookup=lookup)
 
 class VanvaasViewHandler(FBBaseHandler):
     def get(self, id):
