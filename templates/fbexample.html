@@ -274,6 +274,11 @@
     <script type="text/javascript">
       var lookup = {% raw lookup %};
       $(document).ready(function() {
+        $('.flipper').flipster({
+          start: 1,
+          loop: true,
+          spacing: -0.4
+        });
         $(".frienddropdown").combobox();
         $('.change').on('click', function() {
           $(this).fadeOut(function() {
