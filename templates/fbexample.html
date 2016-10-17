@@ -268,7 +268,7 @@
             $(this).parent().find('.frienddropdowncontainer').fadeIn();
           });
         });
-        $('.frienddropdown').on('change', function() {
+        $('select.frienddropdown').on('change', function() {
           var thiselem = $(this);
           var header = $(this).closest('.header');
           $(header).find('.frienddropdowncontainer').fadeOut(function() {
