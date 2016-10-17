@@ -180,6 +180,7 @@ class UpdateVanvaasHandler(FBBaseHandler):
         try:
             thisdbuser = fbsession.query(fb_user).filter(fb_user.id == thisuser["id"]).one()
         except NoResultFound:
+            print ("user not found")
             self.write('{"status": "error"}')
         else:
             try:
@@ -187,6 +188,7 @@ class UpdateVanvaasHandler(FBBaseHandler):
                 reactionsresult=resultdata["reactionsresult"]
                 commentsresult=resultdata["commentsresult"]
             except (ValueError, SyntaxError) as e:
+                print ("data could not be parse")
                 self.write('{"status": "error"}')
             else:
                 if "reaction" in change:
@@ -204,4 +206,5 @@ class UpdateVanvaasHandler(FBBaseHandler):
                     fbsession.commit()
                     self.write('{"status": "success"}')
                 else:
+                    print ("something wrong with input")
                     self.write('{"status": "error"}')
