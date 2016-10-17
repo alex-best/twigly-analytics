@@ -49,6 +49,9 @@
           -webkit-transform: rotate(-8deg); /* Safari */
           transform: rotate(-8deg);
       }
+      .input-group-addon {
+        display: none;
+      }
     </style>
   </head>
   <body style="background: url(http://blog.twigly.in:8080/static/img/vbackground.jpg) no-repeat fixed center; background-size: cover;">
@@ -106,7 +109,7 @@
                   {{ type }} {{ reactionsresult[index]["character"] }} {% if type=="Their" %}is{% end %} {% if type=="Your" %}could be{% end %} <span id="reaction{{index}}name">{{ reactionsresult[index]["name"] }}</span>
                   {% if type=="Your" %}
                     <span class="label label-primary change" style="cursor: pointer; font-family: sans-serif; font-size: 10px;">Change</span>
-                    <div class="frienddropdowncontainer" style="display: none; width: 100%;">
+                    <div class="frienddropdowncontainer" style="display: none; width: 100%; color: #000; font-family: sans-serif;">
                       <select id="comment{{index}}" class="frienddropdown" style="width: 100%; color: #000;">
                       {% for friend in friendlookup %}
                         <option value="{{friend['id']}}">{{friend['name']}}</option>
@@ -145,7 +148,7 @@
                   {{ type }} {{ commentsresult[index]["character"] }} {% if type=="Their" %}is{% end %} {% if type=="Your" %}could be{% end %} <span id="reaction{{index}}name">{{ commentsresult[index]["name"] }}</span> 
                   {% if type=="Your" %}
                     <span class="label label-primary change" style="cursor: pointer; font-family: sans-serif; font-size: 10px;">Change</span>
-                    <div class="frienddropdowncontainer" style="display: none; width: 100%;">
+                    <div class="frienddropdowncontainer" style="display: none; width: 100%; color: #000; font-family: sans-serif;">
                       <select id="reaction{{index}}" class="frienddropdown" style="width: 100%; color: #000;" >
                       {% for friend in friendlookup %}
                         <option value="{{friend['id']}}">{{friend['name']}}</option>
@@ -257,6 +260,7 @@
       }
     </script>
     <script type="text/javascript">
+      var lookup = {% raw lookup %};
       $(document).ready(function() {
         $(".frienddropdown").combobox();
         $('.change').on('click', function() {
@@ -269,6 +273,7 @@
           $(this).closest('.header').find('.frienddropdowncontainer').fadeOut(function() {
             $(thiselem).closest('.header').find('.change').fadeIn();
           });
+          $(thiselem).closest('.header').find('#' + $(thiselem).attr('id') + 'name').text(lookup[$(thiselem).val()]);
         });
       });
     </script>
