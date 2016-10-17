@@ -186,7 +186,7 @@ class UpdateVanvaasHandler(FBBaseHandler):
             self.write('{"status": "error"}')
         else:
             try:
-                resultdata = le(thisuser.frienddata)
+                resultdata = le(thisdbuser.frienddata)
                 reactionsresult=resultdata["reactionsresult"]
                 commentsresult=resultdata["commentsresult"]
             except (ValueError, SyntaxError) as e:
