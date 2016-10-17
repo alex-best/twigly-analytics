@@ -278,7 +278,7 @@
           $(header).find('.friendphoto').attr('src', 'https://graph.facebook.com/' + $(thiselem).val() + '/picture?type=square&height=100&width=100');
           $.ajax({
             type: "GET",
-            url: "/vanvaas/update/?change=" + $(thiselem).attr('id') + "&name=" + lookup[$(thiselem).val()] + "&id=" + $(thiselem).val(),
+            url: "/vanvaas/update/?change=" + $(thiselem).attr('id') + "&name=" + lookup[$(thiselem).val()] + "&id=" + $(thiselem).val() + "&selfid={{ thisuser['id'] }}",
             success: function(response) {
               if (response.status != "success") {
                 alert("Could not save - Please try again");
