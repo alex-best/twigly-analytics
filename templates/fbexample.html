@@ -269,7 +269,11 @@
           });
         });
         $('select.frienddropdown').on('change', function() {
-          var selfid = "{{ thisuser['id'] }}";
+          {% if "id" in thisuser %}
+            var selfid = "{{ thisuser['id'] }}";
+          {% else %}
+            var selfid = "";
+          {% end %}
           var thiselem = $(this);
           var header = $(this).closest('.header');
           $(header).find('.frienddropdowncontainer').fadeOut(function() {
