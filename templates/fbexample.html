@@ -102,15 +102,17 @@
           <div class="row" style="margin-top: 20px;">
             {% for index in range(len(reactionsresult)) %}
               <div class="col-xs-12 col-md-4" style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive;">
-                <div class="col-xs-12" style="color: #ffffff; margin-bottom: 10px; text-align: center;">
+                <div class="col-xs-12 header" style="color: #ffffff; margin-bottom: 10px; text-align: center;">
                   {{ type }} {{ reactionsresult[index]["character"] }} {% if type=="Their" %}is{% end %} {% if type=="Your" %}could be{% end %} <span id="reaction{{index}}name">{{ reactionsresult[index]["name"] }}</span>
                   {% if type=="Your" %}
                     <span class="label label-primary change" style="cursor: pointer; font-family: sans-serif; font-size: 10px;">Change</span>
-                    <select id="comment{{index}}" class="frienddropdown" style="display: none;" >
-                    {% for friend in friendlookup %}
-                      <option value="{{friend['id']}}">{{friend['name']}}</option>
-                    {% end %}
-                    </select>
+                    <div class="frienddropdowncontainer" style="display: none;">
+                      <select id="comment{{index}}" class="frienddropdown" >
+                      {% for friend in friendlookup %}
+                        <option value="{{friend['id']}}">{{friend['name']}}</option>
+                      {% end %}
+                      </select>
+                    </div>
                   {% end %}
                 </div>
                 <div class="col-xs-6">
@@ -139,15 +141,17 @@
           <div class="row" style="margin-top: 20px;">
             {% for index in range(len(commentsresult)) %}
               <div class="col-xs-12 col-md-4" style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive;">
-                <div class="col-xs-12" style="color: #ffffff; margin-bottom: 10px; text-align: center;">
+                <div class="col-xs-12 header" style="color: #ffffff; margin-bottom: 10px; text-align: center;">
                   {{ type }} {{ commentsresult[index]["character"] }} {% if type=="Their" %}is{% end %} {% if type=="Your" %}could be{% end %} <span id="reaction{{index}}name">{{ commentsresult[index]["name"] }}</span> 
                   {% if type=="Your" %}
                     <span class="label label-primary change" style="cursor: pointer; font-family: sans-serif; font-size: 10px;">Change</span>
-                    <select id="reaction{{index}}" class="frienddropdown" style="display: none;" >
-                    {% for friend in friendlookup %}
-                      <option value="{{friend['id']}}">{{friend['name']}}</option>
-                    {% end %}
-                    </select>
+                    <div class="frienddropdowncontainer" style="display: none;">
+                      <select id="reaction{{index}}" class="frienddropdown" style="display: none;" >
+                      {% for friend in friendlookup %}
+                        <option value="{{friend['id']}}">{{friend['name']}}</option>
+                      {% end %}
+                      </select>
+                    </div>
                   {% end %}
                 </div>
                 <div class="col-xs-6">
@@ -257,12 +261,13 @@
         $(".frienddropdown").combobox();
         $('.change').on('click', function() {
           $(this).fadeOut(function() {
-            $(this).parent().find('.frienddropdown').fadeIn();
+            $(this).parent().find('.frienddropdowncontainer').fadeIn();
           });
         });
-        $('.frienddropdown').on('click', function() {
-          $(this).fadeOut(function() {
-            $(this).parent().find('.change').fadeIn();
+        $('.frienddropdown').on('change', function() {
+          var thiselem = $(this);
+          $(this).closest('.header').find('.frienddropdowncontainer').fadeOut(function() {
+            $(thiselem).closest('.header').find('.change').fadeIn();
           });
         });
       });
