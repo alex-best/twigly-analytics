@@ -106,8 +106,8 @@
                   {{ type }} {{ reactionsresult[index]["character"] }} {% if type=="Their" %}is{% end %} {% if type=="Your" %}could be{% end %} <span id="reaction{{index}}name">{{ reactionsresult[index]["name"] }}</span>
                   {% if type=="Your" %}
                     <span class="label label-primary change" style="cursor: pointer; font-family: sans-serif; font-size: 10px;">Change</span>
-                    <div class="frienddropdowncontainer" style="display: none;">
-                      <select id="comment{{index}}" class="frienddropdown" >
+                    <div class="frienddropdowncontainer" style="display: none; width: 100%;">
+                      <select id="comment{{index}}" class="frienddropdown" style="width: 100%;">
                       {% for friend in friendlookup %}
                         <option value="{{friend['id']}}">{{friend['name']}}</option>
                       {% end %}
@@ -145,8 +145,8 @@
                   {{ type }} {{ commentsresult[index]["character"] }} {% if type=="Their" %}is{% end %} {% if type=="Your" %}could be{% end %} <span id="reaction{{index}}name">{{ commentsresult[index]["name"] }}</span> 
                   {% if type=="Your" %}
                     <span class="label label-primary change" style="cursor: pointer; font-family: sans-serif; font-size: 10px;">Change</span>
-                    <div class="frienddropdowncontainer" style="display: none;">
-                      <select id="reaction{{index}}" class="frienddropdown" style="display: none;" >
+                    <div class="frienddropdowncontainer" style="display: none; width: 100%;">
+                      <select id="reaction{{index}}" class="frienddropdown" style="width: 100%;" >
                       {% for friend in friendlookup %}
                         <option value="{{friend['id']}}">{{friend['name']}}</option>
                       {% end %}
