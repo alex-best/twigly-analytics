@@ -104,13 +104,13 @@
         {% if len(reactionsresult) > 0 %}
           <div class="row" style="margin-top: 20px;">
             {% for index in range(len(reactionsresult)) %}
-              <div class="col-xs-12 col-md-4" style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive;">
-                <div class="col-xs-12 header" style="color: #ffffff; margin-bottom: 10px; text-align: center;">
+              <div class="col-xs-12 col-md-4 header" style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive;">
+                <div class="col-xs-12" style="color: #ffffff; margin-bottom: 10px; text-align: center;">
                   {{ type }} {{ reactionsresult[index]["character"] }} {% if type=="Their" %}is{% end %} {% if type=="Your" %}could be{% end %} <span id="reaction{{index}}name">{{ reactionsresult[index]["name"] }}</span>
                   {% if type=="Your" %}
                     <span class="label label-primary change" style="cursor: pointer; font-family: sans-serif; font-size: 10px;">Change</span>
                     <div class="frienddropdowncontainer" style="display: none; width: 100%; color: #000; font-family: sans-serif;">
-                      <select id="comment{{index}}" class="frienddropdown" style="width: 100%; color: #000;">
+                      <select id="reaction{{index}}" class="frienddropdown" style="width: 100%; color: #000;">
                       {% for friend in friendlookup %}
                         <option value="{{friend['id']}}">{{friend['name']}}</option>
                       {% end %}
@@ -125,7 +125,7 @@
                 </div>
                 <div class="col-xs-6">
                   <div class="polaroid rotate_right">
-                    <img src='https://graph.facebook.com/{{ reactionsresult[index]["id"] }}/picture?type=square&height=100&width=100' style="height: 100px;">
+                    <img class="friendphoto" src='https://graph.facebook.com/{{ reactionsresult[index]["id"] }}/picture?type=square&height=100&width=100' style="height: 100px;">
                   </div>
                 </div>
                 <div class="col-xs-12" style="text-align: center; font-family: sans-serif; color: #ffffff; font-size: 13px; margin-top: 10px;">
@@ -143,13 +143,13 @@
         {% if len(commentsresult) > 0 %}
           <div class="row" style="margin-top: 20px;">
             {% for index in range(len(commentsresult)) %}
-              <div class="col-xs-12 col-md-4" style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive;">
-                <div class="col-xs-12 header" style="color: #ffffff; margin-bottom: 10px; text-align: center;">
-                  {{ type }} {{ commentsresult[index]["character"] }} {% if type=="Their" %}is{% end %} {% if type=="Your" %}could be{% end %} <span id="reaction{{index}}name">{{ commentsresult[index]["name"] }}</span> 
+              <div class="col-xs-12 col-md-4 header" style="text-align: center; font-size: 1.5em; font-family: 'Handlee', cursive;">
+                <div class="col-xs-12" style="color: #ffffff; margin-bottom: 10px; text-align: center;">
+                  {{ type }} {{ commentsresult[index]["character"] }} {% if type=="Their" %}is{% end %} {% if type=="Your" %}could be{% end %} <span id="comment{{index}}name">{{ commentsresult[index]["name"] }}</span> 
                   {% if type=="Your" %}
                     <span class="label label-primary change" style="cursor: pointer; font-family: sans-serif; font-size: 10px;">Change</span>
                     <div class="frienddropdowncontainer" style="display: none; width: 100%; color: #000; font-family: sans-serif;">
-                      <select id="reaction{{index}}" class="frienddropdown" style="width: 100%; color: #000;" >
+                      <select id="comment{{index}}" class="frienddropdown" style="width: 100%; color: #000;" >
                       {% for friend in friendlookup %}
                         <option value="{{friend['id']}}">{{friend['name']}}</option>
                       {% end %}
@@ -164,7 +164,7 @@
                 </div>
                 <div class="col-xs-6">
                   <div class="polaroid rotate_right">
-                    <img src='https://graph.facebook.com/{{ commentsresult[index]["id"] }}/picture?type=square&height=100&width=100' style="height: 100px;">
+                    <img class="friendphoto" src='https://graph.facebook.com/{{ commentsresult[index]["id"] }}/picture?type=square&height=100&width=100' style="height: 100px;">
                   </div>
                 </div>
                 <div class="col-xs-12" style="text-align: center; font-family: sans-serif; color: #ffffff; font-size: 13px; margin-top: 10px;">
@@ -270,12 +270,13 @@
         });
         $('.frienddropdown').on('change', function() {
           var thiselem = $(this);
-          $(this).closest('.header').find('.frienddropdowncontainer').fadeOut(function() {
-            $(thiselem).closest('.header').find('.change').fadeIn();
+          var header = $(this).closest('.header');
+          $(header).find('.frienddropdowncontainer').fadeOut(function() {
+            $(header).find('.change').fadeIn();
           });
-          console.log(thiselem);
-          console.log($(thiselem).val());
-          $(thiselem).closest('.header').find('#' + $(thiselem).attr('id') + 'name').text(lookup[$(thiselem).val()]);
+          $(header).find('#' + $(thiselem).attr('id') + 'name').text(lookup[$(thiselem).val()]);
+          $(header).find('.friendphoto').attr('src', 'https://graph.facebook.com/' + $(thiselem).val() + '/picture?type=square&height=100&width=100');
+          
         });
       });
     </script>
