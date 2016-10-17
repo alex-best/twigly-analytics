@@ -109,12 +109,15 @@
                   {{ type }} {{ reactionsresult[index]["character"] }} {% if type=="Their" %}is{% end %} {% if type=="Your" %}could be{% end %} <span id="reaction{{index}}name">{{ reactionsresult[index]["name"] }}</span>
                   {% if type=="Your" %}
                     <span class="label label-primary change" style="cursor: pointer; font-family: sans-serif; font-size: 10px;">Change</span>
-                    <div class="frienddropdowncontainer" style="display: none; width: 100%; color: #000; font-family: sans-serif;">
+                    <div class="frienddropdowncontainer" style="display: none; width: 100%; color: #000; font-family: sans-serif; position: relative;">
                       <select id="reaction{{index}}" class="frienddropdown" style="width: 100%; color: #000;">
                       {% for friend in friendlookup %}
                         <option value="{{friend['id']}}">{{friend['name']}}</option>
                       {% end %}
                       </select>
+                      <div class="loading" style="position: absolute; width: 100%; height: 100%; text-align: center; display: none;">
+                        <img src="http://www.twigly.in/assets/img/loader_1.gif" style="height: 50%;" />
+                      </div>
                     </div>
                   {% end %}
                 </div>
@@ -148,12 +151,15 @@
                   {{ type }} {{ commentsresult[index]["character"] }} {% if type=="Their" %}is{% end %} {% if type=="Your" %}could be{% end %} <span id="comment{{index}}name">{{ commentsresult[index]["name"] }}</span> 
                   {% if type=="Your" %}
                     <span class="label label-primary change" style="cursor: pointer; font-family: sans-serif; font-size: 10px;">Change</span>
-                    <div class="frienddropdowncontainer" style="display: none; width: 100%; color: #000; font-family: sans-serif;">
+                    <div class="frienddropdowncontainer" style="display: none; width: 100%; color: #000; font-family: sans-serif; position: relative;">
                       <select id="comment{{index}}" class="frienddropdown" style="width: 100%; color: #000;" >
                       {% for friend in friendlookup %}
                         <option value="{{friend['id']}}">{{friend['name']}}</option>
                       {% end %}
                       </select>
+                      <div class="loading" style="position: absolute; width: 100%; height: 100%; text-align: center; display: none;">
+                        <img src="http://www.twigly.in/assets/img/loader_1.gif" style="height: 50%;" />
+                      </div>
                     </div>
                   {% end %}
                 </div>
@@ -269,6 +275,7 @@
           });
         });
         $('select.frienddropdown').on('change', function() {
+          $('.loading').fadeIn();
           {% if thisuser %}
             var selfid = "{{ thisuser['id'] }}";
           {% else %}
@@ -276,9 +283,6 @@
           {% end %}
           var thiselem = $(this);
           var header = $(this).closest('.header');
-          $(header).find('.frienddropdowncontainer').fadeOut(function() {
-            $(header).find('.change').fadeIn();
-          });
           $(header).find('#' + $(thiselem).attr('id') + 'name').text(lookup[$(thiselem).val()]);
           $(header).find('.friendphoto').attr('src', 'https://graph.facebook.com/' + $(thiselem).val() + '/picture?type=square&height=100&width=100');
           $.ajax({
@@ -289,6 +293,11 @@
               if (response.status != "success") {
                 alert("Could not save - Please try again");
                 window.location.reload();
+              } else {
+                $(header).find('.frienddropdowncontainer').fadeOut(function() {
+                  $('.loading').fadeOut();
+                  $(header).find('.change').fadeIn();
+                });
               }
             },
             error: function() {
