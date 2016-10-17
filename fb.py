@@ -170,3 +170,38 @@ class VanvaasViewHandler(FBBaseHandler):
             self.render("templates/fbexample.html", facebook_app_id=facebook_app_id, reactionsresult=resultdata["reactionsresult"], commentsresult=resultdata["commentsresult"], thisuser=thisuser.getDetails(), type="Their")
 
         fbsession.remove()
+
+class UpdateVanvaasHandler(FBBaseHandler):
+    def get(self):
+        change = self.get_argument("change")
+        id = self.get_argument("id")
+        name = self.get_argument("name")
+        thisuser = self.get_current_user()
+        try:
+            thisdbuser = fbsession.query(fb_user).filter(fb_user.id == thisuser["id"]).one()
+        except NoResultFound:
+            self.write('{"status": "error"}')
+        else:
+            try:
+                resultdata = le(thisuser.frienddata)
+                reactionsresult=resultdata["reactionsresult"]
+                commentsresult=resultdata["commentsresult"]
+            except (ValueError, SyntaxError) as e:
+                self.write('{"status": "error"}')
+            else:
+                if "reaction" in change:
+                    index = int(change.replace("reaction", ""))
+                    reactionsresult[index]["name"] = name
+                    reactionsresult[index]["id"] = id
+                    thisdbuser.frienddata = str({"reactionsresult": reactionsresult, "commentsresult": commentsresult})
+                    fbsession.commit()
+                    self.write('{"status": "success"}')
+                elif "comment" in change:
+                    index = int(change.replace("comment", ""))
+                    commentsresult[index]["name"] = name
+                    commentsresult[index]["id"] = id
+                    thisdbuser.frienddata = str({"reactionsresult": reactionsresult, "commentsresult": commentsresult})
+                    fbsession.commit()
+                    self.write('{"status": "success"}')
+                else:
+                    self.write('{"status": "error"}')
