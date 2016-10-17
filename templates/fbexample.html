@@ -284,7 +284,8 @@
           $.ajax({
             type: "GET",
             url: "/vanvaas/update/?change=" + $(thiselem).attr('id') + "&name=" + lookup[$(thiselem).val()] + "&id=" + $(thiselem).val() + "&selfid=" + selfid,
-            success: function(response) {
+            success: function(result) {
+              response = $.parseJSON(result);
               if (response.status != "success") {
                 alert("Could not save - Please try again");
                 window.location.reload();
