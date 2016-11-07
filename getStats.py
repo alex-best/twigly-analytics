@@ -160,7 +160,7 @@ class LoginHandler(BaseHandler):
 		self.write(authresult)
 
 def getTotalCount(parsedstartdate, parsedenddate, daterange, statssession, store_list):
-	dailyorderscountquery = statssession.query(order.date_add, sqlalchemy.func.count(order.order_id)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress)).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add), order.store_id.in_(store_list))
+	dailyorderscountquery = statssession.query(order.date_add, sqlalchemy.func.count(order.order_id)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress)).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add), order.store_id.in_(store_list))
 
 	thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): int(thisresult[1]) for thisresult in dailyorderscountquery}
 	totalcount = []
@@ -173,7 +173,7 @@ def getTotalCount(parsedstartdate, parsedenddate, daterange, statssession, store
 	return totalcount
 
 def getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, statssession):
-	firstorderquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress)).order_by(order.date_add).group_by(order.mobile_number)
+	firstorderquery = statssession.query(order).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress)).order_by(order.date_add).group_by(order.mobile_number)
 
 	firstordersmap = {}
 	for thisorder in firstorderquery:
@@ -182,7 +182,7 @@ def getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, 
 	ordercounts = {thisdate: {"new": 0, "old": 0} for thisdate in daterange}
 	ordertotals = {thisdate: {"new": 0.0, "old": 0.0} for thisdate in daterange}
 
-	platformcounts = {thisdate: {"Android": 0, "Web": 0, "iOS": 0} for thisdate in daterange}
+	platformcounts = {thisdate: {"Android": 0, "Web": 0, "iOS": 0, "Zomato": 0, "Swiggy": 0} for thisdate in daterange}
 
 	for thisorder in dailyordersquery:
 		if thisorder.mobile_number in firstordersmap:
@@ -199,6 +199,10 @@ def getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, 
 			platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Web"] += 1
 		elif (thisorder.source ==2):
 			platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["iOS"] += 1
+		elif (thisorder.source ==6):
+			platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Zomato"] += 1
+		elif (thisorder.source ==7):
+			platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Swiggy"] += 1
 
 	neworders = []
 	for thisdate in daterange:
@@ -223,13 +227,17 @@ def getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, 
 	androidorders = []
 	weborders = []
 	iosorders = []
+	zomatoorders = []
+	swiggyorders = []
 
 	for thisdate in daterange:
 		androidorders.append(platformcounts[thisdate]["Android"])
 		weborders.append(platformcounts[thisdate]["Web"])
 		iosorders.append(platformcounts[thisdate]["iOS"])
+		zomatoorders.append(platformcounts[thisdate]["Zomato"])
+		swiggyorders.append(platformcounts[thisdate]["Swiggy"])
 
-	result = {"neworders": neworders, "repeatorders": repeatorders, "totalneworders": totalneworders, "totalrepeatorders": totalrepeatorders, "newsums": newsums, "repeatsums": repeatsums, "androidorders": androidorders, "weborders": weborders, "iosorders": iosorders}
+	result = {"neworders": neworders, "repeatorders": repeatorders, "totalneworders": totalneworders, "totalrepeatorders": totalrepeatorders, "newsums": newsums, "repeatsums": repeatsums, "androidorders": androidorders, "weborders": weborders, "iosorders": iosorders, "zomatoorders": zomatoorders, "swiggyorders": swiggyorders}
 	return (result)
 
 class StatsHandler(BaseHandler):
@@ -278,7 +286,7 @@ class StatsHandler(BaseHandler):
 				current_store_name = thisstore.name
 				break
 
-		dailysalesquery = statssession.query(order.date_add, sqlalchemy.func.sum(order.total), sqlalchemy.func.sum(order.vat)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status.in_(deliveredStates + inProgress), order.store_id.in_(store_list)).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
+		dailysalesquery = statssession.query(order.date_add, sqlalchemy.func.sum(order.total), sqlalchemy.func.sum(order.vat)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.order_status.in_(deliveredStates + inProgress), order.store_id.in_(store_list)).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
 
 		totalsales = []
 
@@ -293,7 +301,7 @@ class StatsHandler(BaseHandler):
 
 		totalcount = getTotalCount(parsedstartdate, parsedenddate, daterange, statssession,store_list)
 
-		dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.store_id.in_(store_list)).all()
+		dailyordersquery = statssession.query(order).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.store_id.in_(store_list)).all()
 
 		detailedordercounts = getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, statssession)
 
@@ -385,7 +393,7 @@ class StatsHandler(BaseHandler):
 		current_user = self.get_current_user().decode()
 
 		statssession.remove()
-		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=detailedordercounts["neworders"], repeatorders=detailedordercounts["repeatorders"], newsums=detailedordercounts["newsums"], repeatsums=detailedordercounts["repeatsums"], dailyapc=dailyapc, feedback_chart_data=feedback_chart_data, food_rating_counts=food_rating_counts, delivery_rating_counts=delivery_rating_counts, totalsalesvalue=totalsalesvalue, totalorders=totalorders, totalneworders=detailedordercounts["totalneworders"], totalrepeatorders=detailedordercounts["totalrepeatorders"], averageapc=averageapc, androidorders=detailedordercounts["androidorders"], weborders=detailedordercounts["weborders"], iosorders=detailedordercounts["iosorders"], grosssales = grosssales, totalgrosssales = totalgrosssales, netsalespretax = netsalespretax, totalnetsalespretax = totalnetsalespretax, user=current_user, active_stores=active_stores, current_store=current_store, current_store_name=current_store_name)
+		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=detailedordercounts["neworders"], repeatorders=detailedordercounts["repeatorders"], newsums=detailedordercounts["newsums"], repeatsums=detailedordercounts["repeatsums"], dailyapc=dailyapc, feedback_chart_data=feedback_chart_data, food_rating_counts=food_rating_counts, delivery_rating_counts=delivery_rating_counts, totalsalesvalue=totalsalesvalue, totalorders=totalorders, totalneworders=detailedordercounts["totalneworders"], totalrepeatorders=detailedordercounts["totalrepeatorders"], averageapc=averageapc, androidorders=detailedordercounts["androidorders"], weborders=detailedordercounts["weborders"], iosorders=detailedordercounts["iosorders"], zomatoorders=detailedordercounts["zomatoorders"], swiggyorders=detailedordercounts["swiggyorders"], grosssales = grosssales, totalgrosssales = totalgrosssales, netsalespretax = netsalespretax, totalnetsalespretax = totalnetsalespretax, user=current_user, active_stores=active_stores, current_store=current_store, current_store_name=current_store_name)
 
 class ItemStatsHandler(BaseHandler):
 	@tornado.web.authenticated
@@ -433,7 +441,7 @@ class ItemStatsHandler(BaseHandler):
 			statsengine = sqlalchemy.create_engine(statsengine_url)
 			statssession = scoped_session(sessionmaker(bind=statsengine))
 
-			dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.store_id.in_(current_store))
+			dailyordersquery = statssession.query(order).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.store_id.in_(current_store))
 
 			dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
 			dailyordersdatelookup = {thisorder.order_id: thisorder.date_add.strftime("%a %b %d, %Y") for thisorder in dailyordersquery}
@@ -522,7 +530,7 @@ class UserStatsHandler(BaseHandler):
 			statsengine = sqlalchemy.create_engine(statsengine_url)
 			statssession = scoped_session(sessionmaker(bind=statsengine))
 
-			dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate)
+			dailyordersquery = statssession.query(order).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate)
 			dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
 			orderdetailsquery = statssession.query(orderdetail).filter(orderdetail.order_id.in_(dailyorderids))
 			orderdetailslookup = {thisorder.order_id: [] for thisorder in dailyordersquery}
@@ -962,7 +970,7 @@ class AnalyticsHandler(BaseHandler):
 
 			totalcount = getTotalCount(parsedstartdate, parsedenddate, daterange, statssession, [2,3])
 
-			dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate).all()
+			dailyordersquery = statssession.query(order).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate).all()
 
 			detailedordercounts = getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, statssession)
 
@@ -1278,7 +1286,7 @@ class WastageHandler(BaseHandler):
 		menuitemsquery = statssession.query(menuitem).all()
 		menuitemlookup = {x.menu_item_id: x for x in menuitemsquery}
 
-		dailyordersquery = statssession.query(order).filter(sqlalchemy.not_(order.mobile_number.like("1%")), order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate).all()
+		dailyordersquery = statssession.query(order).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate).all()
 
 		#dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
 
