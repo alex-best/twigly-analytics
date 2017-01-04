@@ -395,6 +395,74 @@ class StatsHandler(BaseHandler):
 		statssession.remove()
 		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=detailedordercounts["neworders"], repeatorders=detailedordercounts["repeatorders"], newsums=detailedordercounts["newsums"], repeatsums=detailedordercounts["repeatsums"], dailyapc=dailyapc, feedback_chart_data=feedback_chart_data, food_rating_counts=food_rating_counts, delivery_rating_counts=delivery_rating_counts, totalsalesvalue=totalsalesvalue, totalorders=totalorders, totalneworders=detailedordercounts["totalneworders"], totalrepeatorders=detailedordercounts["totalrepeatorders"], averageapc=averageapc, androidorders=detailedordercounts["androidorders"], weborders=detailedordercounts["weborders"], iosorders=detailedordercounts["iosorders"], zomatoorders=detailedordercounts["zomatoorders"], swiggyorders=detailedordercounts["swiggyorders"], grosssales = grosssales, totalgrosssales = totalgrosssales, netsalespretax = netsalespretax, totalnetsalespretax = totalnetsalespretax, user=current_user, active_stores=active_stores, current_store=current_store, current_store_name=current_store_name)
 
+class OrderStatsHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+
+		horizon = self.get_argument("horizon", None)
+		startdate = self.get_argument("startdate", None)
+		enddate = self.get_argument("enddate", None)
+		if startdate is None:
+			if horizon is None:
+				horizon = 7
+			else:
+				horizon = int(horizon)
+
+			parsedenddate = datetime.date.today()
+			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
+			daterange = [parsedstartdate.strftime("%a %b %d, %Y")]
+			for c in range(horizon-1):
+				daterange.append((parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%a %b %d, %Y"))
+		
+		else:
+			parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date()
+			parsedenddate = parsedenddate + datetime.timedelta(days=1)
+			parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
+			daterange = []
+			for c in range((parsedenddate - parsedstartdate).days):
+				daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%a %b %d, %Y"))
+
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
+
+		current_store = self.get_argument("store", "All")
+
+		active_stores = statssession.query(store).filter(store.is_active == True).all()
+		active_stores_list = [x.store_id for x in active_stores]
+
+		if current_store == "All":
+			store_list = active_stores_list
+		else:
+			store_list = [int(current_store)]
+		
+		current_store_name = "All"
+		for thisstore in active_stores:
+			if [thisstore.store_id] == current_store:
+				current_store_name = thisstore.name
+				break
+
+		dailysalesquery = statssession.query(order.date_add).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.order_status.in_(deliveredStates + inProgress), order.store_id.in_(store_list))
+
+		orderstatsresult = {thisdate: {hour:0 for hour in range(0,24)} for thisdate in daterange}
+		for thisorder in dailysalesquery:
+			orderstatsresult[thisorder.date_add.strftime("%a %b %d, %Y")][thisorder.date_add.hour] += 1
+
+		hourrange = range(0,24)
+		showresultinterim = {thisdate: {"name": thisdate, "data": []} for thisdate in daterange}
+		for thisdate in daterange:
+			for thishour in hourrange:
+				showresultinterim[thisdate]["data"].append(orderstatsresult[thisdate][thishour])
+
+		showresult = []
+		for thisdate in daterange:
+			showresult.append(showresultinterim[thisdate])
+
+		current_user = self.get_current_user().decode()
+
+		statssession.remove()
+
+		self.render("templates/orderstatstemplate.html", daterange=daterange, hourrange=hourrange, showresult=showresult, user=current_user, active_stores=active_stores, current_store=current_store, current_store_name=current_store_name)
+
 class ItemStatsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
@@ -1572,6 +1640,7 @@ application = tornado.web.Application([
 	(r"/getstoreitems", GetStoreItemsHandler),
 	(r"/setdatewisestoremenu", SetDateWiseMenuHandler),
 	(r"/deliveries", DeliveryHandler),
+	(r"/orderstats", OrderStatsHandler),
 	(r"/vanvaas", VanvaasHandler),
 	(r"/vanvaas/update/", UpdateVanvaasHandler),
 	(r"/vanvaas/(.*)", VanvaasViewHandler),
