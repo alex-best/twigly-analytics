@@ -965,10 +965,26 @@ class AnalyticsHandler(BaseHandler):
 			totalusers = sum(userslist)
 			totalnewusers = sum(newuserslist)
 
+			current_store = self.get_argument("store", "All")
+
 			statsengine = sqlalchemy.create_engine(statsengine_url)
 			statssession = scoped_session(sessionmaker(bind=statsengine))
 
-			totalcount = getTotalCount(parsedstartdate, parsedenddate, daterange, statssession, [2,3])
+			active_stores = statssession.query(store).filter(store.is_active == True).all()
+			active_stores_list = [x.store_id for x in active_stores]
+
+			if current_store == "All":
+				store_list = active_stores_list
+			else:
+				store_list = [int(current_store)]
+			
+			current_store_name = "All"
+			for thisstore in active_stores:
+				if [thisstore.store_id] == current_store:
+					current_store_name = thisstore.name
+					break
+			
+			totalcount = getTotalCount(parsedstartdate, parsedenddate, daterange, statssession, store_list)
 
 			dailyordersquery = statssession.query(order).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate).all()
 
