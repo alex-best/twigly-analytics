@@ -7,7 +7,8 @@ from sqlalchemy import (
     String,
     Float,
     DateTime,
-    Boolean
+    Boolean,
+    ForeignKey
     )
 from sqlalchemy.orm.exc import NoResultFound
 import datetime
@@ -45,6 +46,7 @@ mailchimpkey = "***REMOVED***"
 deliveredStates = [3]
 deliveredFreeStates = [10,11,12,16]
 inProgress = [1,2,9,15]
+returnedStates = [4]
 
 class order(statsBase):
 	__tablename__ = "orders"
@@ -117,6 +119,8 @@ class menuitem(statsBase):
 	is_active = Column("is_active", Integer)
 	category = Column("category", Integer)
 	is_combo = Column("is_combo", Integer)
+	cooking_station = Column("cooking_station", Integer)
+	
 
 	def getJson(self):
 		return {
@@ -184,25 +188,56 @@ def getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, 
 
 	platformcounts = {thisdate: {"Android": 0, "Web": 0, "iOS": 0, "Zomato": 0, "Swiggy": 0} for thisdate in daterange}
 
+	freeordercounts = {thisdate: {"FoodTrial": 0, "FreeDelivery": 0, "Returned": 0} for thisdate in daterange}
+	freeordersums = {thisdate: {"FoodTrial": 0.0, "FreeDelivery": 0.0, "Returned": 0.0} for thisdate in daterange}
+
+	active_stores = statssession.query(store).filter(store.is_active == True).all()
+	active_stores_list = [x.store_id for x in active_stores]
+
+	newusercountsbystore = {x.store_id: {thisdate:0 for thisdate in daterange} for x in active_stores}
+	newusertotalsbystore = {x.store_id: {thisdate:0.0 for thisdate in daterange} for x in active_stores}
+
 	for thisorder in dailyordersquery:
-		if thisorder.mobile_number in firstordersmap:
-			if (thisorder.date_add.strftime("%c") == firstordersmap[thisorder.mobile_number]):
-				ordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["new"] += 1
-				ordertotals[thisorder.date_add.strftime("%a %b %d, %Y")]["new"] += float(thisorder.total)
-			else:
-				ordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["old"] += 1
-				ordertotals[thisorder.date_add.strftime("%a %b %d, %Y")]["old"] += float(thisorder.total)
+		if thisorder.order_status not in returnedStates:
+			if thisorder.mobile_number in firstordersmap:
+				if (thisorder.date_add.strftime("%c") == firstordersmap[thisorder.mobile_number]):
+					ordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["new"] += 1
+					ordertotals[thisorder.date_add.strftime("%a %b %d, %Y")]["new"] += float(thisorder.total)
+					newusercountsbystore[thisorder.store_id][thisorder.date_add.strftime("%a %b %d, %Y")] += 1
+					newusertotalsbystore[thisorder.store_id][thisorder.date_add.strftime("%a %b %d, %Y")] += float(thisorder.total)
+				else:
+					ordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["old"] += 1
+					ordertotals[thisorder.date_add.strftime("%a %b %d, %Y")]["old"] += float(thisorder.total)
+
+			if thisorder.order_status == 12: #food trials
+				freeordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["FoodTrial"] += 1
+				freeordersums[thisorder.date_add.strftime("%a %b %d, %Y")]["FoodTrial"] += float(thisorder.total)
+			elif thisorder.order_status in [10,11]: #free on delivery
+				freeordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["FreeDelivery"] += 1
+				freeordersums[thisorder.date_add.strftime("%a %b %d, %Y")]["FreeDelivery"] += float(thisorder.total)
+
+			if thisorder.coupon_id == 58: #coupon RKK
+				freeordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["FoodTrial"] += 1
+				freeordersums[thisorder.date_add.strftime("%a %b %d, %Y")]["FoodTrial"] += float(thisorder.sub_total)*1.13
+			elif thisorder.coupon_id == 29: #free on delivery and coupon matata
+				freeordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["FreeDelivery"] += 1
+				freeordersums[thisorder.date_add.strftime("%a %b %d, %Y")]["FreeDelivery"] += float(thisorder.sub_total)*1.13
+
+			
+			if (thisorder.source == 0):
+				platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Android"] += 1
+			elif (thisorder.source == 1):
+				platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Web"] += 1
+			elif (thisorder.source ==2):
+				platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["iOS"] += 1
+			elif (thisorder.source ==6):
+				platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Zomato"] += 1
+			elif (thisorder.source ==7):
+				platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Swiggy"] += 1
+		elif thisorder.order_status in returnedStates: #refunds
+			freeordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Returned"] += 1
+			freeordersums[thisorder.date_add.strftime("%a %b %d, %Y")]["Returned"] += float(thisorder.total)
 		
-		if (thisorder.source == 0):
-			platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Android"] += 1
-		elif (thisorder.source == 1):
-			platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Web"] += 1
-		elif (thisorder.source ==2):
-			platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["iOS"] += 1
-		elif (thisorder.source ==6):
-			platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Zomato"] += 1
-		elif (thisorder.source ==7):
-			platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Swiggy"] += 1
 
 	neworders = []
 	for thisdate in daterange:
@@ -224,6 +259,21 @@ def getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, 
 	for thisdate in daterange:
 		repeatsums.append(ordertotals[thisdate]["old"])
 
+
+	newusersbystore = {}
+	for store_id in active_stores_list:
+		templist = []
+		for thisdate in daterange:
+			templist.append(newusercountsbystore[store_id][thisdate])
+		newusersbystore[store_id] = templist
+
+	newusersumsbystore = {}
+	for store_id in active_stores_list:
+		templist = []
+		for thisdate in daterange:
+			templist.append(newusertotalsbystore[store_id][thisdate])
+		newusersumsbystore[store_id] = templist
+
 	androidorders = []
 	weborders = []
 	iosorders = []
@@ -237,7 +287,22 @@ def getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, 
 		zomatoorders.append(platformcounts[thisdate]["Zomato"])
 		swiggyorders.append(platformcounts[thisdate]["Swiggy"])
 
-	result = {"neworders": neworders, "repeatorders": repeatorders, "totalneworders": totalneworders, "totalrepeatorders": totalrepeatorders, "newsums": newsums, "repeatsums": repeatsums, "androidorders": androidorders, "weborders": weborders, "iosorders": iosorders, "zomatoorders": zomatoorders, "swiggyorders": swiggyorders}
+	foodtrialscount = []
+	freedeliverycount = []
+	returncount = []
+	foodtrialstotal = []
+	freedeliverytotal = []
+	returntotal = []
+
+	for thisdate in daterange:
+		foodtrialscount.append(freeordercounts[thisdate]["FoodTrial"])
+		freedeliverycount.append(freeordercounts[thisdate]["FreeDelivery"])
+		returncount.append(freeordercounts[thisdate]["Returned"])
+		foodtrialstotal.append(freeordersums[thisdate]["FoodTrial"])
+		freedeliverytotal.append(freeordersums[thisdate]["FreeDelivery"])
+		returntotal.append(freeordersums[thisdate]["Returned"])
+
+	result = {"neworders": neworders, "repeatorders": repeatorders, "totalneworders": totalneworders, "totalrepeatorders": totalrepeatorders, "newsums": newsums, "repeatsums": repeatsums, "androidorders": androidorders, "weborders": weborders, "iosorders": iosorders, "zomatoorders": zomatoorders, "swiggyorders": swiggyorders, "foodtrialscount": foodtrialscount, "freedeliverycount": freedeliverycount, "returncount": returncount, "foodtrialstotal": foodtrialstotal, "freedeliverytotal": freedeliverytotal, "returntotal":returntotal, "newusersbystore":newusersbystore,"newusersumsbystore":newusersumsbystore}
 	return (result)
 
 class StatsHandler(BaseHandler):
@@ -301,11 +366,11 @@ class StatsHandler(BaseHandler):
 
 		totalcount = getTotalCount(parsedstartdate, parsedenddate, daterange, statssession,store_list)
 
-		dailyordersquery = statssession.query(order).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.store_id.in_(store_list)).all()
+		dailyordersquery = statssession.query(order).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress + returnedStates), order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.store_id.in_(store_list)).all()
 
 		detailedordercounts = getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, statssession)
 
-		dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
+		dailyorderids = [thisorder.order_id for thisorder in dailyordersquery if (thisorder.order_status not in returnedStates)]
 
 		grosssalesquery = statssession.query(orderdetail.date_add, orderdetail.quantity, orderdetail.price).filter(orderdetail.order_id.in_(dailyorderids))
 		grosssaleslookup = {}
@@ -367,7 +432,10 @@ class StatsHandler(BaseHandler):
 				delivery_rating_counts[5-thisfeedback.delivery_rating]["y"] += 1
 				total_delivery_ratings += 1
 
-		
+		newusersbystore = []
+		for thisstore in active_stores:
+			newusersbystore.append({"store_id": thisstore.store_id, "name": thisstore.name, "usercounts":detailedordercounts["newusersbystore"][thisstore.store_id], "usertotals":detailedordercounts["newusersumsbystore"][thisstore.store_id]})
+
 
 		
 
@@ -393,7 +461,7 @@ class StatsHandler(BaseHandler):
 		current_user = self.get_current_user().decode()
 
 		statssession.remove()
-		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=detailedordercounts["neworders"], repeatorders=detailedordercounts["repeatorders"], newsums=detailedordercounts["newsums"], repeatsums=detailedordercounts["repeatsums"], dailyapc=dailyapc, feedback_chart_data=feedback_chart_data, food_rating_counts=food_rating_counts, delivery_rating_counts=delivery_rating_counts, totalsalesvalue=totalsalesvalue, totalorders=totalorders, totalneworders=detailedordercounts["totalneworders"], totalrepeatorders=detailedordercounts["totalrepeatorders"], averageapc=averageapc, androidorders=detailedordercounts["androidorders"], weborders=detailedordercounts["weborders"], iosorders=detailedordercounts["iosorders"], zomatoorders=detailedordercounts["zomatoorders"], swiggyorders=detailedordercounts["swiggyorders"], grosssales = grosssales, totalgrosssales = totalgrosssales, netsalespretax = netsalespretax, totalnetsalespretax = totalnetsalespretax, user=current_user, active_stores=active_stores, current_store=current_store, current_store_name=current_store_name)
+		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=detailedordercounts["neworders"], repeatorders=detailedordercounts["repeatorders"], newsums=detailedordercounts["newsums"], repeatsums=detailedordercounts["repeatsums"], dailyapc=dailyapc, feedback_chart_data=feedback_chart_data, food_rating_counts=food_rating_counts, delivery_rating_counts=delivery_rating_counts, totalsalesvalue=totalsalesvalue, totalorders=totalorders, totalneworders=detailedordercounts["totalneworders"], totalrepeatorders=detailedordercounts["totalrepeatorders"], averageapc=averageapc, androidorders=detailedordercounts["androidorders"], weborders=detailedordercounts["weborders"], iosorders=detailedordercounts["iosorders"], zomatoorders=detailedordercounts["zomatoorders"], swiggyorders=detailedordercounts["swiggyorders"], foodtrialstotal=detailedordercounts["foodtrialstotal"], freedeliverytotal=detailedordercounts["freedeliverytotal"], returntotal=detailedordercounts["returntotal"], foodtrialscount=detailedordercounts["foodtrialscount"], freedeliverycount=detailedordercounts["freedeliverycount"], returncount=detailedordercounts["returncount"], grosssales = grosssales, totalgrosssales = totalgrosssales, netsalespretax = netsalespretax, totalnetsalespretax = totalnetsalespretax, user=current_user, active_stores=active_stores, current_store=current_store, current_store_name=current_store_name, newusersbystore=newusersbystore)
 
 class OrderStatsHandler(BaseHandler):
 	@tornado.web.authenticated
@@ -514,24 +582,28 @@ class ItemStatsHandler(BaseHandler):
 			dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
 			dailyordersdatelookup = {thisorder.order_id: thisorder.date_add.strftime("%a %b %d, %Y") for thisorder in dailyordersquery}
 
-			tags = statssession.query(tag).all()
-			tagsmap = []
+			cookingstations = [{'id':1,'name':'Sandwich'}, {'id':2,'name':'HotStation'},{'id':8,'name':'Dessert'},{'id':16,'name':'Pizza'},{'id':32,'name':'Grilled'}]
 
-			for thistag in tags:
-				relevantmenuitems = statssession.query(menu_item_tag.menu_item_id).filter(menu_item_tag.tag_id == thistag.tag_id)
+
+			csmap = []
+
+			for thiscs in cookingstations:
+				relevantmenuitems = statssession.query(menuitem.menu_item_id).filter(menuitem.cooking_station == thiscs['id'])
 				thiscountquery = statssession.query(orderdetail.date_add, sqlalchemy.func.sum(orderdetail.quantity), orderdetail.order_id).filter(orderdetail.order_id.in_(dailyorderids), orderdetail.menu_item_id.in_(relevantmenuitems)).group_by(sqlalchemy.func.year(orderdetail.date_add), sqlalchemy.func.month(orderdetail.date_add), sqlalchemy.func.day(orderdetail.date_add))
 				thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): int(thisresult[1]) for thisresult in thiscountquery}
-				thistaglist = []
+				thiscslist = []
 				for thisdate in daterange:
 					if thisdate in thiscountdetails:
-						thistaglist.append(thiscountdetails[thisdate])
+						thiscslist.append(thiscountdetails[thisdate])
 					else:
-						thistaglist.append(0)
+						thiscslist.append(0)
 
-				tagsmap.append({"name": thistag.name, "data":thistaglist})
-				
+				csmap.append({"name": thiscs['name'], "data":thiscslist})
 
-			menuitems = {thismenuitem.menu_item_id: {"name": thismenuitem.name, "total": 0, "datelookup": {thisdate: 0 for thisdate in daterange}} for thismenuitem in statssession.query(menuitem)}
+			allcsidtoname = {0:'None',1:'Sandwich', 2:'Hot Station',4:'Salad Station',8:'Dessert',16:'Pizza',32:'Grilled',64:'Soup',3:'Combo',5:'Combo',11:'Combo',12:'Combo',13:'Combo'}
+
+			menuitems = {thismenuitem.menu_item_id: {"name": thismenuitem.name, "cooking_station":allcsidtoname[thismenuitem.cooking_station], "total": 0, "datelookup": {thisdate: 0 for thisdate in daterange}} for thismenuitem in statssession.query(menuitem)}
+
 			for suborder in statssession.query(orderdetail).filter(orderdetail.order_id.in_(dailyorderids)):
 				menuitems[suborder.menu_item_id]["datelookup"][dailyordersdatelookup[suborder.order_id]] += suborder.quantity
 				menuitems[suborder.menu_item_id]["total"] += suborder.quantity
@@ -544,7 +616,7 @@ class ItemStatsHandler(BaseHandler):
 					current_store_name = thisstore.name
 					break
 
-			itemhtml = "<table class='table table-striped table-hover tablesorter' style='width: 100%;'><thead><tr><th>Dish</th><th>Total</th>"
+			itemhtml = "<table class='table table-striped table-hover tablesorter' style='width: 100%;'><thead><tr><th>Dish</th><th>Cooking Station</th><th>Total</th>"
 			for thisdate in daterange:
 				itemhtml += "<th>" + thisdate + "</th>"
 
@@ -553,6 +625,7 @@ class ItemStatsHandler(BaseHandler):
 				if menuitems[thismenuitem]["total"] == 0:
 					continue
 				itemhtml += "<tr><td style='font-weight: bold;'>" + menuitems[thismenuitem]["name"] + "</td>"
+				itemhtml += "<td style='font-weight: bold;'>" + str(menuitems[thismenuitem]["cooking_station"]) + "</td>"
 				itemhtml += "<td style='font-weight: bold;'>" + str(menuitems[thismenuitem]["total"]) + "</td>"
 				for thisdate in daterange:
 					if menuitems[thismenuitem]["datelookup"][thisdate] == 0:
@@ -563,7 +636,7 @@ class ItemStatsHandler(BaseHandler):
 			itemhtml += "</tbody></table>"
 
 			statssession.remove()
-			self.render("templates/itemstatstemplate.html", daterange=daterange, tagsmap=tagsmap, itemhtml=itemhtml, active_stores=active_stores, current_store=current_store, current_store_name=current_store_name, user=current_user)
+			self.render("templates/itemstatstemplate.html", daterange=daterange, csmap=csmap, itemhtml=itemhtml, active_stores=active_stores, current_store=current_store, current_store_name=current_store_name, user=current_user)
 
 class UserStatsHandler(BaseHandler):
 	@tornado.web.authenticated
@@ -1045,13 +1118,13 @@ class AnalyticsHandler(BaseHandler):
 				store_list = active_stores_list
 			else:
 				store_list = [int(current_store)]
-			
+
 			current_store_name = "All"
 			for thisstore in active_stores:
 				if [thisstore.store_id] == current_store:
 					current_store_name = thisstore.name
 					break
-			
+
 			totalcount = getTotalCount(parsedstartdate, parsedenddate, daterange, statssession, store_list)
 
 			dailyordersquery = statssession.query(order).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate).all()
@@ -1148,9 +1221,13 @@ class AnalyticsHandler(BaseHandler):
 			webconversion = sum(detailedordercounts["weborders"])/sum(platformintermediate["Web"])
 			iosconversion = sum(detailedordercounts["iosorders"])/sum(platformintermediate["iOS"])
 
+			newusersbystore = []
+			for thisstore in active_stores:
+				newusersbystore.append({"store_id": thisstore.store_id, "name": thisstore.name, "usercounts":detailedordercounts["newusersbystore"][thisstore.store_id], "usertotals":detailedordercounts["newusersumsbystore"][thisstore.store_id]})
+
 			statssession.remove()
 
-			self.render("templates/userstatstemplate.html", daterange=daterange, userslist=userslist, newuserslist=newuserslist, totalusers=totalusers, totalnewusers=totalnewusers, dailyconversion=dailyconversion, newconversion=newconversion, overallconversion=overallconversion, overallnewconversion=overallnewconversion, trafficdatatodisplay=dumps(trafficdatatodisplay), platformdatatoshow=dumps(platformdatatoshow), androidconversionseries=androidconversionseries, webconversionseries=webconversionseries, iosconversionseries=iosconversionseries, androidconversion=androidconversion, webconversion=webconversion, iosconversion=iosconversion, user=current_user)
+			self.render("templates/userstatstemplate.html", daterange=daterange, userslist=userslist, newuserslist=newuserslist, totalusers=totalusers, totalnewusers=totalnewusers, dailyconversion=dailyconversion, newconversion=newconversion, overallconversion=overallconversion, overallnewconversion=overallnewconversion, trafficdatatodisplay=dumps(trafficdatatodisplay), platformdatatoshow=dumps(platformdatatoshow), androidconversionseries=androidconversionseries, webconversionseries=webconversionseries, iosconversionseries=iosconversionseries, androidconversion=androidconversion, webconversion=webconversion, iosconversion=iosconversion, user=current_user, newusersbystore=newusersbystore)
 
 class SendMailHandler(BaseHandler):
 	@tornado.web.authenticated
@@ -1327,6 +1404,45 @@ class datewise_store_menu_item(statsBase):
 	avl_quantity = Column("avl_quantity", Integer)
 	is_active = Column("is_active", Boolean)
 
+
+class store_ingredient_inventory(statsBase):
+    __tablename__ = 'store_ingredient_inventory'
+    inventory_id = Column('inventory_id', Integer, primary_key=True)
+    store_id = Column('store_id', Integer)
+    batch_id = Column('batch_id', Integer, ForeignKey("ingredient_batches.batch_id"))
+    date_effective = Column('date_effective', DateTime)
+    daywise_batch_number = Column('daywise_batch_number', Integer)
+#    expected_units = Column('expected_units', Float)
+    actual_units = Column('actual_units', Float)
+#    category = Column('category', Integer)
+    role = Column('role', Integer)
+#    description = Column('description', Integer)
+
+class ingredient_batches(statsBase):
+    __tablename__ = "ingredient_batches"
+    batch_id = Column('batch_id', Integer, primary_key=True)
+    ingredient_id = Column('ingredient_id', Integer, ForeignKey("ingredients.ingredient_id"))
+#    units = Column('units', Integer)
+#    time_del = Column('time_del', DateTime)
+#	is_active = Column("is_active", Boolean)
+#    time_add = Column('time_add', DateTime)
+#	status = Column("status", Boolean)
+
+
+class ingredients(statsBase):
+    __tablename__ = "ingredients"
+    ingredient_id = Column('ingredient_id', Integer, primary_key=True)
+#    name = Column('name', String)
+#    category = Column('category', Integer)
+#    measuring_unit = Column('date_effective', DateTime)
+    pack_size = Column('pack_size', Integer)
+#    kcal = Column('kcal', Float)
+    cost = Column('cost', Float)
+#    expiry_time_hrs = Column('expiry_time_hrs', Integer)
+#    _yield_ = Column('yield', Float)
+#    production = Column('production', Integer)
+
+
 class WastageHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
@@ -1374,9 +1490,12 @@ class WastageHandler(BaseHandler):
 
 		#dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
 
+		storeingredientinventoryquery = statssession.query(store_ingredient_inventory,ingredient_batches,ingredients).join(ingredient_batches).join(ingredients).filter(store_ingredient_inventory.date_effective < parsedenddate,store_ingredient_inventory.date_effective >= parsedstartdate, store_ingredient_inventory.role.in_([3,14]),store_ingredient_inventory.actual_units>0).all()
 		grosssales = []
 		predictedsales = []
 		wastage = []
+		storewastage=[]
+		wastagepc = []
 		stores = []
 
 		for thisstore in active_stores:
@@ -1421,9 +1540,21 @@ class WastageHandler(BaseHandler):
 					if peritemwastage[dr][menuitemid] > 0:
 						wastagelookup[dr] += (peritemwastage[dr][menuitemid]*midlookup[menuitemid].cost_price)
 
+			storewastagelookup = {dr: 0 for dr in daterange}
+			storewastageitems = [(thisinventory,thisbatch,thisingredient) for (thisinventory,thisbatch,thisingredient) in storeingredientinventoryquery if thisinventory.store_id == thisstore.store_id]
+			
+			for (inv,bat,ing) in storewastageitems:
+				if inv.date_effective.strftime("%a %b %d, %Y") in storewastagelookup:
+					storewastagelookup[inv.date_effective.strftime("%a %b %d, %Y")] += (inv.actual_units*ing.cost/ing.pack_size)
+				else:
+					storewastagelookup[inv.date_effective.strftime("%a %b %d, %Y")] = inv.actual_units*ing.cost/ing.pack_size
+
 			thisgrosssales = []
 			thispredictedsales = []
 			thiswastage = []
+			thisstorewastage = []
+			thiswastagepc = []
+
 			for c in range(0, len(daterange)):
 				try:
 					thispredictedsales.append(float(dwsmilookup[daterange[c]]))
@@ -1440,34 +1571,60 @@ class WastageHandler(BaseHandler):
 				except KeyError:
 					thiswastage.append(0.0)	
 
+				try:
+					thisstorewastage.append(float(storewastagelookup[daterange[c]]))
+				except KeyError:
+					thiswastage.append(0.0)	
+
+				try:
+					thiswastagepc.append(float(storewastagelookup[daterange[c]])/float(grosssaleslookup[daterange[c]])*100.0)
+				except KeyError:
+					thiswastagepc.append(0.0)	
+
+
 			grosssales.append(thisgrosssales)
 			predictedsales.append(thispredictedsales)
 			wastage.append(thiswastage)
-			stores.append({"store_id": thisstore.store_id, "name": thisstore.name, "grosssales": sum(thisgrosssales), "predictedsales": sum(thispredictedsales), "wastage": sum(thiswastage)})
+			storewastage.append(thisstorewastage)
+			wastagepc.append(thiswastagepc)
+			stores.append({"store_id": thisstore.store_id, "name": thisstore.name, "grosssales": sum(thisgrosssales), "predictedsales": sum(thispredictedsales), "wastage": sum(thiswastage), "storewastage":sum(thisstorewastage),"wastagepc": sum(thisstorewastage)/sum(thisgrosssales)*100})
 
 		totalgrosssales = 0
 		totalpredictedsales = 0
 		totalwastage = 0
+		totalstorewastage = 0
 		companygrosssales = [0 for dr in daterange]
 		companypredictedsales = [0 for dr in daterange]
 		companywastage = [0 for dr in daterange]
+		companystorewastage = [0 for dr in daterange]
+		companywastagepc = [0 for dr in daterange]
 		for i in range(len(stores)):
 			totalgrosssales += stores[i]["grosssales"]
 			totalpredictedsales += stores[i]["predictedsales"]
 			totalwastage += stores[i]["wastage"]
-		
+			totalstorewastage += stores[i]["storewastage"]
+
 			for j in range(len(daterange)):
 				companygrosssales[j] += grosssales[i][j]
 				companypredictedsales[j] += predictedsales[i][j]
 				companywastage[j] += wastage[i][j]
+				companystorewastage[j] += storewastage[i][j]
 		
-		stores.insert(0, {"store_id": 0, "name": "Twigly", "grosssales": totalgrosssales, "predictedsales": totalpredictedsales, "wastage": totalwastage})
+		for k in range(len(daterange)):
+			try:
+				companywastagepc[k] = float(companystorewastage[k]/companygrosssales[k]*100.0)
+			except:
+				pass
+
+		stores.insert(0, {"store_id": 0, "name": "Twigly", "grosssales": totalgrosssales, "predictedsales": totalpredictedsales, "wastage": totalwastage, "storewastage":totalstorewastage,"wastagepc": totalstorewastage/totalgrosssales*100.0})
 		grosssales.insert(0, companygrosssales)
 		predictedsales.insert(0, companypredictedsales)
 		wastage.insert(0, companywastage)
+		storewastage.insert(0, companystorewastage)
+		wastagepc.insert(0, companywastagepc)
 		statssession.remove()
 
-		self.render("templates/wastagetemplate.html", daterange=daterange, grosssales=grosssales, predictedsales=predictedsales, wastage=wastage, stores=stores, numstores=len(stores), user=current_user)
+		self.render("templates/wastagetemplate.html", daterange=daterange, grosssales=grosssales, predictedsales=predictedsales, wastage=wastage, storewastage=storewastage, wastagepc=wastagepc, stores=stores, numstores=len(stores), user=current_user)
 
 class GetStoreItemsHandler(BaseHandler):
 	@tornado.web.authenticated

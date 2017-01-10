@@ -65,9 +65,15 @@
     </div>
     {% for thisstore in stores %}
     <div class="row" style="margin-bottom: 40px;">
+        <div id='{{thisstore["store_id"]}}dailywastagechart' style="width:100%; height:400px;"></div>
+    </div>
+    {% end %}
+    {% for thisstore in stores %}
+    <div class="row" style="margin-bottom: 40px;">
         <div id='{{thisstore["store_id"]}}chart' style="width:100%; height:400px;"></div>
     </div>
     {% end %}
+
 </div>
 <button class="showFilters hidden-xs btn btn-success" style="position: fixed; top: 25px; right: 15px;">Show/Hide Filters</button>
 <button class="showFilters visible-xs btn btn-success" style="position: fixed; top: 25px; right: 15px;">V</button>
@@ -127,7 +133,7 @@
         },
         title: {
             useHTML: true,
-            text: 'Data for {{ stores[count]["name"]}}<br>Gross Sales: Rs. {{ stores[count]["grosssales"] }}<br>Predicted Sales: Rs. {{ stores[count]["predictedsales"] }}<br>Wastage: {{ stores[count]["wastage"] }}'
+            text: 'Data for {{ stores[count]["name"]}}<br>Gross Sales: &#8377;{{ round(stores[count]["grosssales"],2) }}<br>Predicted Sales: &#8377;{{ round(stores[count]["predictedsales"],2) }}<br>Predicted Wastage: &#8377;{{ round(stores[count]["wastage"],2) }}<br>Real Wastage: &#8377;{{ round(stores[count]["storewastage"],2) }}'
         },
         xAxis: {
             categories: {% raw daterange %},
@@ -161,11 +167,75 @@
                 format: '{point.y:.2f}'
             }
         },{
-            name: "Wastage",
+            name: "Predicted Wastage",
             type: "column",
             yAxis: 0,
             showInLegend: true,
             data: {{ wastage[count] }},
+            dataLabels: {
+                enabled: true,
+                format: '{point.y:.2f}'
+            }
+        },{
+            name: "Real Wastage",
+            type: "column",
+            yAxis: 0,
+            showInLegend: true,
+            data: {{ storewastage[count] }},
+            dataLabels: {
+                enabled: true,
+                format: '{point.y:.2f}'
+            }
+        }]
+    });
+    {% end %}
+
+
+    {% for count in range(numstores) %}
+    $('#{{stores[count]["store_id"]}}dailywastagechart').highcharts({
+        chart: {
+            zoomType: 'xy'
+        },
+        title: {
+            useHTML: true,
+            text: 'Daily Wastage for {{ stores[count]["name"]}}<br>Wastage: &#8377;{{ round(stores[count]["storewastage"],2) }}  ({{ round(stores[count]["wastagepc"],2) }}% of Gross Sales)'
+        },
+        xAxis: {
+            categories: {% raw daterange %},
+            crosshair: true
+        },
+        yAxis: [{
+            title: {
+                text: 'Wastage in INR'
+            }
+        },
+            {
+            title: {
+                text: '% of Gross Sales'
+            },
+            style: Highcharts.getOptions().colors[1],
+            opposite: true,
+            min: 0
+        }],
+        tooltip: {
+            shared: true
+        },
+        series: [{
+            name: "Wastage",
+            type: "column",
+            yAxis: 0,
+            showInLegend: false,
+            data: {{ storewastage[count] }},
+            dataLabels: {
+                enabled: true,
+                format: '{point.y:.2f}'
+            }
+        },{
+            name: "% of Gross Sales",
+            type: "line",
+            yAxis: 1,
+            showInLegend: false,
+            data: {{ wastagepc[count] }},
             dataLabels: {
                 enabled: true,
                 format: '{point.y:.2f}'

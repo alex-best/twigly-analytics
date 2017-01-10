@@ -84,7 +84,7 @@
 		{% end %}
 	</div>
     <div class="row" style="margin-bottom: 40px;" id="tagsheader">
-    	<h2>Tags Data</h2>
+    	<h2>Cooking Station Data</h2>
     </div>
     <div class="row" style="margin-bottom: 40px;" id="tagscontainer">
         
@@ -147,20 +147,20 @@
 
     Highcharts.setOptions(Highcharts.theme);
 
-	var tagsmap = {% raw tagsmap %};
+	var csmap = {% raw csmap %};
 
-	for (var i=0; i<tagsmap.length; i++) {
-		tagsmap[i].name = tagsmap[i].name.replace("#&lt;", "");
-		tagsmap[i].name = tagsmap[i].name.replace(" ", "");
-		var newchartelem = $("<div class='col-xs-12 col-md-4 smallchart' id='" + tagsmap[i].name.substr(1) + "'></div>")
+	for (var i=0; i<csmap.length; i++) {
+		csmap[i].name = csmap[i].name.replace("#&lt;", "");
+		csmap[i].name = csmap[i].name.replace(" ", "");
+		var newchartelem = $("<div class='col-xs-12 col-md-4 smallchart' id='" + csmap[i].name.substr(1) + "'></div>")
 		$('#tagscontainer').append(newchartelem);
 		var newchart = new Highcharts.Chart({
 			chart: {
-	            renderTo: tagsmap[i].name.substr(1),
+	            renderTo: csmap[i].name.substr(1),
 	            type: "column"
 	        },
 	        title: {
-	            text: 'Volume for ' + tagsmap[i].name
+	            text: 'Volume for ' + csmap[i].name
 	        },
 	        xAxis: {
 	            categories: {% raw daterange %},
@@ -173,8 +173,8 @@
 	        },
 	        series: [{
 	        	showInLegend: false,
-	        	name: tagsmap[i].name,
-	        	data: tagsmap[i].data
+	        	name: csmap[i].name,
+	        	data: csmap[i].data
 	        }]
 		});
 	}
