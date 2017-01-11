@@ -463,6 +463,159 @@ class StatsHandler(BaseHandler):
 		statssession.remove()
 		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=detailedordercounts["neworders"], repeatorders=detailedordercounts["repeatorders"], newsums=detailedordercounts["newsums"], repeatsums=detailedordercounts["repeatsums"], dailyapc=dailyapc, feedback_chart_data=feedback_chart_data, food_rating_counts=food_rating_counts, delivery_rating_counts=delivery_rating_counts, totalsalesvalue=totalsalesvalue, totalorders=totalorders, totalneworders=detailedordercounts["totalneworders"], totalrepeatorders=detailedordercounts["totalrepeatorders"], averageapc=averageapc, androidorders=detailedordercounts["androidorders"], weborders=detailedordercounts["weborders"], iosorders=detailedordercounts["iosorders"], zomatoorders=detailedordercounts["zomatoorders"], swiggyorders=detailedordercounts["swiggyorders"], foodtrialstotal=detailedordercounts["foodtrialstotal"], freedeliverytotal=detailedordercounts["freedeliverytotal"], returntotal=detailedordercounts["returntotal"], foodtrialscount=detailedordercounts["foodtrialscount"], freedeliverycount=detailedordercounts["freedeliverycount"], returncount=detailedordercounts["returncount"], grosssales = grosssales, totalgrosssales = totalgrosssales, netsalespretax = netsalespretax, totalnetsalespretax = totalnetsalespretax, user=current_user, active_stores=active_stores, current_store=current_store, current_store_name=current_store_name, newusersbystore=newusersbystore)
 
+class CustomerStatsHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+
+		horizon = self.get_argument("horizon", None)
+		startdate = self.get_argument("startmonth", None)
+		enddate = self.get_argument("endmonth", None)
+		if startdate is None:
+			if horizon is None:
+				horizon = 3
+			else:
+				horizon = int(horizon)
+			parsedenddate = datetime.datetime.strptime(datetime.date.today().strftime("%Y-%m"),"%Y-%m").date()
+			m, y = (parsedenddate.month-horizon) % 12, parsedenddate.year + ((parsedenddate.month)-horizon-1) // 12
+			if not m: m = 12
+
+			parsedstartdate = datetime.datetime(y, m, 1)
+		else:
+			parsedenddate = datetime.datetime.strptime(enddate, "%Y-%m").date()
+			parsedstartdate = datetime.datetime.strptime(startdate, "%Y-%m").date()
+
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
+
+		current_store = self.get_argument("store", "All")
+
+		active_stores = statssession.query(store).filter(store.is_active == True).all()
+		active_stores_list = [x.store_id for x in active_stores]
+
+		if current_store == "All":
+			store_list = active_stores_list
+		else:
+			store_list = [int(current_store)]
+		
+		current_store_name = "All"
+		for thisstore in active_stores:
+			if [thisstore.store_id] == current_store:
+				current_store_name = thisstore.name
+				break
+
+		orders = statssession.query(order.user_id, order.date_add, order.total).filter(order.date_add < parsedenddate, order.date_add >= parsedstartdate, order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress)).all()
+
+		firstorderquery = statssession.query(order.user_id,order.date_add).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress)).order_by(order.date_add).group_by(order.user_id)
+
+		firstOrderLookup = {} #customer: first month
+		for thisorder in firstorderquery:
+			firstOrderLookup[thisorder.user_id] = thisorder.date_add.strftime("%Y-%m")
+
+
+		customerLookup = {} #customers:order dates
+		monthAllCustomerLookup = {} #month:all customers
+		customers = set() #all customers
+		months = [] #all months
+		for thisorder in orders:
+			thiscustomer = thisorder.user_id
+			customers.add(thiscustomer)
+			thisdate = thisorder.date_add
+			thismonth = thisdate.strftime("%Y-%m")
+			if (thismonth not in months):
+				months.append(thismonth)
+			
+			if thiscustomer in customerLookup: 
+				customerLookup[thiscustomer].append(thisdate)
+				if (thismonth in monthAllCustomerLookup):
+					monthAllCustomerLookup[thismonth].add(thiscustomer)
+				else:
+					monthAllCustomerLookup[thismonth] = set([thiscustomer])
+			else: 
+				customerLookup[thiscustomer] = [thisdate]
+				if (thismonth in monthAllCustomerLookup):
+					monthAllCustomerLookup[thismonth].add(thiscustomer)
+				else:
+					monthAllCustomerLookup[thismonth] = set([thiscustomer])
+
+
+		monthRepeatOrderLookup = {} #month: all repeat orders
+		monthNewOrderLookup = {} #month: new customer orders
+		for thisorder in orders:
+			thisdate = thisorder.date_add
+			thismonth = thisdate.strftime("%Y-%m")
+			if firstOrderLookup[thisorder.user_id] == thismonth:
+				if thismonth in monthNewOrderLookup:
+					monthNewOrderLookup[thismonth].add(thisorder)
+				else:
+					monthNewOrderLookup[thismonth] = set([thisorder])
+			else:
+				if thismonth in monthRepeatOrderLookup:
+					monthRepeatOrderLookup[thismonth].add(thisorder)
+				else:
+					monthRepeatOrderLookup[thismonth] = set([thisorder])
+
+		outputtable = "<table class='table table-striped table-hover tablesorter' style='width: 100%;'><thead><tr><th>Month</th><th>Active Users</th>"
+		for m in months:
+			outputtable += "<th>"+m+"</th>"
+		outputtable += "<th>Dropped</th></thead></tr>"
+
+		monthNewCustomerLookup = {} #month: new customers
+		for month in range(len(months)):
+			outputtable += "<tr><td>"+months[month]+"</td>"
+			outputtable += "<td>"+str(len(monthAllCustomerLookup[months[month]]))+"</td>"
+			followmonths = months[month+1:]
+			followmonthsdata = {fm: 0 for fm in followmonths} #month m+i: no. of new customers who returned in month m+i
+			totalreturned = set() #all new customers who returned in m+i months 
+			newcustomers = set() #new customers in month m
+			for tm in range(month):
+				outputtable += "<td>-</td>"
+			for customer in monthAllCustomerLookup[months[month]]: #all customers for month m
+				if (firstOrderLookup[customer] == months[month]):
+					newcustomers.add(customer)
+			outputtable += "<td>"+str(len(newcustomers))+"</td>"
+			monthNewCustomerLookup[months[month]] = newcustomers
+
+			for nextmonth in followmonths:
+				for customer in newcustomers:
+					if customer in monthAllCustomerLookup[nextmonth]:
+						followmonthsdata[nextmonth] += 1
+						totalreturned.add(customer)
+			for fm in followmonths:
+				outputtable += "<td>"+str(followmonthsdata[fm])+"</td>"
+			outputtable += "<td>"+str(len(newcustomers) - len(totalreturned))+" | "+"{:10.2f}".format((len(newcustomers) - len(totalreturned))/len(newcustomers)*100)+"% </td></tr>"
+	
+		outputtable += "</table>"
+
+
+		allcustomersbymonth = [len(monthAllCustomerLookup[month]) for month in months]
+		newcustomersbymonth = [len(monthNewCustomerLookup[month]) for month in months]
+		repeatcustomersbymonth = [(len(monthAllCustomerLookup[month]) - len(monthNewCustomerLookup[month])) for month in months]
+		newordersbymonth = [len(monthNewOrderLookup[month]) if month in monthNewOrderLookup else 0 for month in months]
+		repeatordersbymonth = [len(monthRepeatOrderLookup[month])  if month in monthRepeatOrderLookup else 0 for month in months]
+
+		alltotalsbymonth = [0.0 for m in range(len(months))]
+		newtotalsbymonth = [0.0 for m in range(len(months))]
+		repeattotalsbymonth = [0.0 for m in range(len(months))]
+		for month in range(len(months)):
+			if months[month] in monthNewOrderLookup: 
+				for o in monthNewOrderLookup[months[month]]:
+					newtotalsbymonth[month] += float (o.total)
+					alltotalsbymonth[month] += float (o.total)
+			if months[month] in monthRepeatOrderLookup: 
+				for o in monthRepeatOrderLookup[months[month]]:
+					repeattotalsbymonth[month] += float (o.total)
+					alltotalsbymonth[month] += float (o.total)
+
+		allAPC = [alltotalsbymonth[m]/allcustomersbymonth[m] if allcustomersbymonth[m] > 0 else 0.0 for m in range(len(months))]
+		newAPC = [newtotalsbymonth[m]/newcustomersbymonth[m] if newcustomersbymonth[m] > 0 else 0.0 for m in range(len(months))]
+		repeatAPC = [repeattotalsbymonth[m]/repeatcustomersbymonth[m] if repeatcustomersbymonth[m]>0 else 0.0 for m in range(len(months))]
+
+		current_user = self.get_current_user().decode()
+
+		statssession.remove()
+		self.render("templates/customerstatstemplate.html", user=current_user, outputtable=outputtable, months=months, allcustomers=allcustomersbymonth, newcustomers=newcustomersbymonth, repeatcustomers=repeatcustomersbymonth, neworders=newordersbymonth,repeatorders=repeatordersbymonth, alltotals=alltotalsbymonth, newtotals=newtotalsbymonth,repeattotals=repeattotalsbymonth,allAPC=allAPC, newAPC=newAPC,repeatAPC=repeatAPC)
+
+
 class OrderStatsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
@@ -1798,6 +1951,7 @@ application = tornado.web.Application([
 	(r"/setdatewisestoremenu", SetDateWiseMenuHandler),
 	(r"/deliveries", DeliveryHandler),
 	(r"/orderstats", OrderStatsHandler),
+	(r"/customerstats", CustomerStatsHandler),
 	(r"/vanvaas", VanvaasHandler),
 	(r"/vanvaas/update/", UpdateVanvaasHandler),
 	(r"/vanvaas/(.*)", VanvaasViewHandler),

@@ -21,6 +21,7 @@
         {% if user=="admin" %}<li><a href="/sendmail" style="color: #FFFFFF;">Send Email</a></li>{% end %}
         {% if user=="admin" or user == "headchef" %}<li><a href="/feedbacks" style="color: #FFFFFF;">Feedbacks</a></li>{% end %}
         {% if user=="admin" or user == "headchef" %}<li><a href="/wastage" style="color: #FFFFFF;">Wastage Tracker</a></li>{% end %}
+        {% if user=="admin" %}<li><a href="/customerstats" style="color: #FFFFFF;">Customer Stats</a></li>{% end %}
       </ul>
     </div><!-- /.navbar-collapse -->
   </div><!-- /.container-fluid -->
