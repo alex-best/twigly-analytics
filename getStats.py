@@ -85,6 +85,14 @@ class orderdetail(statsBase):
 	date_add = Column("date_add", DateTime)
 	date_upd = Column("date_upd", DateTime)
 
+class orderdetailoption(statsBase):
+	__tablename__ = "order_detail_options"
+	order_detail_id = Column("order_detail_option_id", Integer, primary_key=True)
+	order_id = Column("order_detail_id", Integer, ForeignKey("order_details.order_detail_id"))
+	menu_item_id = Column("ingredient_option_id", Integer)
+	price = Column("price", Float)
+
+
 class tag(statsBase):
 	__tablename__ = "tags"
 	tag_id = Column("tag_id", Integer, primary_key=True)
@@ -372,13 +380,19 @@ class StatsHandler(BaseHandler):
 
 		dailyorderids = [thisorder.order_id for thisorder in dailyordersquery if (thisorder.order_status not in returnedStates)]
 
-		grosssalesquery = statssession.query(orderdetail.date_add, orderdetail.quantity, orderdetail.price).filter(orderdetail.order_id.in_(dailyorderids))
+
+		#### Now looking at actual sales
+
+		grosssalesquery = statssession.query(orderdetail.date_add,orderdetail.quantity,orderdetail.price,orderdetailoption.price,orderdetail.menu_item_id).outerjoin(orderdetailoption).filter(orderdetail.order_id.in_(dailyorderids))
+			
 		grosssaleslookup = {}
 		for grossdetail in grosssalesquery:
-			if grossdetail.date_add.strftime("%a %b %d, %Y") in grosssaleslookup:
-				grosssaleslookup[grossdetail.date_add.strftime("%a %b %d, %Y")] += (grossdetail.quantity*grossdetail.price)
+			if grossdetail[0].strftime("%a %b %d, %Y") in grosssaleslookup:
+				grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] += (grossdetail[1]*grossdetail[2])	 	
 			else:
-				grosssaleslookup[grossdetail.date_add.strftime("%a %b %d, %Y")] = (grossdetail.quantity*grossdetail.price)
+			 	grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] = (grossdetail[1]*grossdetail[2])
+			if grossdetail[3]:
+				grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] += (grossdetail[1]*grossdetail[3])
 
 		vatlookup = {thisresult[0].strftime("%a %b %d, %Y"): float(thisresult[2]) for thisresult in dailysalesquery}
 
@@ -478,11 +492,13 @@ class CustomerStatsHandler(BaseHandler):
 			parsedenddate = datetime.datetime.strptime(datetime.date.today().strftime("%Y-%m"),"%Y-%m").date()
 			m, y = (parsedenddate.month-horizon) % 12, parsedenddate.year + ((parsedenddate.month)-horizon-1) // 12
 			if not m: m = 12
-
 			parsedstartdate = datetime.datetime(y, m, 1)
 		else:
-			parsedenddate = datetime.datetime.strptime(enddate, "%Y-%m").date()
 			parsedstartdate = datetime.datetime.strptime(startdate, "%Y-%m").date()
+			parsedenddate = datetime.datetime.strptime(enddate, "%Y-%m").date()
+			m, y = (parsedenddate.month+1) % 12, parsedenddate.year + ((parsedenddate.month)+1-1) // 12
+			if not m: m = 12
+			parsedenddate = datetime.datetime(y, m, 1)
 
 		statsengine = sqlalchemy.create_engine(statsengine_url)
 		statssession = scoped_session(sessionmaker(bind=statsengine))
@@ -503,9 +519,10 @@ class CustomerStatsHandler(BaseHandler):
 				current_store_name = thisstore.name
 				break
 
-		orders = statssession.query(order.user_id, order.date_add, order.total).filter(order.date_add < parsedenddate, order.date_add >= parsedstartdate, order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress)).all()
+		orders = statssession.query(order.order_id, order.user_id, order.date_add, order.total).filter(order.date_add < parsedenddate, order.date_add >= parsedstartdate, order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress)).all()
 
 		firstorderquery = statssession.query(order.user_id,order.date_add).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress)).order_by(order.date_add).group_by(order.user_id)
+
 
 		firstOrderLookup = {} #customer: first month
 		for thisorder in firstorderquery:
@@ -537,7 +554,6 @@ class CustomerStatsHandler(BaseHandler):
 				else:
 					monthAllCustomerLookup[thismonth] = set([thiscustomer])
 
-
 		monthRepeatOrderLookup = {} #month: all repeat orders
 		monthNewOrderLookup = {} #month: new customer orders
 		for thisorder in orders:
@@ -557,13 +573,15 @@ class CustomerStatsHandler(BaseHandler):
 		outputtable = "<table class='table table-striped table-hover tablesorter' style='width: 100%;'><thead><tr><th>Month</th><th>Active Users</th>"
 		for m in months:
 			outputtable += "<th>"+m+"</th>"
-		outputtable += "<th>Dropped</th></thead></tr>"
+		outputtable += "<th>% Active in last 1 month</th><th>% Active in last 2 month</th><th>Dropped</th><th>% Dropped</th></thead></tr>"
 
 		monthNewCustomerLookup = {} #month: new customers
 		for month in range(len(months)):
 			outputtable += "<tr><td>"+months[month]+"</td>"
 			outputtable += "<td>"+str(len(monthAllCustomerLookup[months[month]]))+"</td>"
 			followmonths = months[month+1:]
+			lasttwomonths = months[-2:]
+			returnedinlasttwomonths = set()
 			followmonthsdata = {fm: 0 for fm in followmonths} #month m+i: no. of new customers who returned in month m+i
 			totalreturned = set() #all new customers who returned in m+i months 
 			newcustomers = set() #new customers in month m
@@ -580,12 +598,25 @@ class CustomerStatsHandler(BaseHandler):
 					if customer in monthAllCustomerLookup[nextmonth]:
 						followmonthsdata[nextmonth] += 1
 						totalreturned.add(customer)
+	
+			for activemonth in lasttwomonths:
+				for customer in newcustomers:
+					if customer in monthAllCustomerLookup[activemonth]:
+						returnedinlasttwomonths.add(customer)
+
 			for fm in followmonths:
 				outputtable += "<td>"+str(followmonthsdata[fm])+"</td>"
-			outputtable += "<td>"+str(len(newcustomers) - len(totalreturned))+" | "+"{:10.2f}".format((len(newcustomers) - len(totalreturned))/len(newcustomers)*100)+"% </td></tr>"
+			
+			if len(followmonths)>0:
+				outputtable += "<td>"+"{:10.2f}".format((followmonthsdata[followmonths[len(followmonths)-1]])/len(newcustomers)*100)+"% </td>"
+			else: #last row
+					outputtable += "<td>100%</td>"
+
+			outputtable += "<td>"+"{:10.2f}".format(len(returnedinlasttwomonths)/len(newcustomers)*100)+"% </td>"
+			
+			outputtable += "<td>"+str(len(newcustomers) - len(totalreturned))+"</td><td>"+"{:10.2f}".format((len(newcustomers) - len(totalreturned))/len(newcustomers)*100)+"% </td></tr>"
 	
 		outputtable += "</table>"
-
 
 		allcustomersbymonth = [len(monthAllCustomerLookup[month]) for month in months]
 		newcustomersbymonth = [len(monthNewCustomerLookup[month]) for month in months]
@@ -593,27 +624,67 @@ class CustomerStatsHandler(BaseHandler):
 		newordersbymonth = [len(monthNewOrderLookup[month]) if month in monthNewOrderLookup else 0 for month in months]
 		repeatordersbymonth = [len(monthRepeatOrderLookup[month])  if month in monthRepeatOrderLookup else 0 for month in months]
 
+
+		#### Now looking at actual sales
+
+		thisstoreorders = [thisorder.order_id for thisorder in orders]
+		grosssalesquery = statssession.query(orderdetail.order_id,orderdetail.quantity,orderdetail.price,orderdetailoption.price).outerjoin(orderdetailoption).filter(orderdetail.order_id.in_(thisstoreorders))
+		
+		grosssaleslookup = {}
+		for grossdetail in grosssalesquery:
+			if grossdetail[0] in grosssaleslookup:  
+				 grosssaleslookup[grossdetail[0]]+=float(grossdetail[1]*grossdetail[2])
+			else:
+				 grosssaleslookup[grossdetail[0]]=float(grossdetail[1]*grossdetail[2])
+			if grossdetail[3]:
+				grosssaleslookup[grossdetail[0]] += float(grossdetail[1]*grossdetail[3])
+		
 		alltotalsbymonth = [0.0 for m in range(len(months))]
 		newtotalsbymonth = [0.0 for m in range(len(months))]
 		repeattotalsbymonth = [0.0 for m in range(len(months))]
+		
 		for month in range(len(months)):
 			if months[month] in monthNewOrderLookup: 
 				for o in monthNewOrderLookup[months[month]]:
-					newtotalsbymonth[month] += float (o.total)
-					alltotalsbymonth[month] += float (o.total)
+					if o.order_id in grosssaleslookup:
+						newtotalsbymonth[month] += float (grosssaleslookup[o.order_id])
+						alltotalsbymonth[month] += float (grosssaleslookup[o.order_id])
 			if months[month] in monthRepeatOrderLookup: 
 				for o in monthRepeatOrderLookup[months[month]]:
-					repeattotalsbymonth[month] += float (o.total)
-					alltotalsbymonth[month] += float (o.total)
+					if o.order_id in grosssaleslookup:
+						repeattotalsbymonth[month] += float (grosssaleslookup[o.order_id])
+						alltotalsbymonth[month] += float (grosssaleslookup[o.order_id])
 
-		allAPC = [alltotalsbymonth[m]/allcustomersbymonth[m] if allcustomersbymonth[m] > 0 else 0.0 for m in range(len(months))]
-		newAPC = [newtotalsbymonth[m]/newcustomersbymonth[m] if newcustomersbymonth[m] > 0 else 0.0 for m in range(len(months))]
-		repeatAPC = [repeattotalsbymonth[m]/repeatcustomersbymonth[m] if repeatcustomersbymonth[m]>0 else 0.0 for m in range(len(months))]
+		allAPC = [alltotalsbymonth[m]/(newordersbymonth[m]+repeatordersbymonth[m]) if (newordersbymonth[m]+repeatordersbymonth[m]) > 0 else 0.0 for m in range(len(months))]
+		newAPC = [newtotalsbymonth[m]/newordersbymonth[m] if newordersbymonth[m] > 0 else 0.0 for m in range(len(months))]
+		repeatAPC = [repeattotalsbymonth[m]/repeatordersbymonth[m] if repeatordersbymonth[m]>0 else 0.0 for m in range(len(months))]
+
+
+		outputtableorders = "<table class='table table-striped table-hover tablesorter' style='width: 100%;'><thead><tr><th>Month</th><th>Cohort Members</th>"
+		for m in months:
+			outputtableorders += "<th>"+m+"</th>"
+		outputtableorders += "</thead></tr>"
+		for month in range(len(months)):
+			outputtableorders += "<tr><td>"+months[month]+"</td>"
+			outputtableorders += "<td>"+str(len(monthNewCustomerLookup[months[month]]))+"</td>"
+			followmonths = months[month:]#+1
+			followmonthsdata = {fm: 0 for fm in followmonths} 
+			for tm in range(month):
+				outputtableorders += "<td>-</td>"
+			newcustomers = monthNewCustomerLookup[months[month]]
+			for customer in newcustomers:
+				myorderdates = customerLookup[customer]
+				for orderdate in myorderdates:
+					followmonthsdata[orderdate.strftime("%Y-%m")] += 1
+			for fm in followmonths:
+				outputtableorders += "<td>"+str(followmonthsdata[fm])+"</td>"
+		outputtableorders += "</table>"
+
 
 		current_user = self.get_current_user().decode()
 
 		statssession.remove()
-		self.render("templates/customerstatstemplate.html", user=current_user, outputtable=outputtable, months=months, allcustomers=allcustomersbymonth, newcustomers=newcustomersbymonth, repeatcustomers=repeatcustomersbymonth, neworders=newordersbymonth,repeatorders=repeatordersbymonth, alltotals=alltotalsbymonth, newtotals=newtotalsbymonth,repeattotals=repeattotalsbymonth,allAPC=allAPC, newAPC=newAPC,repeatAPC=repeatAPC)
+		self.render("templates/customerstatstemplate.html", user=current_user, outputtable=outputtable, months=months, allcustomers=allcustomersbymonth, newcustomers=newcustomersbymonth, repeatcustomers=repeatcustomersbymonth, neworders=newordersbymonth,repeatorders=repeatordersbymonth, alltotals=alltotalsbymonth, newtotals=newtotalsbymonth,repeattotals=repeattotalsbymonth,allAPC=allAPC, newAPC=newAPC,repeatAPC=repeatAPC, outputtableorders=outputtableorders)
 
 
 class OrderStatsHandler(BaseHandler):
@@ -1670,21 +1741,24 @@ class WastageHandler(BaseHandler):
 			#### Now looking at actual sales
 
 			thisstoreorders = [thisorder.order_id for thisorder in dailyordersquery if thisorder.store_id == thisstore.store_id]
-			grosssalesquery = statssession.query(orderdetail.date_add, orderdetail.quantity, orderdetail.price, orderdetail.menu_item_id).filter(orderdetail.order_id.in_(thisstoreorders))
 			
+			grosssalesquery = statssession.query(orderdetail.date_add,orderdetail.quantity,orderdetail.price,orderdetailoption.price,orderdetail.menu_item_id).outerjoin(orderdetailoption).filter(orderdetail.order_id.in_(thisstoreorders))
+				
 			grosssaleslookup = {}
 			for grossdetail in grosssalesquery:
-				if grossdetail.date_add.strftime("%a %b %d, %Y") in grosssaleslookup:
-					grosssaleslookup[grossdetail.date_add.strftime("%a %b %d, %Y")] += (grossdetail.quantity*grossdetail.price)
+				if grossdetail[0].strftime("%a %b %d, %Y") in grosssaleslookup:
+					grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] += (grossdetail[1]*grossdetail[2])	 	
 				else:
-					grosssaleslookup[grossdetail.date_add.strftime("%a %b %d, %Y")] = (grossdetail.quantity*grossdetail.price)
+				 	grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] = (grossdetail[1]*grossdetail[2])
+				if grossdetail[3]:
+					grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] += (grossdetail[1]*grossdetail[3])
 
-				if grossdetail.date_add.strftime("%a %b %d, %Y") in peritemwastage:
-					if grossdetail.menu_item_id in peritemwastage[grossdetail.date_add.strftime("%a %b %d, %Y")]:
-						peritemwastage[grossdetail.date_add.strftime("%a %b %d, %Y")][grossdetail.menu_item_id] -= grossdetail.quantity
+				if grossdetail[0].strftime("%a %b %d, %Y") in peritemwastage:
+					if grossdetail[4] in peritemwastage[grossdetail[0].strftime("%a %b %d, %Y")]:
+						peritemwastage[grossdetail[0].strftime("%a %b %d, %Y")][grossdetail[4]] -= grossdetail[1]
 				else:
-					peritemwastage[grossdetail.date_add.strftime("%a %b %d, %Y")] = {}
-					peritemwastage[grossdetail.date_add.strftime("%a %b %d, %Y")][grossdetail.menu_item_id] = -grossdetail.quantity
+					peritemwastage[grossdetail[0].strftime("%a %b %d, %Y")] = {}
+					peritemwastage[grossdetail[0].strftime("%a %b %d, %Y")][grossdetail[4]] = -grossdetail[1]
 
 			wastagelookup = {dr: 0 for dr in daterange}
 			midlookup = {smi.menu_item_id: smi for smi in storeitemsquery if smi.store_id == thisstore.store_id}
@@ -1892,7 +1966,9 @@ class DeliveryHandler(BaseHandler):
 				daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%a %b %d, %Y"))
 
 		statsengine = sqlalchemy.create_engine(statsengine_url)
-		#statssession = scoped_session(sessionmaker(bind=statsengine))
+		statssession = scoped_session(sessionmaker(bind=statsengine))
+
+
 
 		from sqlalchemy import text
 		thissql1 = text("select a.delivery_boy_id,d.name,count(*),sum(case when c.falls_under_gurantee = 1 then 1 else 0 end) as count_priority,sum(case when c.falls_under_gurantee = 0 then 1 else 0 end) as count_np,sum(case when g.delivery_rating>0 then 1 else 0 end) as total_rated,sum(case when g.delivery_rating>0 then delivery_rating else 0 end)/sum(case when g.delivery_rating>0 then 1 else 0 end) as avg_rated,sum(case when g.delivery_rating=1 then 1 else 0 end) as rated_1,sum(case when g.delivery_rating=2 then 1 else 0 end) as rated_2, sum(case when b.order_status = 10 then 1 else 0 end) as free_orders from orders b left join deliveries a on a.order_id=b.order_id left join delivery_zones c on b.delivery_zone_id=c.delivery_zone_id left join delivery_boys d on d.delivery_boy_id=a.delivery_boy_id left join feedbacks g on g.order_id = b.order_id where b.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and b.order_status in (3,10,11) group by 1,2;")
@@ -1923,9 +1999,35 @@ class DeliveryHandler(BaseHandler):
 		
 		outputtable += "</table>"
 
-		self.render("templates/deliveriestemplate.html", outputtable=outputtable, user=current_user)
 
-		#statssession.remove()
+		# average delivery rating by store
+		active_stores = statssession.query(store).filter(store.is_active == True).all()
+		active_stores_list = [x.store_id for x in active_stores]
+
+		thissql3 = "select b.store_id, date(b.date_add), sum(case when g.delivery_rating>0 then delivery_rating else 0 end), sum(case when g.delivery_rating>0 then 1 else 0 end), sum(case when g.delivery_rating>0 then delivery_rating else 0 end)/sum(case when g.delivery_rating>0 then 1 else 0 end), sum(case when b.order_id>0 then 1 else 0 end) from orders b left join feedbacks g on g.order_id = b.order_id where b.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and b.order_status in (3,10,11) group by 1,2;" 
+		result3 = statsengine.execute(thissql3)
+
+		resultsbystore = {x.store_id: {thisdate:0.0 for thisdate in daterange} for x in active_stores}
+		resultsordersbystore = {x.store_id: {thisdate:0 for thisdate in daterange} for x in active_stores}
+
+		for item in result3:
+			if item[0] in active_stores_list:
+				if item[1].strftime("%a %b %d, %Y") in daterange:
+					resultsbystore[item[0]][item[1].strftime("%a %b %d, %Y")] = item[4]
+					resultsordersbystore[item[0]][item[1].strftime("%a %b %d, %Y")] = item[5]
+		
+		avgdeliveryscorebystore = []
+		for thisstore in active_stores:
+			templist = []
+			templist2 = []
+			for thisdate in daterange:
+				templist.append(float(resultsbystore[thisstore.store_id][thisdate]))
+				templist2.append(int(resultsordersbystore[thisstore.store_id][thisdate]))
+			avgdeliveryscorebystore.append({"store_id": thisstore.store_id, "name": thisstore.name, "avgdeliveryscore":templist, "totalorders":templist2})
+
+		statssession.remove()
+		self.render("templates/deliveriestemplate.html", outputtable=outputtable, daterange=daterange,avgdeliveryscorebystore=avgdeliveryscorebystore, user=current_user)
+
 
 
 current_path = path.dirname(path.abspath(__file__))
