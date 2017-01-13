@@ -1972,7 +1972,7 @@ class DeliveryHandler(BaseHandler):
 		statssession = scoped_session(sessionmaker(bind=statsengine))
 
 
-
+		#delivery boy rating query 1
 		from sqlalchemy import text
 		thissql1 = text("select a.delivery_boy_id,d.name,count(*),sum(case when c.falls_under_gurantee = 1 then 1 else 0 end) as count_priority,sum(case when c.falls_under_gurantee = 0 then 1 else 0 end) as count_np,sum(case when g.delivery_rating>0 then 1 else 0 end) as total_rated,sum(case when g.delivery_rating>0 then delivery_rating else 0 end)/sum(case when g.delivery_rating>0 then 1 else 0 end) as avg_rated,sum(case when g.delivery_rating=1 then 1 else 0 end) as rated_1,sum(case when g.delivery_rating=2 then 1 else 0 end) as rated_2, sum(case when b.order_status = 10 then 1 else 0 end) as free_orders from orders b left join deliveries a on a.order_id=b.order_id left join delivery_zones c on b.delivery_zone_id=c.delivery_zone_id left join delivery_boys d on d.delivery_boy_id=a.delivery_boy_id left join feedbacks g on g.order_id = b.order_id where b.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and b.order_status in (3,10,11) group by 1,2;")
 
@@ -1980,6 +1980,7 @@ class DeliveryHandler(BaseHandler):
 
 		resultlookup = {x[0]: x[1:] for x in result1}
 
+		#delivery boy rating query 2
 		thissql2 = text("select a.delivery_boy_id, d.name, count(*), sum(case when c.falls_under_gurantee = 1 then timestampdiff(minute,e.time_add,f.time_add) else 0 end)/sum(case when c.falls_under_gurantee = 1 then 1 else 0 end) as time_p, sum(case when c.falls_under_gurantee = 0 then timestampdiff(minute,e.time_add,f.time_add) else 0 end)/sum(case when c.falls_under_gurantee = 0 then 1 else 0 end) as time_np from orders b left join deliveries a on a.order_id=b.order_id left join delivery_zones c on b.delivery_zone_id=c.delivery_zone_id left join delivery_boys d on d.delivery_boy_id=a.delivery_boy_id left join order_status_times e on b.order_id=e.order_id left join order_status_times f on b.order_id=f.order_id left join feedbacks g on g.order_id = a.order_id where b.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and b.order_status in (3,10,11) and e.order_status=2 and f.order_status =15 group by 1,2;")
 
 		result2 = statsengine.execute(thissql2)
@@ -1992,7 +1993,7 @@ class DeliveryHandler(BaseHandler):
 		for row in result2:
 			resultlookup[row[0]] += row[2:]
 
-		outputtable = "<table class='table tablesorter table-striped table-hover'><tr><th>DB ID</th><th>Name</th><th>Total Orders</th><th>Priority Orders</th><th>Non Priority Orders</th><th>Total Ratings</th><th>Average Rating</th><th>Orders Rated 1</th><th>Orders Rated 2</th><th>Free Orders</th><th class='part2'>Count with Rating</th><th class='part2'>Time for Priority Orders</th><th class='part2'>Time for Non-Priority Orders</th></tr>"
+		outputtable = "<table class='table tablesorter table-striped table-hover'><thead><th>DB ID</th><th>Name</th><th>Total Orders</th><th>Priority Orders</th><th>Non Priority Orders</th><th>Total Ratings</th><th>Average Rating</th><th>Orders Rated 1</th><th>Orders Rated 2</th><th>Free Orders</th><th class='part2'>Count with Rating</th><th class='part2'>Time for Priority Orders</th><th class='part2'>Time for Non-Priority Orders</th></thead>"
 		
 		for db in resultlookup:
 			if len(resultlookup[db]) == 12:
@@ -2010,26 +2011,115 @@ class DeliveryHandler(BaseHandler):
 		thissql3 = "select b.store_id, date(b.date_add), sum(case when g.delivery_rating>0 then delivery_rating else 0 end), sum(case when g.delivery_rating>0 then 1 else 0 end), sum(case when g.delivery_rating>0 then delivery_rating else 0 end)/sum(case when g.delivery_rating>0 then 1 else 0 end), sum(case when b.order_id>0 then 1 else 0 end) from orders b left join feedbacks g on g.order_id = b.order_id where b.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and b.order_status in (3,10,11) group by 1,2;" 
 		result3 = statsengine.execute(thissql3)
 
-		resultsbystore = {x.store_id: {thisdate:0.0 for thisdate in daterange} for x in active_stores}
-		resultsordersbystore = {x.store_id: {thisdate:0 for thisdate in daterange} for x in active_stores}
-
+		avgdeliverytimebystore = {x.store_id: {thisdate:0.0 for thisdate in daterange} for x in active_stores}
+		totalordersbystore = {x.store_id: {thisdate:0 for thisdate in daterange} for x in active_stores}
+		feedbacksreceivedsbystore = {x.store_id: {thisdate:0 for thisdate in daterange} for x in active_stores}
 		for item in result3:
 			if item[0] in active_stores_list:
 				if item[1].strftime("%a %b %d, %Y") in daterange:
-					resultsbystore[item[0]][item[1].strftime("%a %b %d, %Y")] = item[4]
-					resultsordersbystore[item[0]][item[1].strftime("%a %b %d, %Y")] = item[5]
+					avgdeliverytimebystore[item[0]][item[1].strftime("%a %b %d, %Y")] = item[4]
+					totalordersbystore[item[0]][item[1].strftime("%a %b %d, %Y")] = item[5]
+					feedbacksreceivedsbystore[item[0]][item[1].strftime("%a %b %d, %Y")] = item[3]
 		
 		avgdeliveryscorebystore = []
 		for thisstore in active_stores:
 			templist = []
 			templist2 = []
+			templist3 = []
 			for thisdate in daterange:
-				templist.append(float(resultsbystore[thisstore.store_id][thisdate]))
-				templist2.append(int(resultsordersbystore[thisstore.store_id][thisdate]))
-			avgdeliveryscorebystore.append({"store_id": thisstore.store_id, "name": thisstore.name, "avgdeliveryscore":templist, "totalorders":templist2})
+				templist.append(float(avgdeliverytimebystore[thisstore.store_id][thisdate]))
+				templist2.append(int(totalordersbystore[thisstore.store_id][thisdate]))
+				templist3.append(int(feedbacksreceivedsbystore[thisstore.store_id][thisdate]))
+			avgdeliveryscorebystore.append({"store_id": thisstore.store_id, "name": thisstore.name, "avgdeliveryscore":templist, "totalorders":templist2, "feedbacksreceived":templist3})
+
+		# dispatch to reach time by store
+
+		thissql4 = "select o.store_id, date(o.date_add), sum(case when timediff(b.time_add,a.time_add) <= '00:10:00' then 1 else 0 end) as count_0_10, sum(case when timediff(b.time_add,a.time_add) >'00:10:00' and timediff(b.time_add,a.time_add) <='00:20:00' then 1 else 0 end) as count_10_20, sum(case when timediff(b.time_add,a.time_add) >'00:20:00' and timediff(b.time_add,a.time_add) <='00:30:00' then 1 else 0 end) as count_20_30, sum(case when timediff(b.time_add,a.time_add) > '00:30:00' then 1 else 0 end) as count_30_plus from orders o left join order_status_times as a on o.order_id = a.order_id left join order_status_times as b on o.order_id=b.order_id where a.order_status=2 and b.order_status=15 and o.order_status in (3,10,11) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1,2;"
+
+		result4 = statsengine.execute(thissql4)
+		deliverytimeresultsbystore = {x.store_id: { thisdate:[] for thisdate in daterange} for x in active_stores}
+		for item in result4:
+			if item[0] in active_stores_list:
+				if item[1].strftime("%a %b %d, %Y") in daterange:
+					deliverytimeresultsbystore[item[0]][item[1].strftime("%a %b %d, %Y")] = item[2:]
+
+		deliverytimestack = []
+		for thisstore in active_stores:
+			list0_10 = []
+			list10_20 = []
+			list20_30 = []
+			list30_plus = []
+			for thisdate in daterange:
+				list0_10.append(int(deliverytimeresultsbystore[thisstore.store_id][thisdate][0]))
+				list10_20.append(int(deliverytimeresultsbystore[thisstore.store_id][thisdate][1]))
+				list20_30.append(int(deliverytimeresultsbystore[thisstore.store_id][thisdate][2]))
+				list30_plus.append(int(deliverytimeresultsbystore[thisstore.store_id][thisdate][3]))
+			deliverytimestack.append({"store_id": thisstore.store_id, "name": thisstore.name, "deliverytime010":list0_10,"deliverytime1020":list10_20,"deliverytime2030":list20_30,"deliverytime30plus":list30_plus,})
+
+
+		# priority vs non priority orders by store
+
+		thissql5 = "select o.store_id, date(o.date_add),sum(case when c.falls_under_gurantee = 1 then 1 else 0 end) as count_priority, sum(case when c.falls_under_gurantee = 0 then 1 else 0 end) as count_np from orders o left join delivery_zones c on o.delivery_zone_id=c.delivery_zone_id where o.order_status in (3,10,11) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1,2;"
+
+		result5 = statsengine.execute(thissql5)
+		priorityorderresultsbystore = {x.store_id: { thisdate:[] for thisdate in daterange} for x in active_stores}
+		for item in result5:
+			if item[0] in active_stores_list:
+				if item[1].strftime("%a %b %d, %Y") in daterange:
+					priorityorderresultsbystore[item[0]][item[1].strftime("%a %b %d, %Y")] = item[2:]
+
+		priorityorderstack = []
+		for thisstore in active_stores:
+			listpriority = []
+			for thisdate in daterange:
+				listpriority.append(float(100*priorityorderresultsbystore[thisstore.store_id][thisdate][1]/(priorityorderresultsbystore[thisstore.store_id][thisdate][0]+priorityorderresultsbystore[thisstore.store_id][thisdate][1]))) # non-priority order %age
+			priorityorderstack.append({"store_id": thisstore.store_id, "name": thisstore.name,"prioritypc":listpriority})
+
+
+		# Average cooking to dispatch time by store
+
+		thissql6 = "select o.store_id, date(o.date_add), count(*), sum(time_to_sec(timediff(b.time_add,a.time_add))) as sumtime_cooking  from orders o left join order_status_times as a on o.order_id = a.order_id left join order_status_times as b on o.order_id=b.order_id where a.order_status=1 and b.order_status=2 and o.order_status in (3,10,11) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1,2;"
+
+		result6 = statsengine.execute(thissql6)
+		cookingtodispatcklookup = {x.store_id: { thisdate:[] for thisdate in daterange} for x in active_stores}
+		for item in result6:
+			if item[0] in active_stores_list:
+				if item[1].strftime("%a %b %d, %Y") in daterange:
+					cookingtodispatcklookup[item[0]][item[1].strftime("%a %b %d, %Y")] = item[2:]
+
+
+		# Average dispatch to reached dest time by store
+
+		thissql7 = "select o.store_id, date(o.date_add), count(*), sum(time_to_sec(timediff(b.time_add,a.time_add))) as sumtime_dispatching  from orders o left join order_status_times as a on o.order_id = a.order_id left join order_status_times as b on o.order_id=b.order_id where a.order_status=2 and b.order_status=15 and o.order_status in (3,10,11) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1,2;"
+		result7 = statsengine.execute(thissql7)
+		dispatchtoreachlookup = {x.store_id: { thisdate:[] for thisdate in daterange} for x in active_stores}
+		for item in result7:
+			if item[0] in active_stores_list:
+				if item[1].strftime("%a %b %d, %Y") in daterange:
+					dispatchtoreachlookup[item[0]][item[1].strftime("%a %b %d, %Y")] = item[2:]
+
+		# Average reached to delivere dest time by store
+		thissql8 = "select o.store_id, date(o.date_add), count(*), sum(time_to_sec(timediff(b.time_add,a.time_add))) as sumtime_delivering  from orders o left join order_status_times as a on o.order_id = a.order_id left join order_status_times as b on o.order_id=b.order_id where a.order_status=15 and b.order_status=3 and o.order_status in (3,10,11) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1,2;"
+		result8 = statsengine.execute(thissql8)
+		reachtodeliverlookup = {x.store_id: { thisdate:[] for thisdate in daterange} for x in active_stores}
+		for item in result8:
+			if item[0] in active_stores_list:
+				if item[1].strftime("%a %b %d, %Y") in daterange:
+					reachtodeliverlookup[item[0]][item[1].strftime("%a %b %d, %Y")] = item[2:]
+
+		cookingtimes = []
+		for thisstore in active_stores:
+			list1 = []
+			list2 = []
+			list3 = []
+			for thisdate in daterange:
+				list1.append(float(cookingtodispatcklookup[thisstore.store_id][thisdate][1]/cookingtodispatcklookup[thisstore.store_id][thisdate][0]/60)) # avg time in minutes
+				list2.append(float(dispatchtoreachlookup[thisstore.store_id][thisdate][1]/dispatchtoreachlookup[thisstore.store_id][thisdate][0]/60)) # avg time in minutes
+				list3.append(float(reachtodeliverlookup[thisstore.store_id][thisdate][1]/reachtodeliverlookup[thisstore.store_id][thisdate][0]/60)) # avg time in minutes
+			cookingtimes.append({"store_id": thisstore.store_id, "name": thisstore.name,"cookingtime":list1,"dispatchtime":list2,"deliverytime":list3})
 
 		statssession.remove()
-		self.render("templates/deliveriestemplate.html", outputtable=outputtable, daterange=daterange,avgdeliveryscorebystore=avgdeliveryscorebystore, user=current_user)
+		self.render("templates/deliveriestemplate.html", outputtable=outputtable, daterange=daterange,avgdeliveryscorebystore=avgdeliveryscorebystore, deliverytimestack=deliverytimestack, priorityorderstack=priorityorderstack, cookingtimes=cookingtimes, user=current_user)
 
 
 
