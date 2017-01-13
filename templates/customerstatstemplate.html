@@ -60,9 +60,9 @@
     </nav>
 </div>
 <div class="container">
-	{% if (user=="admin" or user=="headchef" or user=="chef") %}
-		{% include "navtemplate.html" %}
-	{% end %}
+    {% if (user=="admin" or user=="headchef" or user=="review") %}
+        {% include "navtemplate.html" %}
+    {% end %}
     <div class="row" style="margin-bottom: 40px;">
         <div id="newrepeatcustomerschart" style="width:100%; height:400px;"></div>
     </div>
@@ -377,6 +377,17 @@
 		    startView: "months", 
 		    minViewMode: "months"
 		});
+        {% if user=="review" %}
+        $('#startdate').datepicker().on('changeDate', function(e) {
+            $('#enddate').datepicker('clearDates');
+            $('#enddate').datepicker('setStartDate',$("#startdate").val());       
+            startDate = $("#startdate").datepicker('getDate');
+            endDate = startDate;
+            endDate.setMonth(startDate.getMonth() + 3);
+            $('#enddate').datepicker('setEndDate',endDate);
+        });
+        {% end %}
+
 		$('#setDates').on('click', function() {
 			window.location.href = "/customerstats?startmonth=" + $("#startdate").val() + "&endmonth=" + $("#enddate").val();
 		});
