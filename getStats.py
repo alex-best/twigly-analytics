@@ -768,18 +768,6 @@ class ItemStatsHandler(BaseHandler):
 			horizon = self.get_argument("horizon", None)
 			startdate = self.get_argument("startdate", None)
 			enddate = self.get_argument("enddate", None)
-			current_store = self.get_argument("store", "All")
-			
-			if current_user == "chef03":
-				current_store = [3]
-			elif current_user == "chef":
-				current_store = [2]
-			else:
-				if current_store == "All":
-					current_store = [2,3]
-				else:
-					current_store = [int(current_store)]
-
 
 			if startdate is None:
 				if horizon is None:
@@ -804,7 +792,24 @@ class ItemStatsHandler(BaseHandler):
 			statsengine = sqlalchemy.create_engine(statsengine_url)
 			statssession = scoped_session(sessionmaker(bind=statsengine))
 
-			dailyordersquery = statssession.query(order).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.store_id.in_(current_store))
+			current_store = self.get_argument("store", "All")
+
+			active_stores = statssession.query(store).filter(store.is_active == True).all()
+			active_stores_list = [x.store_id for x in active_stores]
+
+			if current_store == "All":
+				store_list = active_stores_list
+			else:
+				store_list = [int(current_store)]
+			
+			current_store_name = "All"
+			for thisstore in active_stores:
+				if [thisstore.store_id] == current_store:
+					current_store_name = thisstore.name
+					break
+
+
+			dailyordersquery = statssession.query(order).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.store_id.in_(store_list))
 
 			dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
 			dailyordersdatelookup = {thisorder.order_id: thisorder.date_add.strftime("%a %b %d, %Y") for thisorder in dailyordersquery}
@@ -1639,35 +1644,19 @@ class store_ingredient_inventory(statsBase):
     batch_id = Column('batch_id', Integer, ForeignKey("ingredient_batches.batch_id"))
     date_effective = Column('date_effective', DateTime)
     daywise_batch_number = Column('daywise_batch_number', Integer)
-#    expected_units = Column('expected_units', Float)
     actual_units = Column('actual_units', Float)
-#    category = Column('category', Integer)
     role = Column('role', Integer)
-#    description = Column('description', Integer)
 
 class ingredient_batches(statsBase):
     __tablename__ = "ingredient_batches"
     batch_id = Column('batch_id', Integer, primary_key=True)
     ingredient_id = Column('ingredient_id', Integer, ForeignKey("ingredients.ingredient_id"))
-#    units = Column('units', Integer)
-#    time_del = Column('time_del', DateTime)
-#	is_active = Column("is_active", Boolean)
-#    time_add = Column('time_add', DateTime)
-#	status = Column("status", Boolean)
-
 
 class ingredients(statsBase):
     __tablename__ = "ingredients"
     ingredient_id = Column('ingredient_id', Integer, primary_key=True)
-#    name = Column('name', String)
-#    category = Column('category', Integer)
-#    measuring_unit = Column('date_effective', DateTime)
     pack_size = Column('pack_size', Integer)
-#    kcal = Column('kcal', Float)
     cost = Column('cost', Float)
-#    expiry_time_hrs = Column('expiry_time_hrs', Integer)
-#    _yield_ = Column('yield', Float)
-#    production = Column('production', Integer)
 
 
 class WastageHandler(BaseHandler):
@@ -2004,6 +1993,58 @@ class DeliveryHandler(BaseHandler):
 		outputtable += "</table>"
 
 
+
+		#delivery boy rating query 2
+		thissql3 = text("select c.delivery_boy_id, d.name, b.date_add, a.order_id, a.delivery_rating, a.comment from feedbacks a left join orders b on a.order_id=b.order_id left join deliveries c on b.order_id=c.order_id left join delivery_boys d on c.delivery_boy_id=d.delivery_boy_id where b.order_status in (3,10,11) and a.delivery_rating in (1,2) and b.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add <'" +parsedenddate.strftime("%Y-%m-%d") + " 00:00:00';")
+
+		result3 = statsengine.execute(thissql3)
+		deliveryfeedback = {}
+		
+		outputtable2 = "<table class='table tablesorter table-striped table-hover'><thead><th>DB ID</th><th>Name</th><th>Order Date</th><th>Order ID</th><th>Delivery Rating</th><th>Comment</th></thead>"
+		
+		for item in result3:
+			outputtable2 += "<tr><td>" + str(item[0]) + "</td><td>" + str(item[1]) + "</td><td>" + str(item[2]) + "</td><td>" + str(item[3]) + "</td><td>" + str(item[4]) + "</td><td style='text-align:left;'>" + str(item[5]) + "</td><tr>"
+
+		outputtable2 += "</table>"
+
+		statssession.remove()
+		self.render("templates/deliveriestemplate.html", outputtable=outputtable, outputtable2=outputtable2, user=current_user)
+
+
+class DeliveryStatsHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		current_user = self.get_current_user().decode()
+		if current_user not in ("admin"):
+			self.redirect('/stats')
+
+		horizon = self.get_argument("horizon", None)
+		startdate = self.get_argument("startdate", None)
+		enddate = self.get_argument("enddate", None)
+		if startdate is None:
+			if horizon is None:
+				horizon = 7
+			else:
+				horizon = int(horizon)
+
+			parsedenddate = datetime.date.today()
+			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
+			daterange = [parsedstartdate.strftime("%a %b %d, %Y")]
+			for c in range(horizon-1):
+				daterange.append((parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%a %b %d, %Y"))
+		
+		else:
+			parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date()
+			parsedenddate = parsedenddate + datetime.timedelta(days=1)
+			parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
+			daterange = []
+			for c in range((parsedenddate - parsedstartdate).days):
+				daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%a %b %d, %Y"))
+
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
+
+
 		# average delivery rating by store
 		active_stores = statssession.query(store).filter(store.is_active == True).all()
 		active_stores_list = [x.store_id for x in active_stores]
@@ -2119,7 +2160,7 @@ class DeliveryHandler(BaseHandler):
 			cookingtimes.append({"store_id": thisstore.store_id, "name": thisstore.name,"cookingtime":list1,"dispatchtime":list2,"deliverytime":list3})
 
 		statssession.remove()
-		self.render("templates/deliveriestemplate.html", outputtable=outputtable, daterange=daterange,avgdeliveryscorebystore=avgdeliveryscorebystore, deliverytimestack=deliverytimestack, priorityorderstack=priorityorderstack, cookingtimes=cookingtimes, user=current_user)
+		self.render("templates/deliverystatstemplate.html", daterange=daterange,avgdeliveryscorebystore=avgdeliveryscorebystore, deliverytimestack=deliverytimestack, priorityorderstack=priorityorderstack, cookingtimes=cookingtimes, user=current_user)
 
 class PaymentStatsHandler(BaseHandler):
 	@tornado.web.authenticated
@@ -2277,6 +2318,7 @@ application = tornado.web.Application([
 	(r"/getstoreitems", GetStoreItemsHandler),
 	(r"/setdatewisestoremenu", SetDateWiseMenuHandler),
 	(r"/deliveries", DeliveryHandler),
+	(r"/deliverystats", DeliveryStatsHandler),
 	(r"/payments", PaymentStatsHandler),
 	(r"/orderstats", OrderStatsHandler),
 	(r"/customerstats", CustomerStatsHandler),
