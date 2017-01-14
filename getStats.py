@@ -2121,6 +2121,138 @@ class DeliveryHandler(BaseHandler):
 		statssession.remove()
 		self.render("templates/deliveriestemplate.html", outputtable=outputtable, daterange=daterange,avgdeliveryscorebystore=avgdeliveryscorebystore, deliverytimestack=deliverytimestack, priorityorderstack=priorityorderstack, cookingtimes=cookingtimes, user=current_user)
 
+class PaymentStatsHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		current_user = self.get_current_user().decode()
+		if current_user not in ("admin"):
+			self.redirect('/stats')
+
+		horizon = self.get_argument("horizon", None)
+		startdate = self.get_argument("startdate", None)
+		enddate = self.get_argument("enddate", None)
+		if startdate is None:
+			if horizon is None:
+				horizon = 1
+			else:
+				horizon = int(horizon)
+
+			parsedenddate = datetime.date.today()
+			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
+			daterange = [parsedstartdate.strftime("%Y-%m-%d")]
+			for c in range(horizon-1):
+				daterange.append((parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%Y-%m-%d"))
+		
+		else:
+			parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date()
+			parsedenddate = parsedenddate + datetime.timedelta(days=1)
+			parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
+			daterange = []
+			for c in range((parsedenddate - parsedstartdate).days):
+				daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%Y-%m-%d"))
+
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
+
+
+
+		# users who had failure at PG
+		thissql1 = "select date(date_add), count(distinct user_id) from orders where order_status in (13,14) and date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and date_add <'" + parsedenddate.strftime("%Y-%m-%d") + " 00:00:00' and payment_status not in (26) group by 1;"
+		result1 = statsengine.execute(thissql1)
+
+		userswhohadpgfailurelookup = {thisdate:0 for thisdate in daterange}
+		for item in result1:
+			if item[0].strftime("%Y-%m-%d") in daterange:
+				userswhohadpgfailurelookup[item[0].strftime("%Y-%m-%d")] = item[1]
+		userswhohadpgfailure = []
+		for thisdate in daterange:
+			userswhohadpgfailure.append(int(userswhohadpgfailurelookup[thisdate])) 
+			
+		# Those who ended up ordering
+		thissql2 = "select date(a.date_add),count(distinct b.user_id) from orders a left join orders b on a.user_id=b.user_id where a.order_status in (13,14) and b.order_status in (3,10,11) and date(a.date_add) = date(b.date_add) and a.date_add > '" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and a.date_add < '" + parsedenddate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add > '" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add < '" + parsedenddate.strftime("%Y-%m-%d") + " 00:00:00' and a.payment_status not in (26) group by 1;"
+
+		result2 = statsengine.execute(thissql2)
+
+		userswhoendeduporderinglookup = {thisdate:0 for thisdate in daterange}
+		for item in result2:
+			if item[0].strftime("%Y-%m-%d") in daterange:
+				userswhoendeduporderinglookup[item[0].strftime("%Y-%m-%d")] = item[1]
+		userswhoendedupordering = []
+		for thisdate in daterange:
+			userswhoendedupordering.append(int(userswhoendeduporderinglookup[thisdate])) 
+
+
+		userswhodidnotreturn = []
+		for i in range(len(daterange)):
+			userswhodidnotreturn.append(userswhohadpgfailure[i]-userswhoendedupordering[i])
+
+
+
+		# User who cancelled
+		thissql3 = "select date(date_add),count(distinct user_id) from orders where order_status in (13,14) and date_add > '" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and date_add < '" + parsedenddate.strftime("%Y-%m-%d") + " 00:00:00' and payment_status in (26) group by 1;"
+
+		result3 = statsengine.execute(thissql3)
+
+		userswhocancelledlookup = {thisdate:0 for thisdate in daterange}
+		for item in result3:
+			if item[0].strftime("%Y-%m-%d") in daterange:
+				userswhocancelledlookup[item[0].strftime("%Y-%m-%d")] = item[1]
+		userswhocancelled = []
+		for thisdate in daterange:
+			userswhocancelled.append(int(userswhocancelledlookup[thisdate])) 
+
+
+
+
+		# Users who did not return
+		thissql4 = "select date(date_add), user_id from orders where order_status in (13,14) and date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and date_add <'" + parsedenddate.strftime("%Y-%m-%d") + " 00:00:00' and payment_status not in (26);"
+		result4 = statsengine.execute(thissql4)
+
+		useridswhohadpgfailurelookup = {thisdate:set() for thisdate in daterange}
+		for item in result4:
+			if item[0].strftime("%Y-%m-%d") in daterange:
+				useridswhohadpgfailurelookup[item[0].strftime("%Y-%m-%d")].add(item[1])
+		
+		# Those who ended up ordering
+		thissql5 = "select date(a.date_add), b.user_id from orders a left join orders b on a.user_id=b.user_id where a.order_status in (13,14) and b.order_status in (3,10,11) and date(a.date_add) = date(b.date_add) and a.date_add > '" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and a.date_add < '" + parsedenddate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add > '" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add < '" + parsedenddate.strftime("%Y-%m-%d") + " 00:00:00' and a.payment_status not in (26);"
+
+		result5 = statsengine.execute(thissql5)
+		useridswhoreturnedlookup = {thisdate:set() for thisdate in daterange}
+		for item in result5:
+			if item[0].strftime("%Y-%m-%d") in daterange:
+				useridswhoreturnedlookup[item[0].strftime("%Y-%m-%d")].add(item[1])
+
+
+		useridsthatdidnotreturn = {thisdate:[] for thisdate in daterange}
+		allusers = set()
+		for thisdate in daterange:
+			currentlist = useridswhohadpgfailurelookup[thisdate]
+			for thisuser in currentlist:
+				if thisuser not in useridswhoreturnedlookup[thisdate]:
+					useridsthatdidnotreturn[thisdate].append(thisuser)
+					allusers.add(thisuser)
+
+
+		# Those who ended up ordering
+		thissql6 = "select user_id, name, mobile_number, date_add from users where user_id in ("+str(allusers).strip('{}')+");"
+		result6 = statsengine.execute(thissql6)
+		useridswhoreturnedlookup = {thisdate:set() for thisdate in daterange}
+		userlookup = {}
+		for item in result6:
+			userlookup.update({item[0]:item[1:]})
+
+		outputtable = "<table class='table tablesorter table-striped table-hover'><thead><th>Date</th><th>User Id</th><th>User Name</th><th>User Mobile Number</th><th>Registered On</th><th>View Orders</th></thead>"
+		
+		for thisdate in daterange:
+			currentlist = useridsthatdidnotreturn[thisdate]
+			for thisuser in currentlist:
+				outputtable += "<tr><td>" + str(thisdate) + "</td><td>" + str(thisuser) + "</td><td>" + str(userlookup[thisuser][0]) + "</td><td>" + str(userlookup[thisuser][1]) + "</td><td>" + str(userlookup[thisuser][2]) + "</td><td><a href='http://twigly.in/admin/orders?s=id&f="+str(userlookup[thisuser][1])+"'>View Orders</a></td></tr>"
+				#http://twigly.in/admin/orders?s=id&f=9810178333
+
+		outputtable += "</table>"
+
+		statssession.remove()
+		self.render("templates/paymentstemplate.html", daterange=daterange, userswhohadpgfailure=userswhohadpgfailure,userswhodidnotreturn=userswhodidnotreturn, userswhocancelled=userswhocancelled, outputtable=outputtable, user=current_user)
 
 
 current_path = path.dirname(path.abspath(__file__))
@@ -2145,6 +2277,7 @@ application = tornado.web.Application([
 	(r"/getstoreitems", GetStoreItemsHandler),
 	(r"/setdatewisestoremenu", SetDateWiseMenuHandler),
 	(r"/deliveries", DeliveryHandler),
+	(r"/payments", PaymentStatsHandler),
 	(r"/orderstats", OrderStatsHandler),
 	(r"/customerstats", CustomerStatsHandler),
 	(r"/vanvaas", VanvaasHandler),
