@@ -1585,9 +1585,9 @@ class MailchimpHandler(BaseHandler):
 			content = self.render_string(template_name = mailtemplate[0], activeitems = finallist, header = header, length = length, sod=sod, dod=dod, color=mailtemplate[1])
 
 			#Change this variable to change the list
-			#list_id = "ea0d1e3356"
+			list_id = "ea0d1e3356"
 			# ea0d1e3356 is the main Twigly list
-			list_id = "d2a7019f47"
+			# list_id = "d2a7019f47"
 			# d2a7019f47 is the test list
 
 			mailerror = False
