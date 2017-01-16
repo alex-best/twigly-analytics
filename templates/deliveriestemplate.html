@@ -64,10 +64,16 @@
 		{% include "navtemplate.html" %}
 	{% end %}
     <div class="row" style="margin-bottom: 40px; margin-top: 40px;">
+        <h4 class="text-center" style="font-family: &quot;Lucida Grande&quot;,&quot;Lucida Sans Unicode&quot;,Arial,Helvetica,sans-serif; font-size: 18px; color: rgb(68, 145, 123);">Delivery Boy Performance Numbers</h4>
         {% raw outputtable %}
     </div>
     <div class="row" style="margin-bottom: 40px; margin-top: 40px;">
+        <h4 class="text-center" style="font-family: &quot;Lucida Grande&quot;,&quot;Lucida Sans Unicode&quot;,Arial,Helvetica,sans-serif; font-size: 18px; color: rgb(68, 145, 123);">Delivery Boy vs. Orders rated 1,2</h4>
         {% raw outputtable2 %}
+    </div>
+    <div class="row" style="margin-bottom: 40px; margin-top: 40px;">
+        <h4 class="text-center" style="font-family: &quot;Lucida Grande&quot;,&quot;Lucida Sans Unicode&quot;,Arial,Helvetica,sans-serif; font-size: 18px; color: rgb(68, 145, 123);">Free Orders vs. Delivery Times </h4>
+        {% raw outputtable3 %}
     </div>
 </div>
 <button class="showFilters hidden-xs btn btn-success" style="position: fixed; top: 25px; right: 15px;">Show/Hide Filters</button>
@@ -140,7 +146,7 @@
 			$('#horizon').fadeToggle();
 		});
 
-        $('.tablesorter').tablesorter({sortList: [[1,1], [0,0]]});
+        $('.tablesorter').tablesorter({sortList: [[0,0]]});
 	});
 	
 </script>
