@@ -1047,8 +1047,8 @@ def getStoreItems(current_store):
 
 	menu_item_mapping = {thismenuitem.menu_item_id: thismenuitem for thismenuitem in menu_items}
 	store_items.sort(key=lambda x: (-int(format(x.is_active, '08b')[-1]), -x.priority))
-	activelist = [{"name": menu_item_mapping[x.menu_item_id].name, "menu_item_id": x.menu_item_id, "store_menu_item_id": x.store_menu_item_id, "quantity": x.avl_quantity, "is_active": isActiveItem(x), "priority": x.priority, "image": menu_item_mapping[x.menu_item_id].img_url, "description": menu_item_mapping[x.menu_item_id].description} for x in store_items if isActiveItem(x)]
-	inactivelist = [{"name": menu_item_mapping[x.menu_item_id].name, "menu_item_id": x.menu_item_id, "store_menu_item_id": x.store_menu_item_id, "quantity": x.avl_quantity, "is_active": isActiveItem(x), "priority": x.priority, "image": menu_item_mapping[x.menu_item_id].img_url, "description": menu_item_mapping[x.menu_item_id].description} for x in store_items if not isActiveItem(x)]
+	activelist = [{"name": menu_item_mapping[x.menu_item_id].name, "menu_item_id": x.menu_item_id, "store_menu_item_id": x.store_menu_item_id, "quantity": x.avl_quantity, "is_active": isActiveItem(x), "priority": x.priority, "price": x.selling_price, "discount": x.discount, "image": menu_item_mapping[x.menu_item_id].img_url, "description": menu_item_mapping[x.menu_item_id].description} for x in store_items if isActiveItem(x)]
+	inactivelist = [{"name": menu_item_mapping[x.menu_item_id].name, "menu_item_id": x.menu_item_id, "store_menu_item_id": x.store_menu_item_id, "quantity": x.avl_quantity, "is_active": isActiveItem(x), "priority": x.priority, "price": x.selling_price, "discount": x.discount, "image": menu_item_mapping[x.menu_item_id].img_url, "description": menu_item_mapping[x.menu_item_id].description} for x in store_items if not isActiveItem(x)]
 	# for i in store_items:
 	# 	print (menu_item_mapping[i.menu_item_id].name, format(i.is_active, '08b'), bool(int(format(i.is_active, '08b')[-1])))
 	
@@ -1531,11 +1531,19 @@ def createMail(itemlist):
 
 def getMailTemplate(template):
 	if (template == 2):
-		return "templates/mailtemplate2.html"
+		return ("templates/mailtemplate2.html", "")
 	elif (template == 3):
-		return "templates/mailtemplate3.html"
+		return ("templates/mailtemplate3.html", "")
+	elif (template == 4):
+		return ("templates/mailtemplate4.html", "")
+	elif (template == 5):
+		return ("templates/mailtemplate4.html", "red")
+	elif (template == 6):
+		return ("templates/mailtemplate4.html", "green")
+	elif (template == 7):
+		return ("templates/mailtemplate4.html", "purple")
 	else:
-		return "templates/mailtemplate.html"
+		return ("templates/mailtemplate.html", "")
 
 class MailPreviewHandler(BaseHandler):
 	@tornado.web.authenticated
@@ -1552,7 +1560,8 @@ class MailPreviewHandler(BaseHandler):
 			sod = int(self.get_argument("sod", "-1"))
 			dod = int(self.get_argument("dod", "-1"))
 			template = int(self.get_argument("template", "1"))
-			self.render(template_name = getMailTemplate(template), activeitems = finallist, header = header, length = length, sod=sod, dod=dod)
+			mailtemplate = getMailTemplate(template)
+			self.render(template_name = mailtemplate[0], activeitems = finallist, header = header, length = length, sod=sod, dod=dod, color=mailtemplate[1])
 
 class MailchimpHandler(BaseHandler):
 	@tornado.web.authenticated
@@ -1571,13 +1580,14 @@ class MailchimpHandler(BaseHandler):
 			sod = int(self.get_argument("sod", "-1"))
 			dod = int(self.get_argument("dod", "-1"))
 			template = int(self.get_argument("template", "1"))
+			mailtemplate = getMailTemplate(template)
 			
-			content = self.render_string(template_name = getMailTemplate(template), activeitems = finallist, header = header, length = length, sod=sod, dod=dod)
+			content = self.render_string(template_name = mailtemplate[0], activeitems = finallist, header = header, length = length, sod=sod, dod=dod, color=mailtemplate[1])
 
 			#Change this variable to change the list
-			list_id = "ea0d1e3356"
+			#list_id = "ea0d1e3356"
 			# ea0d1e3356 is the main Twigly list
-			# list_id = "d2a7019f47"
+			list_id = "d2a7019f47"
 			# d2a7019f47 is the test list
 
 			mailerror = False
