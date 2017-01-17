@@ -326,12 +326,12 @@ class StatsHandler(BaseHandler):
 			else:
 				horizon = int(horizon)
 
-			parsedenddate = datetime.date.today()
+			parsedenddate = datetime.date.today() +  datetime.timedelta(days=1)
 			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
 			daterange = [parsedstartdate.strftime("%a %b %d, %Y")]
 			for c in range(horizon-1):
 				daterange.append((parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%a %b %d, %Y"))
-		
+
 		else:
 			parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date()
 			parsedenddate = parsedenddate + datetime.timedelta(days=1)
@@ -663,7 +663,7 @@ class CustomerStatsHandler(BaseHandler):
 			repeatAPC = [repeattotalsbymonth[m]/repeatordersbymonth[m] if repeatordersbymonth[m]>0 else 0.0 for m in range(len(months))]
 
 
-			outputtableorders = "<table class='table table-striped table-hover tablesorter' style='width: 100%;'><thead><tr><th>Month</th><th>Cohort Members</th>"
+			outputtableorders = "<table class='table cdxdc  table-striped table-hover tablesorter' style='width: 100%;'><thead><tr><th>Month</th><th>Cohort Members</th>"
 			for m in months:
 				outputtableorders += "<th>"+m+"</th>"
 			outputtableorders += "</thead></tr>"
@@ -682,7 +682,6 @@ class CustomerStatsHandler(BaseHandler):
 				for fm in followmonths:
 					outputtableorders += "<td>"+str(followmonthsdata[fm])+"</td>"
 			outputtableorders += "</table>"
-
 
 			current_user = self.get_current_user().decode()
 
@@ -703,7 +702,8 @@ class OrderStatsHandler(BaseHandler):
 			else:
 				horizon = int(horizon)
 
-			parsedenddate = datetime.date.today()
+			parsedenddate = datetime.date.today() +  datetime.timedelta(days=1)
+
 			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
 			daterange = [parsedstartdate.strftime("%a %b %d, %Y")]
 			for c in range(horizon-1):
@@ -775,7 +775,8 @@ class ItemStatsHandler(BaseHandler):
 				else:
 					horizon = int(horizon)
 
-				parsedenddate = datetime.date.today()
+				parsedenddate = datetime.date.today() +  datetime.timedelta(days=1)
+
 				parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
 				daterange = [parsedstartdate.strftime("%a %b %d, %Y")]
 				for c in range(horizon-1):
@@ -886,7 +887,8 @@ class UserStatsHandler(BaseHandler):
 				else:
 					horizon = int(horizon)
 
-				parsedenddate = datetime.date.today()
+				parsedenddate = datetime.date.today() +  datetime.timedelta(days=1)
+
 				parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
 				daterange = [parsedstartdate.strftime("%a %b %d, %Y")]
 				for c in range(horizon-1):
@@ -1304,7 +1306,8 @@ class AnalyticsHandler(BaseHandler):
 				else:
 					horizon = int(horizon)
 
-				parsedenddate = datetime.date.today()
+				parsedenddate = datetime.date.today() +  datetime.timedelta(days=1)
+
 				parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
 				gastartdate = parsedstartdate.strftime("%Y-%m-%d")
 				gaenddate = (parsedenddate - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
@@ -1675,7 +1678,8 @@ class WastageHandler(BaseHandler):
 			else:
 				horizon = int(horizon)
 
-			parsedenddate = datetime.date.today()
+			parsedenddate = datetime.date.today() +  datetime.timedelta(days=1)
+
 			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
 			daterange = [parsedstartdate.strftime("%a %b %d, %Y")]
 			for c in range(horizon-1):
@@ -1943,7 +1947,8 @@ class DeliveryHandler(BaseHandler):
 			else:
 				horizon = int(horizon)
 
-			parsedenddate = datetime.date.today()
+			parsedenddate = datetime.date.today() +  datetime.timedelta(days=1)
+
 			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
 			daterange = [parsedstartdate.strftime("%a %b %d, %Y")]
 			for c in range(horizon-1):
@@ -2043,7 +2048,8 @@ class DeliveryStatsHandler(BaseHandler):
 			else:
 				horizon = int(horizon)
 
-			parsedenddate = datetime.date.today()
+			parsedenddate = datetime.date.today() +  datetime.timedelta(days=1)
+
 			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
 			daterange = [parsedstartdate.strftime("%a %b %d, %Y")]
 			for c in range(horizon-1):
@@ -2194,7 +2200,8 @@ class PaymentStatsHandler(BaseHandler):
 			else:
 				horizon = int(horizon)
 
-			parsedenddate = datetime.date.today()
+			parsedenddate = datetime.date.today() +  datetime.timedelta(days=1)
+
 			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
 			daterange = [parsedstartdate.strftime("%Y-%m-%d")]
 			for c in range(horizon-1):
