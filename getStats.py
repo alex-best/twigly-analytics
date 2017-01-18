@@ -1615,62 +1615,65 @@ class MailchimpHandler(BaseHandler):
 class MailchimpUpdateHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
-		startdate = self.get_argument("startdate", None)
-		if startdate is None:
-			parsedstartdate = datetime.date.today()
+		current_user = self.get_current_user().decode()
+		if current_user != "admin":
+			self.redirect('/stats')
 		else:
-			parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
+			startdate = self.get_argument("startdate", None)
+			if startdate is None:
+				parsedstartdate = datetime.date.today()
+			else:
+				parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
 
-		statsengine = sqlalchemy.create_engine(statsengine_url)
-		statssession = scoped_session(sessionmaker(bind=statsengine))
+			statsengine = sqlalchemy.create_engine(statsengine_url)
+			statssession = scoped_session(sessionmaker(bind=statsengine))
 
-		thissql1 = "select email, name from users where email is not null and date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00';" 
-		result1 = statsengine.execute(thissql1)
+			thissql1 = "select email, name from users where email is not null and date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00';" 
+			result1 = statsengine.execute(thissql1)
 
-		userids = []
-		for item in result1:
-			userids.append({"email":str(item[0]).lower(), "name":str(item[1]).title()})
-	
-		statssession.remove()
+			userids = []
+			for item in result1:
+				userids.append({"email":str(item[0]).lower(), "name":str(item[1]).title()})
+		
+			statssession.remove()
 
-		#Change this variable to change the list
-		list_id = "ea0d1e3356"
-		# ea0d1e3356 is the main Twigly list
-		# list_id = "d2a7019f47"
-		# d2a7019f47 is the test list
+			#Change this variable to change the list
+			list_id = "ea0d1e3356"
+			# ea0d1e3356 is the main Twigly list
+			# list_id = "d2a7019f47"
+			# d2a7019f47 is the test list
 
-		mailerror = False
-		batch_list = []
-		for item in userids:
-			batch_list.append({'email':{'email':item['email']}, 'email_type':'html', 'merge_vars':{'FNAME':item['name']}})
+			mailerror = False
+			batch_list = []
+			for item in userids:
+				batch_list.append({'email':{'email':item['email']}, 'email_type':'html', 'merge_vars':{'FNAME':item['name']}})
+			try:
+				m = Mailchimp(mailchimpkey)
+				mailchimpresponse = m.lists.batch_subscribe(list_id, batch_list, double_optin=False)
+			except Exception as e:
+				print ("Unexpected error:",e)
 
-		try:
-			m = Mailchimp(mailchimpkey)
-			mailchimpresponse = m.lists.batch_subscribe(list_id, batch_list, double_optin=False)
-		except Exception as e:
-			print ("Unexpected error:",e)
-
-		if (mailchimpresponse['error_count']>0):
-			self.write({"result": False})
-			msg = MIMEMultipart()
-			fromaddr = '@testmail.com'
-			toaddr = '***REMOVED***'				
-			msg['From'] = fromaddr
-			msg['To'] = toaddr
-			msg['Subject'] = str(mailchimpresponse['error_count'])+" error(s) in mailchimp List for "+parsedstartdate.strftime("%Y-%m-%d")
-			body = str(mailchimpresponse)
-			msg.attach(MIMEText(body, 'plain'))
-			host = 'email-smtp.us-east-1.amazonaws.com'
-			port = 587
-			user = "***REMOVED***"
-			password = "***REMOVED***"
-			server = smtplib.SMTP(host, port)
-			server.starttls()
-			server.login(user, password)
-			server.sendmail(fromaddr, toaddr, msg.as_string())
-			server.quit()
-		else:
-			self.write({"result": True})
+			if (mailchimpresponse['error_count']>0):
+				self.write({"result": False})
+				msg = MIMEMultipart()
+				fromaddr = '@testmail.com'
+				toaddr = '***REMOVED***'				
+				msg['From'] = fromaddr
+				msg['To'] = toaddr
+				msg['Subject'] = str(mailchimpresponse['error_count'])+" error(s) in mailchimp List for "+parsedstartdate.strftime("%Y-%m-%d")
+				body = str(mailchimpresponse)
+				msg.attach(MIMEText(body, 'plain'))
+				host = 'email-smtp.us-east-1.amazonaws.com'
+				port = 587
+				user = "***REMOVED***"
+				password = "***REMOVED***"
+				server = smtplib.SMTP(host, port)
+				server.starttls()
+				server.login(user, password)
+				server.sendmail(fromaddr, toaddr, msg.as_string())
+				server.quit()
+			else:
+				self.write({"result": True})
 
 class FeedbackHandler(BaseHandler):
 	@tornado.web.authenticated
