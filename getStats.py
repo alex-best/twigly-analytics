@@ -2158,9 +2158,9 @@ class DeliveryStatsHandler(BaseHandler):
 		for item in result3:
 			if item[0] in active_stores_list:
 				if item[1].strftime("%a %b %d, %Y") in daterange:
-					avgdeliverytimebystore[item[0]][item[1].strftime("%a %b %d, %Y")] = item[4]
-					totalordersbystore[item[0]][item[1].strftime("%a %b %d, %Y")] = item[5]
-					feedbacksreceivedsbystore[item[0]][item[1].strftime("%a %b %d, %Y")] = item[3]
+					if item[4]: avgdeliverytimebystore[item[0]][item[1].strftime("%a %b %d, %Y")] = item[4]
+					if item[5]: totalordersbystore[item[0]][item[1].strftime("%a %b %d, %Y")] = item[5]
+					if item[3]: feedbacksreceivedsbystore[item[0]][item[1].strftime("%a %b %d, %Y")] = item[3]
 		
 		avgdeliveryscorebystore = []
 		for thisstore in active_stores:
