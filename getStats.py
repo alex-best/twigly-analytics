@@ -537,6 +537,7 @@ class CustomerStatsHandler(BaseHandler):
 
 
 			customerLookup = {} #customers:order dates
+			customerOrderLookup = {} #customers:order ids
 			monthAllCustomerLookup = {} #month:all customers
 			customers = set() #all customers
 			months = [] #all months
@@ -550,12 +551,15 @@ class CustomerStatsHandler(BaseHandler):
 				
 				if thiscustomer in customerLookup: 
 					customerLookup[thiscustomer].append(thisdate)
+					customerOrderLookup[thiscustomer].append(thisorder.order_id)
 					if (thismonth in monthAllCustomerLookup):
 						monthAllCustomerLookup[thismonth].add(thiscustomer)
 					else:
 						monthAllCustomerLookup[thismonth] = set([thiscustomer])
 				else: 
 					customerLookup[thiscustomer] = [thisdate]
+					customerOrderLookup[thiscustomer] = [thisorder.order_id]
+
 					if (thismonth in monthAllCustomerLookup):
 						monthAllCustomerLookup[thismonth].add(thiscustomer)
 					else:
@@ -687,10 +691,36 @@ class CustomerStatsHandler(BaseHandler):
 					outputtableorders += "<td>"+str(followmonthsdata[fm])+"</td>"
 			outputtableorders += "</table>"
 
+
+			outputtablevalues = "<table class='table cdxdc  table-striped table-hover tablesorter' style='width: 100%;'><thead><tr><th>Month</th><th>Cohort Members</th>"
+			for m in months:
+				outputtablevalues += "<th>"+m+"</th>"
+			outputtablevalues += "</thead></tr>"
+			for month in range(len(months)):
+				outputtablevalues += "<tr><td>"+months[month]+"</td>"
+				outputtablevalues += "<td>"+str(len(monthNewCustomerLookup[months[month]]))+"</td>"
+				followmonths = months[month:]#+1
+				followmonthsdata = {fm: 0 for fm in followmonths} 
+				for tm in range(month):
+					outputtablevalues += "<td>-</td>"
+				newcustomers = monthNewCustomerLookup[months[month]]
+				for customer in newcustomers:
+					myorderdates = customerLookup[customer]
+					myorders = customerOrderLookup[customer]
+					for i in range(len(myorderdates)):
+						#some order_ids are not in the gross lookup - 1,2,3,4,41307
+						if myorders[i] in grosssaleslookup: 
+							followmonthsdata[myorderdates[i].strftime("%Y-%m")] += grosssaleslookup[myorders[i]]
+				for fm in followmonths:
+					outputtablevalues += "<td>"+str(followmonthsdata[fm])+"</td>"
+			outputtablevalues += "</table>"
+
+
+
 			current_user = self.get_current_user().decode()
 
 			statssession.remove()
-			self.render("templates/customerstatstemplate.html", user=current_user, outputtable=outputtable, months=months, allcustomers=allcustomersbymonth, newcustomers=newcustomersbymonth, repeatcustomers=repeatcustomersbymonth, neworders=newordersbymonth,repeatorders=repeatordersbymonth, alltotals=alltotalsbymonth, newtotals=newtotalsbymonth,repeattotals=repeattotalsbymonth,allAPC=allAPC, newAPC=newAPC,repeatAPC=repeatAPC, outputtableorders=outputtableorders)
+			self.render("templates/customerstatstemplate.html", user=current_user, outputtable=outputtable, months=months, allcustomers=allcustomersbymonth, newcustomers=newcustomersbymonth, repeatcustomers=repeatcustomersbymonth, neworders=newordersbymonth,repeatorders=repeatordersbymonth, alltotals=alltotalsbymonth, newtotals=newtotalsbymonth,repeattotals=repeattotalsbymonth,allAPC=allAPC, newAPC=newAPC,repeatAPC=repeatAPC, outputtableorders=outputtableorders, outputtablevalues=outputtablevalues)
 
 
 class OrderStatsHandler(BaseHandler):
