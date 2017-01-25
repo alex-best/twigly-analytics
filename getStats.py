@@ -1709,6 +1709,80 @@ class MailchimpUpdateHandler(BaseHandler):
 			else:
 				self.write({"result": True})
 
+class MailchimpLazySignupHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		current_user = self.get_current_user().decode()
+		if current_user != "admin":
+			self.redirect('/stats')
+		else:
+			parsedstartdate = datetime.date.today() - datetime.timedelta(days=2)
+
+			statsengine = sqlalchemy.create_engine(statsengine_url)
+			statssession = scoped_session(sessionmaker(bind=statsengine))
+
+			thissql1 = "select u.email from users u where u.email is not null and u.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and u.date_add<='" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select o.user_id from orders o where order_status in (3,10,11) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00');" 
+			result1 = statsengine.execute(thissql1)
+
+			userids = []
+			for item in result1:
+				userids.append({"email":str(item[0]).lower()})
+			
+			statssession.remove()
+
+			#Change this variable to change the list
+			list_id = "ea0d1e3356"
+			# ea0d1e3356 is the main Twigly list
+			# list_id = "d2a7019f47"
+			# d2a7019f47 is the test list
+
+			template_id = 139741 # int
+
+			static_segment_id = 60393 # int..  main list
+			# static_segment_id = 60389 # int.. for test list
+			
+			batch_list = []
+			for item in userids:
+				batch_list.append({'email':item['email']})
+
+			try:
+				m = Mailchimp(mailchimpkey)
+				#Create a segment for lazy signups
+				# mcresponse = m.lists.static_segment_add(list_id,"Lazy Signups")
+				# print(mcresponse)
+
+				mcresponse = m.lists.static_segment_reset(list_id,static_segment_id)
+				mcresponse = m.lists.static_segment_members_add(list_id,static_segment_id,batch_list)
+				subject = "Great food is just 3 clicks away"
+				mcresponse = m.campaigns.create(type="regular", options={"list_id": list_id, "subject": subject, "from_email": "@testmail.com", "from_name": "Twigly", "to_name": "*|FNAME|*", "title": subject, "authenticate": True, "generate_text": True, "template_id":template_id}, content={"sections": {}}, segment_opts={"saved_segment_id":static_segment_id})
+				mre2 = m.campaigns.send(mcresponse["id"])
+
+			except Exception as e:
+				print ("Unexpected error:",e)
+
+			if ('complete' in mre2 and mre2['complete']==True):
+				self.write({"result": True})
+			else:
+				self.write({"result": False})
+				msg = MIMEMultipart()
+				fromaddr = '@testmail.com'
+				toaddr = '***REMOVED***'				
+				msg['From'] = fromaddr
+				msg['To'] = toaddr
+				msg['Subject'] =  "Semo error in the Lazy mailchimp campaign for "+parsedstartdate.strftime("%Y-%m-%d")
+				body = str(mre2)
+				msg.attach(MIMEText(body, 'plain'))
+				host = 'email-smtp.us-east-1.amazonaws.com'
+				port = 587
+				user = "***REMOVED***"
+				password = "***REMOVED***"
+				server = smtplib.SMTP(host, port)
+				server.starttls()
+				server.login(user, password)
+				server.sendmail(fromaddr, toaddr, msg.as_string())
+				server.quit()
+
+
 class FeedbackHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
@@ -2449,6 +2523,7 @@ application = tornado.web.Application([
 	(r"/getpreview", MailPreviewHandler),
 	(r"/sendtomailchimp", MailchimpHandler),
 	(r"/updatemailchimp", MailchimpUpdateHandler),
+	(r"/sendtolazysignups", MailchimpLazySignupHandler),
 	(r"/feedbacks", FeedbackHandler),
 	(r"/wastage", WastageHandler),
 	(r"/getstoreitems", GetStoreItemsHandler),
