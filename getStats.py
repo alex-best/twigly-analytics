@@ -1745,6 +1745,9 @@ class MailchimpLazySignupHandler(BaseHandler):
 			for item in userids:
 				batch_list.append({'email':item['email']})
 
+			# batch_list.append({'email':'***REMOVED***'})
+
+
 			try:
 				m = Mailchimp(mailchimpkey)
 				#Create a segment for lazy signups
@@ -1762,6 +1765,23 @@ class MailchimpLazySignupHandler(BaseHandler):
 
 			if ('complete' in mre2 and mre2['complete']==True):
 				self.write({"result": True})
+				msg = MIMEMultipart()
+				fromaddr = '@testmail.com'
+				toaddr = '***REMOVED***'				
+				msg['From'] = fromaddr
+				msg['To'] = toaddr
+				msg['Subject'] =  str(len(batch_list))+" recepients of Lazy campaign for "+parsedstartdate.strftime("%Y-%m-%d")
+				body = "Email sent successfully to " + str(batch_list)
+				msg.attach(MIMEText(body, 'plain'))
+				host = 'email-smtp.us-east-1.amazonaws.com'
+				port = 587
+				user = "***REMOVED***"
+				password = "***REMOVED***"
+				server = smtplib.SMTP(host, port)
+				server.starttls()
+				server.login(user, password)
+				server.sendmail(fromaddr, toaddr, msg.as_string())
+				server.quit()
 			else:
 				self.write({"result": False})
 				msg = MIMEMultipart()
@@ -1769,7 +1789,7 @@ class MailchimpLazySignupHandler(BaseHandler):
 				toaddr = '***REMOVED***'				
 				msg['From'] = fromaddr
 				msg['To'] = toaddr
-				msg['Subject'] =  "Semo error in the Lazy mailchimp campaign for "+parsedstartdate.strftime("%Y-%m-%d")
+				msg['Subject'] =  "Some error in the Lazy mailchimp campaign for "+parsedstartdate.strftime("%Y-%m-%d")
 				body = str(mre2)
 				msg.attach(MIMEText(body, 'plain'))
 				host = 'email-smtp.us-east-1.amazonaws.com'
