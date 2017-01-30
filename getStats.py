@@ -2016,7 +2016,11 @@ class WastageHandler(BaseHandler):
 			wastage.append(thiswastage)
 			storewastage.append(thisstorewastage)
 			wastagepc.append(thiswastagepc)
-			stores.append({"store_id": thisstore.store_id, "name": thisstore.name, "grosssales": sum(thisgrosssales), "predictedsales": sum(thispredictedsales), "wastage": sum(thiswastage), "storewastage":sum(thisstorewastage),"wastagepc": sum(thisstorewastage)/sum(thisgrosssales)*100})
+			if sum(thisgrosssales)!=0:
+				stores.append({"store_id": thisstore.store_id, "name": thisstore.name, "grosssales": sum(thisgrosssales), "predictedsales": sum(thispredictedsales), "wastage": sum(thiswastage), "storewastage":sum(thisstorewastage),"wastagepc": sum(thisstorewastage)/sum(thisgrosssales)*100})
+			else:
+				stores.append({"store_id": thisstore.store_id, "name": thisstore.name, "grosssales": sum(thisgrosssales), "predictedsales": sum(thispredictedsales), "wastage": sum(thiswastage), "storewastage":sum(thisstorewastage),"wastagepc": 0})
+
 
 		totalgrosssales = 0
 		totalpredictedsales = 0
@@ -2319,10 +2323,11 @@ class DeliveryStatsHandler(BaseHandler):
 			list20_30 = []
 			list30_plus = []
 			for thisdate in daterange:
-				list0_10.append(int(deliverytimeresultsbystore[thisstore.store_id][thisdate][0]))
-				list10_20.append(int(deliverytimeresultsbystore[thisstore.store_id][thisdate][1]))
-				list20_30.append(int(deliverytimeresultsbystore[thisstore.store_id][thisdate][2]))
-				list30_plus.append(int(deliverytimeresultsbystore[thisstore.store_id][thisdate][3]))
+				if len(deliverytimeresultsbystore[thisstore.store_id][thisdate])==4:
+					list0_10.append(int(deliverytimeresultsbystore[thisstore.store_id][thisdate][0]))
+					list10_20.append(int(deliverytimeresultsbystore[thisstore.store_id][thisdate][1]))
+					list20_30.append(int(deliverytimeresultsbystore[thisstore.store_id][thisdate][2]))
+					list30_plus.append(int(deliverytimeresultsbystore[thisstore.store_id][thisdate][3]))
 			deliverytimestack.append({"store_id": thisstore.store_id, "name": thisstore.name, "deliverytime010":list0_10,"deliverytime1020":list10_20,"deliverytime2030":list20_30,"deliverytime30plus":list30_plus,})
 
 
@@ -2341,7 +2346,8 @@ class DeliveryStatsHandler(BaseHandler):
 		for thisstore in active_stores:
 			listpriority = []
 			for thisdate in daterange:
-				listpriority.append(float(100*priorityorderresultsbystore[thisstore.store_id][thisdate][1]/(priorityorderresultsbystore[thisstore.store_id][thisdate][0]+priorityorderresultsbystore[thisstore.store_id][thisdate][1]))) # non-priority order %age
+				if (len(priorityorderresultsbystore[thisstore.store_id][thisdate])==2):
+					listpriority.append(float(100*priorityorderresultsbystore[thisstore.store_id][thisdate][1]/(priorityorderresultsbystore[thisstore.store_id][thisdate][0]+priorityorderresultsbystore[thisstore.store_id][thisdate][1]))) # non-priority order %age
 			priorityorderstack.append({"store_id": thisstore.store_id, "name": thisstore.name,"prioritypc":listpriority})
 
 
@@ -2382,9 +2388,12 @@ class DeliveryStatsHandler(BaseHandler):
 			list2 = []
 			list3 = []
 			for thisdate in daterange:
-				list1.append(float(cookingtodispatcklookup[thisstore.store_id][thisdate][1]/cookingtodispatcklookup[thisstore.store_id][thisdate][0]/60)) # avg time in minutes
-				list2.append(float(dispatchtoreachlookup[thisstore.store_id][thisdate][1]/dispatchtoreachlookup[thisstore.store_id][thisdate][0]/60)) # avg time in minutes
-				list3.append(float(reachtodeliverlookup[thisstore.store_id][thisdate][1]/reachtodeliverlookup[thisstore.store_id][thisdate][0]/60)) # avg time in minutes
+				if (len(cookingtodispatcklookup[thisstore.store_id][thisdate])==2):
+					list1.append(float(cookingtodispatcklookup[thisstore.store_id][thisdate][1]/cookingtodispatcklookup[thisstore.store_id][thisdate][0]/60)) # avg time in minutes
+				if (len(dispatchtoreachlookup[thisstore.store_id][thisdate])==2):
+					list2.append(float(dispatchtoreachlookup[thisstore.store_id][thisdate][1]/dispatchtoreachlookup[thisstore.store_id][thisdate][0]/60)) # avg time in minutes
+				if (len(reachtodeliverlookup[thisstore.store_id][thisdate])==2):
+					list3.append(float(reachtodeliverlookup[thisstore.store_id][thisdate][1]/reachtodeliverlookup[thisstore.store_id][thisdate][0]/60)) # avg time in minutes
 			cookingtimes.append({"store_id": thisstore.store_id, "name": thisstore.name,"cookingtime":list1,"dispatchtime":list2,"deliverytime":list3})
 
 		statssession.remove()
@@ -2504,12 +2513,13 @@ class PaymentStatsHandler(BaseHandler):
 
 
 		# Those who ended up ordering
-		thissql6 = "select user_id, name, mobile_number, date_add from users where user_id in ("+str(allusers).strip('{}')+");"
-		result6 = statsengine.execute(thissql6)
-		useridswhoreturnedlookup = {thisdate:set() for thisdate in daterange}
 		userlookup = {}
-		for item in result6:
-			userlookup.update({item[0]:item[1:]})
+
+		if (len(allusers)>0):
+			thissql6 = "select user_id, name, mobile_number, date_add from users where user_id in ("+str(allusers).strip('{}')+");"
+			result6 = statsengine.execute(thissql6)
+			for item in result6:
+				userlookup.update({item[0]:item[1:]})
 
 		outputtable = "<table class='table tablesorter table-striped table-hover'><thead><th>Date</th><th>User Id</th><th>User Name</th><th>User Mobile Number</th><th>Registered On</th><th>View Orders</th></thead>"
 		
