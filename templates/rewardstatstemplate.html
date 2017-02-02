@@ -2,7 +2,7 @@
 <html>
 <head lang="en">
     <meta charset="UTF-8">
-    <title>Twigly Delivery Stats</title>
+    <title>Twigly Reward Stats</title>
     <link rel="shortcut icon" type="image/png" href='http://www.twigly.in/assets/images/favicon.png'>
     <link rel="stylesheet" href="/static/css/bootstrap.min.css">
     <link rel="stylesheet" href="/static/css/bootstrap-datepicker3.min.css">
@@ -63,20 +63,12 @@
 	{% if (user=="admin" or user=="headchef" or user=="chef") %}
 		{% include "navtemplate.html" %}
 	{% end %}
-    {% for thisstore in avgdeliveryscorebystore %}
     <div class="row" style="margin-bottom: 40px;">
-        <div id="avgdeliverscorebystore{{thisstore['store_id']}}" style="width:100%; height:400px;"></div>
+        <div id="rewardtransactionschart" style="width:100%; height:400px;"></div>
     </div>
     <div class="row" style="margin-bottom: 40px;">
-        <div id="priorityorderschart{{thisstore['store_id']}}" style="width:100%; height:400px;"></div>
+        <div id="rewardpointschart" style="width:100%; height:400px;"></div>
     </div>
-    <div class="row" style="margin-bottom: 40px;">
-        <div id="deliverytimechart{{thisstore['store_id']}}" style="width:100%; height:400px;"></div>
-    </div>
-    <div class="row" style="margin-bottom: 40px;">
-        <div id="cookingtimechart{{thisstore['store_id']}}" style="width:100%; height:400px;"></div>
-    </div>
-    {% end %}
 </div>
 <button class="showFilters hidden-xs btn btn-success" style="position: fixed; top: 25px; right: 15px;">Show/Hide Filters</button>
 <button class="showFilters visible-xs btn btn-success" style="position: fixed; top: 25px; right: 15px;">V</button>
@@ -130,72 +122,52 @@
 
     Highcharts.setOptions(Highcharts.theme);
 
-{% for thisstore in avgdeliveryscorebystore %}
-   $('#avgdeliverscorebystore{{thisstore['store_id']}}').highcharts({
+   $('#rewardtransactionschart').highcharts({
         chart: {
             zoomType: 'xy'
         },
         title: {
             useHTML: true,
-            text: 'Average Delivery Score for {{thisstore['name']}}'
+            text: 'Reward Transactions'
         },
         xAxis: {
             categories: {% raw daterange %},
             crosshair: true
         },
-        yAxis: [{
+        yAxis: {
             title: {
-                text: 'Orders'
+                text: 'Reward Transactions'
             }
-        },{
-        	title: {
-                text: 'Average Delivery Score'
-            },
-        	style: Highcharts.getOptions().colors[1],
-        	opposite: true
-        }],
+        },
         tooltip: {
             shared: true
         },
         series: [{
-            name: 'Total Orders',
+            name: 'Credit Transactions',
             type: "column",
-            yAxis: 0,
             showInLegend: true,
-            data: {{ thisstore['totalorders'] }},
+            data: {{ credittransactions }},
             dataLabels: {
                 enabled: true
             }
         },{
-            name: 'Feedbacks received',
+            name: 'Debit Transactions',
             type: "column",
-            yAxis: 0,
             showInLegend: true,
-            data: {{ thisstore['feedbacksreceived'] }},
+            data: {{ debittransactions }},
             dataLabels: {
                 enabled: true
-            }
-        },{
-        	name: "Average Delivery Score",
-        	type: "line",
-        	yAxis: 1,
-        	showInLegend: true,
-            data: {{ thisstore['avgdeliveryscore'] }},
-            dataLabels: {
-            	enabled: true,
-            	format: '{point.y:.2f}'
             }
         }]
     });
-{% end %}
 
-{% for thisstore in priorityorderstack %}
-    $('#priorityorderschart{{thisstore['store_id']}}').highcharts({
+   $('#rewardpointschart').highcharts({
         chart: {
             zoomType: 'xy'
         },
         title: {
-            text: '% Non-Priority Orders at {{thisstore['name']}}'
+            useHTML: true,
+            text: 'Total Reward Points'
         },
         xAxis: {
             categories: {% raw daterange %},
@@ -203,155 +175,36 @@
         },
         yAxis: {
             title: {
-                text: '% Non Priority Orders'
+                text: 'Reward Points'
             }
         },
         tooltip: {
             shared: true
         },
         series: [{
-            name: "% Non Priority",
-            type: "line",
-            showInLegend: false,
-            data: {{thisstore['prioritypc']}},
+            name: 'Credit Points',
+            type: "column",
+            showInLegend: true,
+            data: {{ creditpoints }},
             dataLabels: {
-                enabled: true,
-                format: '{point.y:.2f}'
+                enabled: true
+            }
+        },{
+            name: 'Debit Points',
+            type: "column",
+            showInLegend: true,
+            data: {{ debitpoints }},
+            dataLabels: {
+                enabled: true
             }
         }]
     });
-{% end %}
 
-
-
-{% for thisstore in deliverytimestack %}
-    $('#deliverytimechart{{thisstore['store_id']}}').highcharts({
-        chart: {
-            type: "column"
-        },
-        title: {
-            text: 'Time taken from Dispatch to Reached Destination at {{thisstore['name']}}'
-        },
-        xAxis: {
-            categories: {% raw daterange %},
-            crosshair: true
-        },
-        yAxis: {
-            title: {
-                text: 'Orders'
-            },
-            stackLabels: {
-                enabled: true,
-                style: {
-                    fontWeight: 'bold',
-                    color: (Highcharts.theme && Highcharts.theme.textColor) || 'gray'
-                }
-            }
-        },
-        plotOptions: {
-            column: {
-                stacking: 'percent',
-                dataLabels: {
-                    enabled: true,
-                    color: (Highcharts.theme && Highcharts.theme.dataLabelsColor) || 'white',
-                    style: {
-                        textShadow: '0 0 3px black'
-                    }
-                }
-            }
-        },
-        tooltip: {
-            formatter: function () {
-                return (this.y/this.point.stackTotal*100).toPrecision(2) + '%';
-            }
-        },
-        series: [{
-            name: "0-10 minutes",
-            data: {{thisstore['deliverytime010']}}
-        },{
-            name: "10-20 minutes",
-            data: {{thisstore['deliverytime1020']}}
-        },{
-            name: "20-30 minutes",
-            data: {{thisstore['deliverytime2030']}}
-        },{
-            name: "Over 30 minutes",
-            data: {{thisstore['deliverytime30plus']}}
-        }]
-    });
-{% end %}
-
-{% for thisstore in cookingtimes %}
-    $('#cookingtimechart{{thisstore['store_id']}}').highcharts({
-        chart: {
-            type: "column"
-        },
-        title: {
-            text: 'Average time taken between states at {{thisstore['name']}}'
-        },
-        xAxis: {
-            categories: {% raw daterange %},
-            crosshair: true
-        },
-        yAxis: {
-            title: {
-                text: 'Average time (minutes)'
-            },
-            stackLabels: {
-                enabled: true,
-                format: '{total:.2f}',
-                style: {
-                    fontWeight: 'bold',
-                    color: (Highcharts.theme && Highcharts.theme.textColor) || 'gray'
-                }
-            }
-        },
-        plotOptions: {
-            column: {
-                stacking: 'number',
-                dataLabels: {
-                    enabled: true,
-                    color: (Highcharts.theme && Highcharts.theme.dataLabelsColor) || 'white',
-                    style: {
-                        textShadow: '0 0 3px black'
-                    }
-                }
-            }
-        },
-        tooltip: {
-            formatter: function () {
-                return (this.y/this.point.stackTotal*100).toPrecision(2) + '%';
-            }
-        },
-        series: [{
-            name: "Average Cooking To Dispatch Time",
-            data: {{thisstore['cookingtime']}},
-            dataLabels: {
-                enabled: true,
-                format: '{point.y:.2f}'
-            }
-        },{
-            name: "Average Dispatch To Reaching Time",
-            data: {{thisstore['dispatchtime']}},
-            dataLabels: {
-                enabled: true,
-                format: '{point.y:.2f}'
-            }
-        },{
-            name: "Average Reaching To Delivery Time",
-            data: {{thisstore['deliverytime']}},
-            dataLabels: {
-                enabled: true,
-                format: '{point.y:.2f}'
-            }
-        }]
-    });
-{% end %}
 
 
 	$(document).ready(function() {
 		$('#horizonselect').on('change', function() {
-			window.location.href = "/deliverystats?horizon=" + $(this).val();
+			window.location.href = "/rewardstats?horizon=" + $(this).val();
 		});
 		var thishorizon = getUrlParameter("horizon");
 		if (thishorizon) {
@@ -373,7 +226,7 @@
 		    format: "dd/mm/yy",
 		});
 		$('#setDates').on('click', function() {
-			window.location.href = "/deliverystats?startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val();
+			window.location.href = "/rewardstats?startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val();
 		});
 		$('.showFilters').on('click', function() {
 			$('#horizon').fadeToggle();

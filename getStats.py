@@ -2535,6 +2535,75 @@ class PaymentStatsHandler(BaseHandler):
 		self.render("templates/paymentstemplate.html", daterange=daterange, userswhohadpgfailure=userswhohadpgfailure,userswhodidnotreturn=userswhodidnotreturn, userswhocancelled=userswhocancelled, outputtable=outputtable, user=current_user)
 
 
+class RewardStatsHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		current_user = self.get_current_user().decode()
+		if current_user not in ("admin"):
+			self.redirect('/stats')
+
+		horizon = self.get_argument("horizon", None)
+		startdate = self.get_argument("startdate", None)
+		enddate = self.get_argument("enddate", None)
+		if startdate is None:
+			if horizon is None:
+				horizon = 7
+			else:
+				horizon = int(horizon)
+
+			parsedenddate = datetime.date.today() +  datetime.timedelta(days=1)
+
+			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
+			daterange = [parsedstartdate.strftime("%a %b %d, %Y")]
+			for c in range(horizon-1):
+				daterange.append((parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%a %b %d, %Y"))
+		
+		else:
+			parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date()
+			parsedenddate = parsedenddate + datetime.timedelta(days=1)
+			parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
+			daterange = []
+			for c in range((parsedenddate - parsedstartdate).days):
+				daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%a %b %d, %Y"))
+
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
+
+		transaction_type=[{"type":"DEBIT", "value":'0'},{"type":"CREDIT", "value":'1'}]
+		transaction_value_list = [x["value"] for x in transaction_type]
+
+		# Total Reward Points Credited and Debited in a day
+		thissql8 = "select o.type, date(o.date_add), count(*), sum(o.points) from reward_transactions o where  o.points > 0 and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1,2;"
+		result8 = statsengine.execute(thissql8)
+
+		rewardtransactionlookup = {x["value"]: { thisdate:[] for thisdate in daterange} for x in transaction_type}
+		for item in result8:
+			if item[0] in transaction_value_list:
+				if item[1].strftime("%a %b %d, %Y") in daterange:
+					rewardtransactionlookup[item[0]][item[1].strftime("%a %b %d, %Y")] = item[2:]
+
+		debittransactions = []
+		debitpoints = []
+		credittransactions = []
+		creditpoints = []
+		for thisdate in daterange:
+			if (len(rewardtransactionlookup['0'][thisdate])==2):
+				debittransactions.append(int(rewardtransactionlookup['0'][thisdate][0])) 
+				debitpoints.append(int(rewardtransactionlookup['0'][thisdate][1]))
+			else:
+				debittransactions.append(0) 
+				debitpoints.append(0)
+			if (len(rewardtransactionlookup['1'][thisdate])==2):
+				credittransactions.append(int(rewardtransactionlookup['1'][thisdate][0])) 
+				creditpoints.append(int(rewardtransactionlookup['1'][thisdate][1])) 
+			else:
+				credittransactions.append(0) 
+				creditpoints.append(0) 
+
+		statssession.remove()
+		self.render("templates/rewardstatstemplate.html", daterange=daterange, debittransactions=debittransactions, debitpoints=debitpoints, credittransactions=credittransactions, creditpoints=creditpoints, user=current_user)
+
+
 current_path = path.dirname(path.abspath(__file__))
 static_path = path.join(current_path, "static")
 
@@ -2563,6 +2632,7 @@ application = tornado.web.Application([
 	(r"/payments", PaymentStatsHandler),
 	(r"/orderstats", OrderStatsHandler),
 	(r"/customerstats", CustomerStatsHandler),
+	(r"/rewardstats", RewardStatsHandler),
 	(r"/vanvaas", VanvaasHandler),
 	(r"/vanvaas/update/", UpdateVanvaasHandler),
 	(r"/vanvaas/(.*)", VanvaasViewHandler),
