@@ -2573,11 +2573,11 @@ class RewardStatsHandler(BaseHandler):
 		transaction_value_list = [x["value"] for x in transaction_type]
 
 		# Total Reward Points Credited and Debited in a day
-		thissql8 = "select o.type, date(o.date_add), count(*), sum(o.points) from reward_transactions o where  o.points > 0 and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1,2;"
-		result8 = statsengine.execute(thissql8)
+		thissql1 = "select o.type, date(o.date_add), count(*), sum(o.points) from reward_transactions o where  o.points > 0 and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1,2;"
+		result1 = statsengine.execute(thissql1)
 
 		rewardtransactionlookup = {x["value"]: { thisdate:[] for thisdate in daterange} for x in transaction_type}
-		for item in result8:
+		for item in result1:
 			if item[0] in transaction_value_list:
 				if item[1].strftime("%a %b %d, %Y") in daterange:
 					rewardtransactionlookup[item[0]][item[1].strftime("%a %b %d, %Y")] = item[2:]
@@ -2600,8 +2600,58 @@ class RewardStatsHandler(BaseHandler):
 				credittransactions.append(0) 
 				creditpoints.append(0) 
 
+		# Total points credit in period
+		# Total points debited in period
+		# Average (including bulk)
+		totalcredittransactions = sum(credittransactions)
+		totalcreditpoints = sum(creditpoints)
+		totalcreditavgpoints = 0.0
+		if (totalcredittransactions>0):
+			totalcreditavgpoints = float(totalcreditpoints)/float(totalcredittransactions)
+
+		totaldebittransactions = sum(debittransactions)
+		totaldebitpoints = sum(debitpoints)
+		totaldebitavgpoints = 0.0
+		if (totaldebittransactions>0):
+			totaldebitavgpoints = float(totaldebitpoints)/float(totaldebittransactions)
+
+
+		# <50 Reward Points Credited in a day
+		# Total points credit in period - small transactions
+		# Average /transaction/day (excluding bulk)
+		thissql2 = "select o.type, date(o.date_add), count(*), sum(o.points) from reward_transactions o where  o.points > 0 and o.points<50 and o.type=1 and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1,2;"
+		result2 = statsengine.execute(thissql2)
+
+		smlrewardtransactionlookup = { thisdate:[] for thisdate in daterange}
+		for item in result2:
+			if item[1].strftime("%a %b %d, %Y") in daterange:
+				smlrewardtransactionlookup[item[1].strftime("%a %b %d, %Y")] = item[2:]
+
+		smlcredittransactions = []
+		smlcreditpoints = []
+		for thisdate in daterange:
+			if (len(smlrewardtransactionlookup[thisdate])==2):
+				smlcredittransactions.append(int(smlrewardtransactionlookup[thisdate][0])) 
+				smlcreditpoints.append(int(smlrewardtransactionlookup[thisdate][1])) 
+			else:
+				smlcredittransactions.append(0) 
+				smlcreditpoints.append(0) 
+
+		smlcreditavgpoints = []
+		for index in range(len(daterange)):
+			if (smlcredittransactions[index]>0):
+				smlcreditavgpoints.append(float(smlcreditpoints[index])/float(smlcredittransactions[index]))
+			else:
+				smlcreditavgpoints.append(0.0)
+
+		totalsmlcredittransactions = sum(smlcredittransactions)
+		totalsmlcreditpoints = sum(smlcreditpoints)
+		totalsmlavgpoints = 0.0
+		if (totalsmlcredittransactions>0):
+			totalsmlavgpoints = float(totalsmlcreditpoints)/float(totalsmlcredittransactions)
+
 		statssession.remove()
-		self.render("templates/rewardstatstemplate.html", daterange=daterange, debittransactions=debittransactions, debitpoints=debitpoints, credittransactions=credittransactions, creditpoints=creditpoints, user=current_user)
+		self.render("templates/rewardstatstemplate.html", daterange=daterange, debittransactions=debittransactions, debitpoints=debitpoints, credittransactions=credittransactions, creditpoints=creditpoints, smlcredittransactions=smlcredittransactions,smlcreditpoints=smlcreditpoints,smlcreditavgpoints=smlcreditavgpoints,totalcredittransactions=totalcredittransactions,totalcreditpoints=totalcreditpoints,totalcreditavgpoints=totalcreditavgpoints,totaldebittransactions=totaldebittransactions, totaldebitpoints=totaldebitpoints,totaldebitavgpoints=totaldebitavgpoints,totalsmlcredittransactions=totalsmlcredittransactions,totalsmlcreditpoints=totalsmlcreditpoints,totalsmlavgpoints=totalsmlavgpoints,user=current_user)
 
 
 current_path = path.dirname(path.abspath(__file__))

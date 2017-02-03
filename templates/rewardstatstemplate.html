@@ -64,10 +64,16 @@
 		{% include "navtemplate.html" %}
 	{% end %}
     <div class="row" style="margin-bottom: 40px;">
-        <div id="rewardtransactionschart" style="width:100%; height:400px;"></div>
+        <div id="smlrewardpointschart" style="width:100%; height:400px;"></div>
+    </div>
+    <div class="row" style="margin-bottom: 40px;">
+        <div id="smlrewardtransactionschart" style="width:100%; height:400px;"></div>
     </div>
     <div class="row" style="margin-bottom: 40px;">
         <div id="rewardpointschart" style="width:100%; height:400px;"></div>
+    </div>
+    <div class="row" style="margin-bottom: 40px;">
+        <div id="rewardtransactionschart" style="width:100%; height:400px;"></div>
     </div>
 </div>
 <button class="showFilters hidden-xs btn btn-success" style="position: fixed; top: 25px; right: 15px;">Show/Hide Filters</button>
@@ -128,7 +134,7 @@
         },
         title: {
             useHTML: true,
-            text: 'Reward Transactions'
+            text: 'Reward Transactions<br>Total Credit Transactions: {{ totalcredittransactions }}<br>Total Debit Transactions: {{ totaldebittransactions }}'
         },
         xAxis: {
             categories: {% raw daterange %},
@@ -167,7 +173,7 @@
         },
         title: {
             useHTML: true,
-            text: 'Total Reward Points'
+            text: 'Total Reward Points <br>Total Credit Points: {{ totalcreditpoints }}<br>Total Debit Points: {{ totaldebitpoints }}<br>Average Credit Points/Tranasaction: {{ round(totalcreditavgpoints,2) }}<br>Total Debit Points/Transaction: {{ round(totaldebitavgpoints,2) }}'
         },
         xAxis: {
             categories: {% raw daterange %},
@@ -200,6 +206,82 @@
         }]
     });
 
+   $('#smlrewardtransactionschart').highcharts({
+        chart: {
+            zoomType: 'xy'
+        },
+        title: {
+            useHTML: true,
+            text: 'Credit Transactions &lt;50 pts <br> Total {{ totalsmlcredittransactions }}'
+        },
+        xAxis: {
+            categories: {% raw daterange %},
+            crosshair: true
+        },
+        yAxis: {
+            title: {
+                text: 'Reward Transactions'
+            }
+        },
+        tooltip: {
+            shared: true
+        },
+        series: [{
+            name: 'Credit Transactions &lt;50 pts',
+            type: "column",
+            showInLegend: true,
+            data: {{ smlcredittransactions }},
+            dataLabels: {
+                enabled: true
+            }
+        }]
+    });
+
+   $('#smlrewardpointschart').highcharts({
+        chart: {
+            zoomType: 'xy'
+        },
+        title: {
+            useHTML: true,
+            text: 'Credit Reward Points &lt;50 pts<br> Total {{ totalsmlcreditpoints }}<br> Average {{ round(totalsmlavgpoints,2) }}'
+        },
+        xAxis: {
+            categories: {% raw daterange %},
+            crosshair: true
+        },
+        yAxis: [{
+            title: {
+                text: 'Reward Points'
+            }
+        },{
+            title: {
+                text: '% Avg per transaction'
+            }
+        }],
+        tooltip: {
+            shared: true
+        },
+        series: [{
+            name: 'Credit Points &lt;50 pts',
+            type: "column",
+            yAxis: 0,
+            showInLegend: true,
+            data: {{ smlcreditpoints }},
+            dataLabels: {
+                enabled: true
+            }
+        }, {
+            name: "Average per transaction",
+            type: "line",
+            yAxis: 1,
+            showInLegend: false,
+            data: {{ smlcreditavgpoints }},
+            dataLabels: {
+                enabled: true,
+                format: '{point.y:.2f}'
+            }
+        }]
+    });
 
 
 	$(document).ready(function() {
