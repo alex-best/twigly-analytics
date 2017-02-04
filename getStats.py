@@ -2654,6 +2654,57 @@ class RewardStatsHandler(BaseHandler):
 		self.render("templates/rewardstatstemplate.html", daterange=daterange, debittransactions=debittransactions, debitpoints=debitpoints, credittransactions=credittransactions, creditpoints=creditpoints, smlcredittransactions=smlcredittransactions,smlcreditpoints=smlcreditpoints,smlcreditavgpoints=smlcreditavgpoints,totalcredittransactions=totalcredittransactions,totalcreditpoints=totalcreditpoints,totalcreditavgpoints=totalcreditavgpoints,totaldebittransactions=totaldebittransactions, totaldebitpoints=totaldebitpoints,totaldebitavgpoints=totaldebitavgpoints,totalsmlcredittransactions=totalsmlcredittransactions,totalsmlcreditpoints=totalsmlcreditpoints,totalsmlavgpoints=totalsmlavgpoints,user=current_user)
 
 
+class RewardLeaderHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		current_user = self.get_current_user().decode()
+		if current_user not in ("admin"):
+			self.redirect('/stats')
+
+		horizon = self.get_argument("horizon", None)
+		startdate = self.get_argument("startdate", None)
+		enddate = self.get_argument("enddate", None)
+		if startdate is None:
+			if horizon is None:
+				horizon = 7
+			else:
+				horizon = int(horizon)
+
+			parsedenddate = datetime.date.today() +  datetime.timedelta(days=1)
+
+			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
+			daterange = [parsedstartdate.strftime("%a %b %d, %Y")]
+			for c in range(horizon-1):
+				daterange.append((parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%a %b %d, %Y"))
+		
+		else:
+			parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date()
+			parsedenddate = parsedenddate + datetime.timedelta(days=1)
+			parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
+			daterange = []
+			for c in range((parsedenddate - parsedstartdate).days):
+				daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%a %b %d, %Y"))
+
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
+
+
+		
+		from sqlalchemy import text
+		thissql1 = text("select a.user_id,a.name,a.mobile_number,a.reward_points,date(a.date_add) from users a where a.reward_points>0 order by a.reward_points desc limit 100;")
+
+		result1 = statsengine.execute(thissql1)
+
+		outputtable = "<table class='table tablesorter table-striped table-hover'><thead><th>UserID</th><th>Name</th><th>Mobile Number</th><th>Total Points</th><th>Date Added</th><</thead>"
+		for row in result1:
+			outputtable += "<tr><td>" + str(row[0]) + "</td><td>" + str(row[1]) + "</td><td><a href='http://twigly.in/admin/orders?f="+str(row[2])+"'>" + str(row[2]) + "</a></td><td>" + str(row[3]) + "</td><td>" + str(row[4]) + "</td></tr>"		
+		outputtable += "</table>"
+
+
+		statssession.remove()
+		self.render("templates/rewardleaderstemplate.html", outputtable=outputtable, user=current_user)
+
+
 current_path = path.dirname(path.abspath(__file__))
 static_path = path.join(current_path, "static")
 
@@ -2683,6 +2734,7 @@ application = tornado.web.Application([
 	(r"/orderstats", OrderStatsHandler),
 	(r"/customerstats", CustomerStatsHandler),
 	(r"/rewardstats", RewardStatsHandler),
+	(r"/rewardleaderboard", RewardLeaderHandler),
 	(r"/vanvaas", VanvaasHandler),
 	(r"/vanvaas/update/", UpdateVanvaasHandler),
 	(r"/vanvaas/(.*)", VanvaasViewHandler),
