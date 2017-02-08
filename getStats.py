@@ -2633,6 +2633,61 @@ class PaymentStatsHandler(BaseHandler):
 		self.render("templates/paymentstemplate.html", daterange=daterange, userswhohadpgfailure=userswhohadpgfailure,userswhodidnotreturn=userswhodidnotreturn, userswhocancelled=userswhocancelled, outputtable=outputtable, user=current_user)
 
 
+class CouponHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		current_user = self.get_current_user().decode()
+		if current_user not in ("admin"):
+			self.redirect('/stats')
+
+		horizon = self.get_argument("horizon", None)
+		startdate = self.get_argument("startdate", None)
+		enddate = self.get_argument("enddate", None)
+		if startdate is None:
+			if horizon is None:
+				horizon = 7
+			else:
+				horizon = int(horizon)
+
+			parsedenddate = datetime.date.today() +  datetime.timedelta(days=1)
+
+			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
+			daterange = [parsedstartdate.strftime("%Y-%m-%d")]
+			for c in range(horizon-1):
+				daterange.append((parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%Y-%m-%d"))
+		
+		else:
+			parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date()
+			parsedenddate = parsedenddate + datetime.timedelta(days=1)
+			parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
+			daterange = []
+			for c in range((parsedenddate - parsedstartdate).days):
+				daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%Y-%m-%d"))
+
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
+
+		thissql1 = "select date(o.date_add), c.coupon_code, count(o.order_id) from orders o left join coupons c on c.coupon_id=o.coupon_id where o.order_status in (3,10,11) and c.coupon_id is not null and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <'" + parsedenddate.strftime("%Y-%m-%d") + " 00:00:00' group by 1,2 order by 1 desc;"
+		result1 = statsengine.execute(thissql1)
+
+		responselookup = {thisdate:[] for thisdate in daterange}
+		for item in result1:
+			if item[0].strftime("%Y-%m-%d") in daterange:
+				responselookup[item[0].strftime("%Y-%m-%d")].append(item[1:])
+		
+		outputtable = "<table class='table tablesorter table-striped table-hover'><thead><th>Date</th><th>Coupon Code</th><th>Orders Delivered</th></thead>"
+		
+		for thisdate in daterange:
+			currentlist = responselookup[thisdate]
+			for (thiscoupon,couponcount) in currentlist:
+				outputtable += "<tr><td>" + str(thisdate) + "</td><td>" + thiscoupon + "</td><td>"+str(couponcount)+"</td></tr>"
+
+		outputtable += "</table>"
+
+		statssession.remove()
+		self.render("templates/couponstemplate.html", daterange=daterange, outputtable=outputtable, user=current_user)
+
+
 class RewardStatsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
@@ -2823,6 +2878,7 @@ application = tornado.web.Application([
 	(r"/updatemailchimp", MailchimpUpdateHandler),
 	(r"/sendtolazysignups", MailchimpLazySignupHandler),
 	(r"/sendtodormantusers", MailchimpDormantUserHandler),
+	(r"/couponuse", CouponHandler),
 	(r"/feedbacks", FeedbackHandler),
 	(r"/wastage", WastageHandler),
 	(r"/getstoreitems", GetStoreItemsHandler),
