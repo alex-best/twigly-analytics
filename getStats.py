@@ -1789,7 +1789,105 @@ class MailchimpLazySignupHandler(BaseHandler):
 				toaddr = '***REMOVED***'				
 				msg['From'] = fromaddr
 				msg['To'] = toaddr
-				msg['Subject'] =  "Some error in the Lazy mailchimp campaign for "+parsedstartdate.strftime("%Y-%m-%d")
+				msg['Subject'] =  "Some error in the Lazy campaign for "+parsedstartdate.strftime("%Y-%m-%d")
+				body = str(mre2)
+				msg.attach(MIMEText(body, 'plain'))
+				host = 'email-smtp.us-east-1.amazonaws.com'
+				port = 587
+				user = "***REMOVED***"
+				password = "***REMOVED***"
+				server = smtplib.SMTP(host, port)
+				server.starttls()
+				server.login(user, password)
+				server.sendmail(fromaddr, toaddr, msg.as_string())
+				server.quit()
+
+class MailchimpDormantUserHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		current_user = self.get_current_user().decode()
+		if current_user != "admin":
+			self.redirect('/stats')
+		else:
+			parsedstartdate = datetime.date.today() - datetime.timedelta(days=30)
+
+			statsengine = sqlalchemy.create_engine(statsengine_url)
+			statssession = scoped_session(sessionmaker(bind=statsengine))
+
+			thissql1 = "select u.email from users u left join orders o on o.user_id=u.user_id where u.email is not null and o.order_status in (3,10,11) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59');"
+
+			result1 = statsengine.execute(thissql1)
+
+			userids = []
+			for item in result1:
+				userids.append({"email":str(item[0]).lower()})
+			
+			statssession.remove()
+
+			# print(userids)
+			# print(len(userids))
+
+			#Change this variable to change the list
+			list_id = "ea0d1e3356"
+			# ea0d1e3356 is the main Twigly list
+			# list_id = "d2a7019f47"
+			# d2a7019f47 is the test list
+
+			template_id = 139749 # int
+
+			static_segment_id = 60401 # int..  main list
+			# static_segment_id = 60397 # int.. for test list
+			
+			batch_list = []
+			for item in userids:
+				batch_list.append({'email':item['email']})
+
+			# batch_list.append({'email':'***REMOVED***'})
+
+
+			try:
+				m = Mailchimp(mailchimpkey)
+				# Create a segment for ...
+				# mcresponse = m.lists.static_segment_add(list_id,"Dormant Users")
+				# print(mcresponse)
+
+				mcresponse = m.lists.static_segment_reset(list_id,static_segment_id)
+				mcresponse = m.lists.static_segment_members_add(list_id,static_segment_id,batch_list)
+				subject = "We miss you - Get 10% off on your next order"
+				mcresponse = m.campaigns.create(type="regular", options={"list_id": list_id, "subject": subject, "from_email": "@testmail.com", "from_name": "Twigly", "to_name": "*|FNAME|*", "title": subject, "authenticate": True, "generate_text": True, "template_id":template_id}, content={"sections": {}}, segment_opts={"saved_segment_id":static_segment_id})
+				mre2 = m.campaigns.send(mcresponse["id"])
+
+
+			except Exception as e:
+				print ("Unexpected error:",e)
+
+			if ('complete' in mre2 and mre2['complete']==True):
+				self.write({"result": True})
+				msg = MIMEMultipart()
+				fromaddr = '@testmail.com'
+				toaddr = '***REMOVED***'				
+				msg['From'] = fromaddr
+				msg['To'] = toaddr
+				msg['Subject'] =  str(len(batch_list))+" recepients of Dormant campaign for "+parsedstartdate.strftime("%Y-%m-%d")
+				body = "Email sent successfully to " + str(batch_list)
+				msg.attach(MIMEText(body, 'plain'))
+				host = 'email-smtp.us-east-1.amazonaws.com'
+				port = 587
+				user = "***REMOVED***"
+				password = "***REMOVED***"
+				server = smtplib.SMTP(host, port)
+				server.starttls()
+				server.login(user, password)
+				server.sendmail(fromaddr, toaddr, msg.as_string())
+				server.quit()
+			else:
+				self.write({"result": False})
+				msg = MIMEMultipart()
+				fromaddr = '@testmail.com'
+				toaddr = '***REMOVED***'				
+				msg['From'] = fromaddr
+				msg['To'] = toaddr
+				msg['Subject'] =  "Some error in the Dormant campaign for "+parsedstartdate.strftime("%Y-%m-%d")
 				body = str(mre2)
 				msg.attach(MIMEText(body, 'plain'))
 				host = 'email-smtp.us-east-1.amazonaws.com'
@@ -2724,6 +2822,7 @@ application = tornado.web.Application([
 	(r"/sendtomailchimp", MailchimpHandler),
 	(r"/updatemailchimp", MailchimpUpdateHandler),
 	(r"/sendtolazysignups", MailchimpLazySignupHandler),
+	(r"/sendtodormantusers", MailchimpDormantUserHandler),
 	(r"/feedbacks", FeedbackHandler),
 	(r"/wastage", WastageHandler),
 	(r"/getstoreitems", GetStoreItemsHandler),
