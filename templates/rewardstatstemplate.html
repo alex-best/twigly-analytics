@@ -75,6 +75,9 @@
     <div class="row" style="margin-bottom: 40px;">
         <div id="rewardtransactionschart" style="width:100%; height:400px;"></div>
     </div>
+    <div class="row" style="margin-bottom: 40px;">
+        <div id="orderslessthan250chart" style="width:100%; height:400px;"></div>
+    </div>
 </div>
 <button class="showFilters hidden-xs btn btn-success" style="position: fixed; top: 25px; right: 15px;">Show/Hide Filters</button>
 <button class="showFilters visible-xs btn btn-success" style="position: fixed; top: 25px; right: 15px;">V</button>
@@ -276,6 +279,38 @@
             yAxis: 1,
             showInLegend: false,
             data: {{ smlcreditavgpoints }},
+            dataLabels: {
+                enabled: true,
+                format: '{point.y:.2f}'
+            }
+        }]
+    });
+
+   $('#orderslessthan250chart').highcharts({
+        chart: {
+            zoomType: 'xy'
+        },
+        title: {
+            useHTML: true,
+            text: '%Orders Less than Rs. 250 (Total)'
+        },
+        xAxis: {
+            categories: {% raw daterange %},
+            crosshair: true
+        },
+        yAxis: {
+            title: {
+                text: '% Orders < Rs. 250 total'
+            }
+        },
+        tooltip: {
+            shared: true
+        },
+        series: [{
+            name: "% orders < Rs.250",
+            type: "line",
+            showInLegend: false,
+            data: {{ orderlessthan250pc }},
             dataLabels: {
                 enabled: true,
                 format: '{point.y:.2f}'

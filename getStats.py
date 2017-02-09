@@ -2803,8 +2803,25 @@ class RewardStatsHandler(BaseHandler):
 		if (totalsmlcredittransactions>0):
 			totalsmlavgpoints = float(totalsmlcreditpoints)/float(totalsmlcredittransactions)
 
+
+		# %Orders <Total 250 
+		thissql3 = "select date(o.date_add), sum(case when o.total<250 then 1 else 0 end), sum(case when o.total>=250 then 1 else 0 end) from orders o where  o.order_status in (3,10,11) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1;"
+		result3 = statsengine.execute(thissql3)
+
+		ordercountlookup = { thisdate:[] for thisdate in daterange}
+		for item in result3:
+			if item[0].strftime("%a %b %d, %Y") in daterange:
+				ordercountlookup[item[0].strftime("%a %b %d, %Y")] = item[1:]
+
+		orderlessthan250pc = []
+		for thisdate in daterange:
+			if (len(ordercountlookup[thisdate])==2 and (float(ordercountlookup[thisdate][0])+float(ordercountlookup[thisdate][1]))>0.0):
+				orderlessthan250pc.append(100.0*float(ordercountlookup[thisdate][0])/(float(ordercountlookup[thisdate][0])+float(ordercountlookup[thisdate][1])))
+			else:
+				orderlessthan250pc.append(0) 
+
 		statssession.remove()
-		self.render("templates/rewardstatstemplate.html", daterange=daterange, debittransactions=debittransactions, debitpoints=debitpoints, credittransactions=credittransactions, creditpoints=creditpoints, smlcredittransactions=smlcredittransactions,smlcreditpoints=smlcreditpoints,smlcreditavgpoints=smlcreditavgpoints,totalcredittransactions=totalcredittransactions,totalcreditpoints=totalcreditpoints,totalcreditavgpoints=totalcreditavgpoints,totaldebittransactions=totaldebittransactions, totaldebitpoints=totaldebitpoints,totaldebitavgpoints=totaldebitavgpoints,totalsmlcredittransactions=totalsmlcredittransactions,totalsmlcreditpoints=totalsmlcreditpoints,totalsmlavgpoints=totalsmlavgpoints,user=current_user)
+		self.render("templates/rewardstatstemplate.html", daterange=daterange, debittransactions=debittransactions, debitpoints=debitpoints, credittransactions=credittransactions, creditpoints=creditpoints, smlcredittransactions=smlcredittransactions,smlcreditpoints=smlcreditpoints,smlcreditavgpoints=smlcreditavgpoints,totalcredittransactions=totalcredittransactions,totalcreditpoints=totalcreditpoints,totalcreditavgpoints=totalcreditavgpoints,totaldebittransactions=totaldebittransactions, totaldebitpoints=totaldebitpoints,totaldebitavgpoints=totaldebitavgpoints,totalsmlcredittransactions=totalsmlcredittransactions,totalsmlcreditpoints=totalsmlcreditpoints,totalsmlavgpoints=totalsmlavgpoints,orderlessthan250pc=orderlessthan250pc,user=current_user)
 
 
 class RewardLeaderHandler(BaseHandler):
