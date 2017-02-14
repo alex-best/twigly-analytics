@@ -2759,7 +2759,7 @@ class DormantRegularsHandler(BaseHandler):
 		outputtable += "</table>"
 
 		statssession.remove()
-		self.render("templates/simpletabletemplate.html", page_url="/dormantregulars", page_title="Twigly Dormant Regulars",table_title="List of "+str(i)+" Dormant Regulars(Regular users who have not ordered in last 30 days)",tableSort="[[0,1],[3,1]]", daterange=daterange, outputtable=outputtable, user=current_user)
+		self.render("templates/simpletabletemplate.html", page_url="/dormantregulars", page_title="Twigly Dormant Regulars",table_title="List of "+str(i)+" Dormant Regulars (Regular users who have not ordered in last 30 days)",tableSort="[[0,1],[3,1]]", daterange=daterange, outputtable=outputtable, user=current_user)
 
 
 class DeadRegularsHandler(BaseHandler):
@@ -2818,7 +2818,7 @@ class DeadRegularsHandler(BaseHandler):
 		outputtable += "</table>"
 
 		statssession.remove()
-		self.render("templates/simpletabletemplate.html", page_url="/deadregulars", page_title="Twigly Dead Regulars",table_title="List of "+str(i)+" Dead Regulars (Regular users who have not ordred in last 60 days)",tableSort="[[0,1],[3,1]]", daterange=daterange, outputtable=outputtable, user=current_user)
+		self.render("templates/simpletabletemplate.html", page_url="/deadregulars", page_title="Twigly Dead Regulars",table_title="List of "+str(i)+" Dead Regulars (Regular users who have not ordered in last 60 days)",tableSort="[[0,1],[3,1]]", daterange=daterange, outputtable=outputtable, user=current_user)
 
 
 class RewardStatsHandler(BaseHandler):
