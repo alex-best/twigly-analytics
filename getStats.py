@@ -46,6 +46,8 @@ statsengine_url = 'mysql+pymysql://twigly:***REMOVED***@***REMOVED***/twigly_pro
 #statsengine_url = 'mysql+pymysql://root@localhost:3306/twigly_dev?charset=utf8'
 mailchimpkey = "***REMOVED***"
 
+environment_production=True #True for prod, False for dev
+
 #relevantStates = [3,10,11,12,16]
 deliveredStates = [3]
 deliveredFreeStates = [10,11,12,16]
@@ -1645,6 +1647,31 @@ class MailchimpHandler(BaseHandler):
 			else:
 				self.write({"result": True})
 
+def sendTwiglyMail(fromaddr, toaddr, subject, body):
+	msg = MIMEMultipart()
+	msg['From'] = fromaddr
+	msg['To'] = toaddr
+	msg['Subject'] = subject
+	msg.attach(MIMEText(body, 'plain'))
+	host = 'email-smtp.us-east-1.amazonaws.com'
+	port = 587
+	user = "***REMOVED***"
+	password = "***REMOVED***"
+	server = smtplib.SMTP(host, port)
+	server.starttls()
+	server.login(user, password)
+	server.sendmail(fromaddr, toaddr, msg.as_string())
+	server.quit()
+
+def getMailChimpListId():
+	if environment_production:#Change this variable to change the list
+		# ea0d1e3356 is the main Twigly list
+		list_id = "ea0d1e3356"
+	else:
+		# d2a7019f47 is the test list
+		list_id = "d2a7019f47"
+	return list_id
+
 
 class MailchimpUpdateHandler(BaseHandler):
 	@tornado.web.authenticated
@@ -1658,58 +1685,75 @@ class MailchimpUpdateHandler(BaseHandler):
 				parsedstartdate = datetime.date.today()
 			else:
 				parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
-
-			statsengine = sqlalchemy.create_engine(statsengine_url)
-			statssession = scoped_session(sessionmaker(bind=statsengine))
-
-			thissql1 = "select email, name from users where email is not null and date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00';" 
-			result1 = statsengine.execute(thissql1)
-
-			userids = []
-			for item in result1:
-				userids.append({"email":str(item[0]).lower(), "name":str(item[1]).title()})
-		
-			statssession.remove()
-
-			#Change this variable to change the list
-			list_id = "ea0d1e3356"
-			# ea0d1e3356 is the main Twigly list
-			# list_id = "d2a7019f47"
-			# d2a7019f47 is the test list
+			batch_list = self.getUpdateBatch(parsedstartdate)
+			list_id = getMailChimpListId()
 
 			mailerror = False
-			batch_list = []
-			for item in userids:
-				batch_list.append({'email':{'email':item['email']}, 'email_type':'html', 'merge_vars':{'FNAME':item['name']}})
 			try:
 				m = Mailchimp(mailchimpkey)
 				mailchimpresponse = m.lists.batch_subscribe(list_id, batch_list, double_optin=False)
 			except Exception as e:
 				print ("Unexpected error:",e)
-
 			if (mailchimpresponse['error_count']>0):
 				self.write({"result": False})
-				msg = MIMEMultipart()
-				fromaddr = '@testmail.com'
-				toaddr = '***REMOVED***'				
-				msg['From'] = fromaddr
-				msg['To'] = toaddr
-				msg['Subject'] = str(mailchimpresponse['error_count'])+" error(s) in mailchimp List for "+parsedstartdate.strftime("%Y-%m-%d")
-				body = str(mailchimpresponse)
-				msg.attach(MIMEText(body, 'plain'))
-				host = 'email-smtp.us-east-1.amazonaws.com'
-				port = 587
-				user = "***REMOVED***"
-				password = "***REMOVED***"
-				server = smtplib.SMTP(host, port)
-				server.starttls()
-				server.login(user, password)
-				server.sendmail(fromaddr, toaddr, msg.as_string())
-				server.quit()
+				sendTwiglyMail('@testmail.com','***REMOVED***',str(mailchimpresponse['error_count'])+" error(s) in mailchimp List for "+parsedstartdate.strftime("%Y-%m-%d"), str(mailchimpresponse))
 			else:
 				self.write({"result": True})
 
+	def getUpdateBatch(self,parsedstartdate):
+		if environment_production:
+			statsengine = sqlalchemy.create_engine(statsengine_url)
+			statssession = scoped_session(sessionmaker(bind=statsengine))
+			thissql1 = "select email, name from users where email is not null and date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00';" 
+			result1 = statsengine.execute(thissql1)
+			userids = []
+			for item in result1:
+				userids.append({"email":str(item[0]).lower(), "name":str(item[1]).title()})
+			statssession.remove()
+			batch_list = []
+			for item in userids:
+				batch_list.append({'email':{'email':item['email']}, 'email_type':'html', 'merge_vars':{'FNAME':item['name']}})
+			return batch_list
+		else:
+			batch_list = []
+			batch_list.append({'email':{'email':'***REMOVED***'}, 'email_type':'html', 'merge_vars':{'FNAME':'Raghav'}})
+			return batch_list
+
+
+
 class MailchimpLazySignupHandler(BaseHandler):
+
+	def getLazySignupBatch(self,parsedstartdate):
+		if environment_production:
+			statsengine = sqlalchemy.create_engine(statsengine_url)
+			statssession = scoped_session(sessionmaker(bind=statsengine))
+			thissql1 = "select u.email from users u where u.email is not null and u.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and u.date_add<='" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select o.user_id from orders o where order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00');" 
+			result1 = statsengine.execute(thissql1)
+			userids = []
+			for item in result1:
+				userids.append({"email":str(item[0]).lower()})
+			statssession.remove()
+			batch_list = []
+			for item in userids:
+				batch_list.append({'email':item['email']})
+			return batch_list
+		else:
+			batch_list = []
+			batch_list.append({'email':'***REMOVED***'})
+			return batch_list
+
+
+	def getLazySignupTemplateId(self):
+		lazy_template_id = 139741 # int
+		return lazy_template_id
+
+	def getLazySignupSegmentId(self):
+		if environment_production:
+			lazy_static_segment_id = 60393
+		else:
+			lazy_static_segment_id = 60389
+		return lazy_static_segment_id
+
 	@tornado.web.authenticated
 	def get(self):
 		current_user = self.get_current_user().decode()
@@ -1717,47 +1761,19 @@ class MailchimpLazySignupHandler(BaseHandler):
 			self.redirect('/stats')
 		else:
 			parsedstartdate = datetime.date.today() - datetime.timedelta(days=2)
-
-			statsengine = sqlalchemy.create_engine(statsengine_url)
-			statssession = scoped_session(sessionmaker(bind=statsengine))
-
-			thissql1 = "select u.email from users u where u.email is not null and u.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and u.date_add<='" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select o.user_id from orders o where order_status in (3,10,11) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00');" 
-			result1 = statsengine.execute(thissql1)
-
-			userids = []
-			for item in result1:
-				userids.append({"email":str(item[0]).lower()})
-			
-			statssession.remove()
-
-			#Change this variable to change the list
-			list_id = "ea0d1e3356"
-			# ea0d1e3356 is the main Twigly list
-			# list_id = "d2a7019f47"
-			# d2a7019f47 is the test list
-
-			template_id = 139741 # int
-
-			static_segment_id = 60393 # int..  main list
-			# static_segment_id = 60389 # int.. for test list
-			
-			batch_list = []
-			for item in userids:
-				batch_list.append({'email':item['email']})
-
-			# batch_list.append({'email':'***REMOVED***'})
-
-
+			batch_list = self.getLazySignupBatch(parsedstartdate)
+			list_id = getMailChimpListId()
+			lazy_template_id = self.getLazySignupTemplateId()
+			lazy_static_segment_id = self.getLazySignupSegmentId()
 			try:
 				m = Mailchimp(mailchimpkey)
 				#Create a segment for lazy signups
 				# mcresponse = m.lists.static_segment_add(list_id,"Lazy Signups")
 				# print(mcresponse)
-
-				mcresponse = m.lists.static_segment_reset(list_id,static_segment_id)
-				mcresponse = m.lists.static_segment_members_add(list_id,static_segment_id,batch_list)
+				mcresponse = m.lists.static_segment_reset(list_id,lazy_static_segment_id)
+				mcresponse = m.lists.static_segment_members_add(list_id,lazy_static_segment_id,batch_list)
 				subject = "Great food is just 3 clicks away"
-				mcresponse = m.campaigns.create(type="regular", options={"list_id": list_id, "subject": subject, "from_email": "@testmail.com", "from_name": "Twigly", "to_name": "*|FNAME|*", "title": subject, "authenticate": True, "generate_text": True, "template_id":template_id}, content={"sections": {}}, segment_opts={"saved_segment_id":static_segment_id})
+				mcresponse = m.campaigns.create(type="regular", options={"list_id": list_id, "subject": subject, "from_email": "@testmail.com", "from_name": "Twigly", "to_name": "*|FNAME|*", "title": subject, "authenticate": True, "generate_text": True, "template_id":lazy_template_id}, content={"sections": {}}, segment_opts={"saved_segment_id":lazy_static_segment_id})
 				mre2 = m.campaigns.send(mcresponse["id"])
 
 			except Exception as e:
@@ -1765,44 +1781,44 @@ class MailchimpLazySignupHandler(BaseHandler):
 
 			if ('complete' in mre2 and mre2['complete']==True):
 				self.write({"result": True})
-				msg = MIMEMultipart()
-				fromaddr = '@testmail.com'
-				toaddr = '***REMOVED***'				
-				msg['From'] = fromaddr
-				msg['To'] = toaddr
-				msg['Subject'] =  str(len(batch_list))+" recepients of Lazy campaign for "+parsedstartdate.strftime("%Y-%m-%d")
-				body = "Email sent successfully to " + str(batch_list)
-				msg.attach(MIMEText(body, 'plain'))
-				host = 'email-smtp.us-east-1.amazonaws.com'
-				port = 587
-				user = "***REMOVED***"
-				password = "***REMOVED***"
-				server = smtplib.SMTP(host, port)
-				server.starttls()
-				server.login(user, password)
-				server.sendmail(fromaddr, toaddr, msg.as_string())
-				server.quit()
+				sendTwiglyMail('@testmail.com','***REMOVED***',str(len(batch_list))+" recepients of Lazy campaign for "+parsedstartdate.strftime("%Y-%m-%d"), "Email sent successfully to " + str(batch_list))
 			else:
 				self.write({"result": False})
-				msg = MIMEMultipart()
-				fromaddr = '@testmail.com'
-				toaddr = '***REMOVED***'				
-				msg['From'] = fromaddr
-				msg['To'] = toaddr
-				msg['Subject'] =  "Some error in the Lazy campaign for "+parsedstartdate.strftime("%Y-%m-%d")
-				body = str(mre2)
-				msg.attach(MIMEText(body, 'plain'))
-				host = 'email-smtp.us-east-1.amazonaws.com'
-				port = 587
-				user = "***REMOVED***"
-				password = "***REMOVED***"
-				server = smtplib.SMTP(host, port)
-				server.starttls()
-				server.login(user, password)
-				server.sendmail(fromaddr, toaddr, msg.as_string())
-				server.quit()
+				sendTwiglyMail('@testmail.com','***REMOVED***',"Some error in the Lazy campaign for "+parsedstartdate.strftime("%Y-%m-%d"), str(mre2))
+
 
 class MailchimpDormantUserHandler(BaseHandler):
+	def getDormantUsersBatch(self,parsedstartdate):
+		if environment_production:
+			statsengine = sqlalchemy.create_engine(statsengine_url)
+			statssession = scoped_session(sessionmaker(bind=statsengine))
+			thissql1 = "select u.email from users u left join orders o on o.user_id=u.user_id where u.email is not null and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59');"
+			result1 = statsengine.execute(thissql1)
+			userids = []
+			for item in result1:
+				userids.append({"email":str(item[0]).lower()})
+			statssession.remove()
+			batch_list = []
+			for item in userids:
+				batch_list.append({'email':item['email']})
+			return batch_list
+		else:
+			batch_list = []
+			batch_list.append({'email':'***REMOVED***'})
+			return batch_list
+
+
+	def getDormantTemplateId(self):
+		dormant_template_id = 139749 # int
+		return dormant_template_id
+
+	def getDormantSegmentId(self):
+		if environment_production:
+			dormant_static_segment_id = 60401
+		else:
+			dormant_static_segment_id = 60397
+		return dormant_static_segment_id
+
 	@tornado.web.authenticated
 	def get(self):
 		current_user = self.get_current_user().decode()
@@ -1810,95 +1826,96 @@ class MailchimpDormantUserHandler(BaseHandler):
 			self.redirect('/stats')
 		else:
 			parsedstartdate = datetime.date.today() - datetime.timedelta(days=30)
-
-			statsengine = sqlalchemy.create_engine(statsengine_url)
-			statssession = scoped_session(sessionmaker(bind=statsengine))
-
-			thissql1 = "select u.email from users u left join orders o on o.user_id=u.user_id where u.email is not null and o.order_status in (3,10,11) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59');"
-
-			result1 = statsengine.execute(thissql1)
-
-			userids = []
-			for item in result1:
-				userids.append({"email":str(item[0]).lower()})
-			
-			statssession.remove()
-
-			# print(userids)
-			# print(len(userids))
-
-			#Change this variable to change the list
-			list_id = "ea0d1e3356"
-			# ea0d1e3356 is the main Twigly list
-			# list_id = "d2a7019f47"
-			# d2a7019f47 is the test list
-
-			template_id = 139749 # int
-
-			static_segment_id = 60401 # int..  main list
-			# static_segment_id = 60397 # int.. for test list
-			
-			batch_list = []
-			for item in userids:
-				batch_list.append({'email':item['email']})
-
-			# batch_list.append({'email':'***REMOVED***'})
-
-
+			batch_list = self.getDormantUsersBatch(parsedstartdate)
+			list_id = getMailChimpListId()
+			dormant_template_id = self.getDormantTemplateId()
+			dormant_static_segment_id = self.getDormantSegmentId()		
 			try:
 				m = Mailchimp(mailchimpkey)
 				# Create a segment for ...
 				# mcresponse = m.lists.static_segment_add(list_id,"Dormant Users")
 				# print(mcresponse)
-
-				mcresponse = m.lists.static_segment_reset(list_id,static_segment_id)
-				mcresponse = m.lists.static_segment_members_add(list_id,static_segment_id,batch_list)
+				mcresponse = m.lists.static_segment_reset(list_id,dormant_static_segment_id)
+				mcresponse = m.lists.static_segment_members_add(list_id,dormant_static_segment_id,batch_list)
 				subject = "We miss you - Get 10% off on your next order"
-				mcresponse = m.campaigns.create(type="regular", options={"list_id": list_id, "subject": subject, "from_email": "@testmail.com", "from_name": "Twigly", "to_name": "*|FNAME|*", "title": subject, "authenticate": True, "generate_text": True, "template_id":template_id}, content={"sections": {}}, segment_opts={"saved_segment_id":static_segment_id})
+				mcresponse = m.campaigns.create(type="regular", options={"list_id": list_id, "subject": subject, "from_email": "@testmail.com", "from_name": "Twigly", "to_name": "*|FNAME|*", "title": subject, "authenticate": True, "generate_text": True, "template_id":dormant_template_id}, content={"sections": {}}, segment_opts={"saved_segment_id":dormant_static_segment_id})
 				mre2 = m.campaigns.send(mcresponse["id"])
-
-
 			except Exception as e:
 				print ("Unexpected error:",e)
-
 			if ('complete' in mre2 and mre2['complete']==True):
 				self.write({"result": True})
-				msg = MIMEMultipart()
-				fromaddr = '@testmail.com'
-				toaddr = '***REMOVED***'				
-				msg['From'] = fromaddr
-				msg['To'] = toaddr
-				msg['Subject'] =  str(len(batch_list))+" recepients of Dormant campaign for "+parsedstartdate.strftime("%Y-%m-%d")
-				body = "Email sent successfully to " + str(batch_list)
-				msg.attach(MIMEText(body, 'plain'))
-				host = 'email-smtp.us-east-1.amazonaws.com'
-				port = 587
-				user = "***REMOVED***"
-				password = "***REMOVED***"
-				server = smtplib.SMTP(host, port)
-				server.starttls()
-				server.login(user, password)
-				server.sendmail(fromaddr, toaddr, msg.as_string())
-				server.quit()
+				sendTwiglyMail('@testmail.com','***REMOVED***',str(len(batch_list))+" recepients of Dormant campaign for "+parsedstartdate.strftime("%Y-%m-%d"), "Email sent successfully to " + str(batch_list))
 			else:
 				self.write({"result": False})
-				msg = MIMEMultipart()
-				fromaddr = '@testmail.com'
-				toaddr = '***REMOVED***'				
-				msg['From'] = fromaddr
-				msg['To'] = toaddr
-				msg['Subject'] =  "Some error in the Dormant campaign for "+parsedstartdate.strftime("%Y-%m-%d")
-				body = str(mre2)
-				msg.attach(MIMEText(body, 'plain'))
-				host = 'email-smtp.us-east-1.amazonaws.com'
-				port = 587
-				user = "***REMOVED***"
-				password = "***REMOVED***"
-				server = smtplib.SMTP(host, port)
-				server.starttls()
-				server.login(user, password)
-				server.sendmail(fromaddr, toaddr, msg.as_string())
-				server.quit()
+				sendTwiglyMail('@testmail.com','***REMOVED***',"Some error in the Dormant campaign for "+parsedstartdate.strftime("%Y-%m-%d"), str(mre2))
+
+
+class MailchimpAdhocMailHandler(BaseHandler):
+	def getAdhocBatch(self):#,parsedstartdate):
+		if environment_production:
+			statsengine = sqlalchemy.create_engine(statsengine_url)
+			statssession = scoped_session(sessionmaker(bind=statsengine))
+			thissql1 = "select distinct u.email from users u left join orders o on o.user_id=u.user_id left join delivery_zones b on o.delivery_zone_id = b.delivery_zone_id where u.email is not null and o.store_id = 2 and o.date_add > '2016-10-01 00:00:00' and b.falls_under_gurantee = 1;"
+			#"select u.email from users u left join orders o on o.user_id=u.user_id where u.email is not null and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59');"
+			result1 = statsengine.execute(thissql1)
+			userids = []
+			for item in result1:
+				if (len(str(item[0]))>0):
+					userids.append({"email":str(item[0]).lower()})
+			statssession.remove()
+			# print(userids)
+			# print(len(userids))
+
+			batch_list = []
+			for item in userids:
+				batch_list.append({'email':item['email']})
+			return batch_list
+		else:
+			batch_list = []
+			batch_list.append({'email':'***REMOVED***'})
+			return batch_list
+
+
+	def getAdhocTemplateId(self):
+		adhoc_template_id =  139753# int
+		return adhoc_template_id
+
+	def getAdhocSegmentId(self):
+		if environment_production:
+			adhoc_static_segment_id = 60409
+		else:
+			adhoc_static_segment_id = 60405
+		return adhoc_static_segment_id
+
+	@tornado.web.authenticated
+	def get(self):
+		current_user = self.get_current_user().decode()
+		if current_user != "admin":
+			self.redirect('/stats')
+		else:
+			parsedstartdate = datetime.date.today() #- datetime.timedelta(days=30)
+			batch_list = self.getAdhocBatch()#parsedstartdate)
+			list_id = getMailChimpListId()
+			adhoc_template_id = self.getAdhocTemplateId()
+			adhoc_static_segment_id = self.getAdhocSegmentId()		
+			try:
+				m = Mailchimp(mailchimpkey)
+				# Create a segment for ...
+				# mcresponse = m.lists.static_segment_add(list_id,"Adhoc Segment")
+				# print(mcresponse)
+				mcresponse = m.lists.static_segment_reset(list_id,adhoc_static_segment_id)
+				mcresponse = m.lists.static_segment_members_add(list_id,adhoc_static_segment_id,batch_list)
+				subject = "Buy One Get One Pizza Free!"
+				mcresponse = m.campaigns.create(type="regular", options={"list_id": list_id, "subject": subject, "from_email": "@testmail.com", "from_name": "Twigly", "to_name": "*|FNAME|*", "title": subject, "authenticate": True, "generate_text": True, "template_id":adhoc_template_id}, content={"sections": {}}, segment_opts={"saved_segment_id":adhoc_static_segment_id})
+				mre2 = m.campaigns.send(mcresponse["id"])
+			except Exception as e:
+				print ("Unexpected error:",e)
+			if ('complete' in mre2 and mre2['complete']==True):
+				self.write({"result": True})
+				sendTwiglyMail('@testmail.com','***REMOVED***',str(len(batch_list))+" recepients of Adhoc campaign for "+parsedstartdate.strftime("%Y-%m-%d"), "Email sent successfully to " + str(batch_list))
+			else:
+				self.write({"result": False})
+				sendTwiglyMail('@testmail.com','***REMOVED***',"Some error in the Adhoc campaign for "+parsedstartdate.strftime("%Y-%m-%d"), str(mre2))
 
 
 class FeedbackHandler(BaseHandler):
@@ -2308,7 +2325,7 @@ class DeliveryHandler(BaseHandler):
 
 
 		#delivery boy comments
-		thissql3 = text("select c.delivery_boy_id, d.name, b.date_add, a.order_id, a.delivery_rating, a.comment from feedbacks a left join orders b on a.order_id=b.order_id left join deliveries c on b.order_id=c.order_id left join delivery_boys d on c.delivery_boy_id=d.delivery_boy_id where b.order_status in (3,10,11) and a.delivery_rating in (1,2) and b.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add <'" +parsedenddate.strftime("%Y-%m-%d") + " 00:00:00';")
+		thissql3 = text("select c.delivery_boy_id, d.name, b.date_add, a.order_id, a.delivery_rating, a.comment from feedbacks a left join orders b on a.order_id=b.order_id left join deliveries c on b.order_id=c.order_id left join delivery_boys d on c.delivery_boy_id=d.delivery_boy_id where b.order_status in (3,10,11,12,16) and a.delivery_rating in (1,2) and b.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add <'" +parsedenddate.strftime("%Y-%m-%d") + " 00:00:00';")
 
 		result3 = statsengine.execute(thissql3)
 		deliveryfeedback = {}
@@ -2379,7 +2396,7 @@ class DeliveryStatsHandler(BaseHandler):
 		active_stores = statssession.query(store).filter(store.is_active == True).all()
 		active_stores_list = [x.store_id for x in active_stores]
 
-		thissql3 = "select b.store_id, date(b.date_add), sum(case when g.delivery_rating>0 then delivery_rating else 0 end), sum(case when g.delivery_rating>0 then 1 else 0 end), sum(case when g.delivery_rating>0 then delivery_rating else 0 end)/sum(case when g.delivery_rating>0 then 1 else 0 end), sum(case when b.order_id>0 then 1 else 0 end) from orders b left join feedbacks g on g.order_id = b.order_id where b.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and b.order_status in (3,10,11) group by 1,2;" 
+		thissql3 = "select b.store_id, date(b.date_add), sum(case when g.delivery_rating>0 then delivery_rating else 0 end), sum(case when g.delivery_rating>0 then 1 else 0 end), sum(case when g.delivery_rating>0 then delivery_rating else 0 end)/sum(case when g.delivery_rating>0 then 1 else 0 end), sum(case when b.order_id>0 then 1 else 0 end) from orders b left join feedbacks g on g.order_id = b.order_id where b.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and b.order_status in (3,10,11,12,16) group by 1,2;" 
 		result3 = statsengine.execute(thissql3)
 
 		avgdeliverytimebystore = {x.store_id: {thisdate:0.0 for thisdate in daterange} for x in active_stores}
@@ -2405,7 +2422,7 @@ class DeliveryStatsHandler(BaseHandler):
 
 		# dispatch to reach time by store
 
-		thissql4 = "select o.store_id, date(o.date_add), sum(case when timediff(b.time_add,a.time_add) <= '00:10:00' then 1 else 0 end) as count_0_10, sum(case when timediff(b.time_add,a.time_add) >'00:10:00' and timediff(b.time_add,a.time_add) <='00:20:00' then 1 else 0 end) as count_10_20, sum(case when timediff(b.time_add,a.time_add) >'00:20:00' and timediff(b.time_add,a.time_add) <='00:30:00' then 1 else 0 end) as count_20_30, sum(case when timediff(b.time_add,a.time_add) > '00:30:00' then 1 else 0 end) as count_30_plus from orders o left join order_status_times as a on o.order_id = a.order_id left join order_status_times as b on o.order_id=b.order_id where a.order_status=2 and b.order_status=15 and o.order_status in (3,10,11) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1,2;"
+		thissql4 = "select o.store_id, date(o.date_add), sum(case when timediff(b.time_add,a.time_add) <= '00:10:00' then 1 else 0 end) as count_0_10, sum(case when timediff(b.time_add,a.time_add) >'00:10:00' and timediff(b.time_add,a.time_add) <='00:20:00' then 1 else 0 end) as count_10_20, sum(case when timediff(b.time_add,a.time_add) >'00:20:00' and timediff(b.time_add,a.time_add) <='00:30:00' then 1 else 0 end) as count_20_30, sum(case when timediff(b.time_add,a.time_add) > '00:30:00' then 1 else 0 end) as count_30_plus from orders o left join order_status_times as a on o.order_id = a.order_id left join order_status_times as b on o.order_id=b.order_id where a.order_status=2 and b.order_status=15 and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1,2;"
 
 		result4 = statsengine.execute(thissql4)
 		deliverytimeresultsbystore = {x.store_id: { thisdate:[] for thisdate in daterange} for x in active_stores}
@@ -2431,7 +2448,7 @@ class DeliveryStatsHandler(BaseHandler):
 
 		# priority vs non priority orders by store
 
-		thissql5 = "select o.store_id, date(o.date_add),sum(case when c.falls_under_gurantee = 1 then 1 else 0 end) as count_priority, sum(case when c.falls_under_gurantee = 0 then 1 else 0 end) as count_np from orders o left join delivery_zones c on o.delivery_zone_id=c.delivery_zone_id where o.order_status in (3,10,11) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1,2;"
+		thissql5 = "select o.store_id, date(o.date_add),sum(case when c.falls_under_gurantee = 1 then 1 else 0 end) as count_priority, sum(case when c.falls_under_gurantee = 0 then 1 else 0 end) as count_np from orders o left join delivery_zones c on o.delivery_zone_id=c.delivery_zone_id where o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1,2;"
 
 		result5 = statsengine.execute(thissql5)
 		priorityorderresultsbystore = {x.store_id: { thisdate:[] for thisdate in daterange} for x in active_stores}
@@ -2451,7 +2468,7 @@ class DeliveryStatsHandler(BaseHandler):
 
 		# Average cooking to dispatch time by store
 
-		thissql6 = "select o.store_id, date(o.date_add), count(*), sum(time_to_sec(timediff(b.time_add,a.time_add))) as sumtime_cooking  from orders o left join order_status_times as a on o.order_id = a.order_id left join order_status_times as b on o.order_id=b.order_id where a.order_status=1 and b.order_status=2 and o.order_status in (3,10,11) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1,2;"
+		thissql6 = "select o.store_id, date(o.date_add), count(*), sum(time_to_sec(timediff(b.time_add,a.time_add))) as sumtime_cooking  from orders o left join order_status_times as a on o.order_id = a.order_id left join order_status_times as b on o.order_id=b.order_id where a.order_status=1 and b.order_status=2 and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1,2;"
 
 		result6 = statsengine.execute(thissql6)
 		cookingtodispatcklookup = {x.store_id: { thisdate:[] for thisdate in daterange} for x in active_stores}
@@ -2463,7 +2480,7 @@ class DeliveryStatsHandler(BaseHandler):
 
 		# Average dispatch to reached dest time by store
 
-		thissql7 = "select o.store_id, date(o.date_add), count(*), sum(time_to_sec(timediff(b.time_add,a.time_add))) as sumtime_dispatching  from orders o left join order_status_times as a on o.order_id = a.order_id left join order_status_times as b on o.order_id=b.order_id where a.order_status=2 and b.order_status=15 and o.order_status in (3,10,11) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1,2;"
+		thissql7 = "select o.store_id, date(o.date_add), count(*), sum(time_to_sec(timediff(b.time_add,a.time_add))) as sumtime_dispatching  from orders o left join order_status_times as a on o.order_id = a.order_id left join order_status_times as b on o.order_id=b.order_id where a.order_status=2 and b.order_status=15 and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1,2;"
 		result7 = statsengine.execute(thissql7)
 		dispatchtoreachlookup = {x.store_id: { thisdate:[] for thisdate in daterange} for x in active_stores}
 		for item in result7:
@@ -2472,7 +2489,7 @@ class DeliveryStatsHandler(BaseHandler):
 					dispatchtoreachlookup[item[0]][item[1].strftime("%a %b %d, %Y")] = item[2:]
 
 		# Average reached to delivere dest time by store
-		thissql8 = "select o.store_id, date(o.date_add), count(*), sum(time_to_sec(timediff(b.time_add,a.time_add))) as sumtime_delivering  from orders o left join order_status_times as a on o.order_id = a.order_id left join order_status_times as b on o.order_id=b.order_id where a.order_status=15 and b.order_status=3 and o.order_status in (3,10,11) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1,2;"
+		thissql8 = "select o.store_id, date(o.date_add), count(*), sum(time_to_sec(timediff(b.time_add,a.time_add))) as sumtime_delivering  from orders o left join order_status_times as a on o.order_id = a.order_id left join order_status_times as b on o.order_id=b.order_id where a.order_status=15 and b.order_status=3 and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1,2;"
 		result8 = statsengine.execute(thissql8)
 		reachtodeliverlookup = {x.store_id: { thisdate:[] for thisdate in daterange} for x in active_stores}
 		for item in result8:
@@ -2546,7 +2563,7 @@ class PaymentStatsHandler(BaseHandler):
 			userswhohadpgfailure.append(int(userswhohadpgfailurelookup[thisdate])) 
 			
 		# Those who ended up ordering
-		thissql2 = "select date(a.date_add),count(distinct b.user_id) from orders a left join orders b on a.user_id=b.user_id where a.order_status in (13,14) and b.order_status in (3,10,11) and date(a.date_add) = date(b.date_add) and a.date_add > '" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and a.date_add < '" + parsedenddate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add > '" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add < '" + parsedenddate.strftime("%Y-%m-%d") + " 00:00:00' and a.payment_status not in (26) group by 1;"
+		thissql2 = "select date(a.date_add),count(distinct b.user_id) from orders a left join orders b on a.user_id=b.user_id where a.order_status in (13,14) and b.order_status in (3,10,11,12,16) and date(a.date_add) = date(b.date_add) and a.date_add > '" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and a.date_add < '" + parsedenddate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add > '" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add < '" + parsedenddate.strftime("%Y-%m-%d") + " 00:00:00' and a.payment_status not in (26) group by 1;"
 
 		result2 = statsengine.execute(thissql2)
 
@@ -2591,7 +2608,7 @@ class PaymentStatsHandler(BaseHandler):
 				useridswhohadpgfailurelookup[item[0].strftime("%Y-%m-%d")].add(item[1])
 		
 		# Those who ended up ordering
-		thissql5 = "select date(a.date_add), b.user_id from orders a left join orders b on a.user_id=b.user_id where a.order_status in (13,14) and b.order_status in (3,10,11) and date(a.date_add) = date(b.date_add) and a.date_add > '" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and a.date_add < '" + parsedenddate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add > '" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add < '" + parsedenddate.strftime("%Y-%m-%d") + " 00:00:00' and a.payment_status not in (26);"
+		thissql5 = "select date(a.date_add), b.user_id from orders a left join orders b on a.user_id=b.user_id where a.order_status in (13,14) and b.order_status in (3,10,11,12,16) and date(a.date_add) = date(b.date_add) and a.date_add > '" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and a.date_add < '" + parsedenddate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add > '" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add < '" + parsedenddate.strftime("%Y-%m-%d") + " 00:00:00' and a.payment_status not in (26);"
 
 		result5 = statsengine.execute(thissql5)
 		useridswhoreturnedlookup = {thisdate:set() for thisdate in daterange}
@@ -2667,7 +2684,7 @@ class CouponHandler(BaseHandler):
 		statsengine = sqlalchemy.create_engine(statsengine_url)
 		statssession = scoped_session(sessionmaker(bind=statsengine))
 
-		thissql1 = "select date(o.date_add), c.coupon_code, count(o.order_id) from orders o left join coupons c on c.coupon_id=o.coupon_id where o.order_status in (3,10,11) and c.coupon_id is not null and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <'" + parsedenddate.strftime("%Y-%m-%d") + " 00:00:00' group by 1,2 order by 1 desc;"
+		thissql1 = "select date(o.date_add), c.coupon_code, count(o.order_id) from orders o left join coupons c on c.coupon_id=o.coupon_id where o.order_status in (3,10,11,12,16) and c.coupon_id is not null and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <'" + parsedenddate.strftime("%Y-%m-%d") + " 00:00:00' group by 1,2 order by 1 desc;"
 		result1 = statsengine.execute(thissql1)
 
 		responselookup = {thisdate:[] for thisdate in daterange}
@@ -2685,7 +2702,123 @@ class CouponHandler(BaseHandler):
 		outputtable += "</table>"
 
 		statssession.remove()
-		self.render("templates/couponstemplate.html", daterange=daterange, outputtable=outputtable, user=current_user)
+		self.render("templates/simpletabletemplate.html", page_url="/couponuse", page_title="Twigly Coupons Use",table_title="List of Coupon Users",tableSort="[[0,1],[2,1]]", daterange=daterange, outputtable=outputtable, user=current_user)
+
+
+class DormantRegularsHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		current_user = self.get_current_user().decode()
+		if current_user not in ("admin"):
+			self.redirect('/stats')
+
+		horizon = self.get_argument("horizon", None)
+		startdate = self.get_argument("startdate", None)
+		enddate = self.get_argument("enddate", None)
+		if startdate is None:
+			if horizon is None:
+				horizon = 7
+			else:
+				horizon = int(horizon)
+
+			parsedenddate = datetime.date.today() - datetime.timedelta(days=30)
+
+			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
+			daterange = [parsedstartdate.strftime("%Y-%m-%d")]
+			for c in range(horizon-1):
+				daterange.append((parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%Y-%m-%d"))
+		
+		else:
+			parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date() 
+			parsedenddate = parsedenddate - datetime.timedelta(days=30)
+			parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date() - datetime.timedelta(days=30)
+			daterange = []
+			for c in range((parsedenddate - parsedstartdate).days):
+				daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%Y-%m-%d"))
+
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
+
+		thissql1 = "select date(o.date_add), u.mobile_number, u.email, aa.cc from users u left join orders o on o.user_id=u.user_id left join (select n.user_id as u_id, count(n.order_id) as cc from orders n where n.order_status in (3,10,11,12,16) group by 1 having cc>=10) as aa on aa.u_id=u.user_id where aa.cc>=10 and u.email is not null and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59');"
+		result1 = statsengine.execute(thissql1)
+
+		responselookup = {thisdate:[] for thisdate in daterange}
+		i=0
+		for item in result1:
+			i+=1
+			if item[0].strftime("%Y-%m-%d") in daterange:
+				responselookup[item[0].strftime("%Y-%m-%d")].append(item[1:])
+
+		outputtable = "<table class='table tablesorter table-striped table-hover'><thead><th>Last Order Date</th><th>User Mobile Number</th><th>User Email</th><th>Order Count</th></thead>"
+		
+		for thisdate in daterange:
+			currentlist = responselookup[thisdate]
+			for (thismobile,thisemail,thisordercount) in currentlist:
+				outputtable += "<tr><td>" + str(thisdate) + "</td><td><a href='http://twigly.in/admin/orders?f="+str(thismobile)+"'>" + str(thismobile) + "</a></td><td>" + str(thisemail)+"</td><td>"+str(thisordercount)+"</td></tr>"
+
+		outputtable += "</table>"
+
+		statssession.remove()
+		self.render("templates/simpletabletemplate.html", page_url="/dormantregulars", page_title="Twigly Dormant Regulars",table_title="List of "+str(i)+" Dormant Regulars(Regular users who have not ordered in last 30 days)",tableSort="[[0,1],[3,1]]", daterange=daterange, outputtable=outputtable, user=current_user)
+
+
+class DeadRegularsHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		current_user = self.get_current_user().decode()
+		if current_user not in ("admin"):
+			self.redirect('/stats')
+
+		horizon = self.get_argument("horizon", None)
+		startdate = self.get_argument("startdate", None)
+		enddate = self.get_argument("enddate", None)
+		if startdate is None:
+			if horizon is None:
+				horizon = 7
+			else:
+				horizon = int(horizon)
+
+			parsedenddate = datetime.date.today() - datetime.timedelta(days=60)
+
+			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
+			daterange = [parsedstartdate.strftime("%Y-%m-%d")]
+			for c in range(horizon-1):
+				daterange.append((parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%Y-%m-%d"))
+		
+		else:
+			parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date() 
+			parsedenddate = parsedenddate - datetime.timedelta(days=60)
+			parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date() - datetime.timedelta(days=60)
+			daterange = []
+			for c in range((parsedenddate - parsedstartdate).days):
+				daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%Y-%m-%d"))
+
+		# parsedstartdate = datetime.date.today() - datetime.timedelta(days=90)
+		# parsedenddate = datetime.date.today() - datetime.timedelta(days=30)
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
+
+		thissql1 = "select date(o.date_add), u.mobile_number, u.email, aa.cc from users u left join orders o on o.user_id=u.user_id left join (select n.user_id as u_id, count(n.order_id) as cc from orders n where n.order_status in (3,10,11,12,16) group by 1 having cc>=10) as aa on aa.u_id=u.user_id where aa.cc>=10 and u.email is not null and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59');"
+		result1 = statsengine.execute(thissql1)
+
+		responselookup = {thisdate:[] for thisdate in daterange}
+		i=0
+		for item in result1:
+			i+=1
+			if item[0].strftime("%Y-%m-%d") in daterange:
+				responselookup[item[0].strftime("%Y-%m-%d")].append(item[1:])
+
+		outputtable = "<table class='table tablesorter table-striped table-hover'><thead><th>Last Order Date</th><th>User Mobile Number</th><th>User Email</th><th>Order Count</th></thead>"
+		
+		for thisdate in daterange:
+			currentlist = responselookup[thisdate]
+			for (thismobile,thisemail,thisordercount) in currentlist:
+				outputtable += "<tr><td>" + str(thisdate) + "</td><td><a href='http://twigly.in/admin/orders?f="+str(thismobile)+"'>" + str(thismobile) + "</a></td><td>" + str(thisemail)+"</td><td>"+str(thisordercount)+"</td></tr>"
+
+		outputtable += "</table>"
+
+		statssession.remove()
+		self.render("templates/simpletabletemplate.html", page_url="/deadregulars", page_title="Twigly Dead Regulars",table_title="List of "+str(i)+" Dead Regulars (Regular users who have not ordred in last 60 days)",tableSort="[[0,1],[3,1]]", daterange=daterange, outputtable=outputtable, user=current_user)
 
 
 class RewardStatsHandler(BaseHandler):
@@ -2805,7 +2938,7 @@ class RewardStatsHandler(BaseHandler):
 
 
 		# %Orders <Total 250 
-		thissql3 = "select date(o.date_add), sum(case when o.total<250 then 1 else 0 end), sum(case when o.total>=250 then 1 else 0 end) from orders o where  o.order_status in (3,10,11) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1;"
+		thissql3 = "select date(o.date_add), sum(case when o.total<250 then 1 else 0 end), sum(case when o.total>=250 then 1 else 0 end) from orders o where  o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1;"
 		result3 = statsengine.execute(thissql3)
 
 		ordercountlookup = { thisdate:[] for thisdate in daterange}
@@ -2895,6 +3028,7 @@ application = tornado.web.Application([
 	(r"/updatemailchimp", MailchimpUpdateHandler),
 	(r"/sendtolazysignups", MailchimpLazySignupHandler),
 	(r"/sendtodormantusers", MailchimpDormantUserHandler),
+	(r"/sendadhoc", MailchimpAdhocMailHandler),
 	(r"/couponuse", CouponHandler),
 	(r"/feedbacks", FeedbackHandler),
 	(r"/wastage", WastageHandler),
@@ -2905,6 +3039,8 @@ application = tornado.web.Application([
 	(r"/payments", PaymentStatsHandler),
 	(r"/orderstats", OrderStatsHandler),
 	(r"/customerstats", CustomerStatsHandler),
+	(r"/dormantregulars", DormantRegularsHandler),
+	(r"/deadregulars", DeadRegularsHandler),
 	(r"/rewardstats", RewardStatsHandler),
 	(r"/rewardleaderboard", RewardLeaderHandler),
 	(r"/vanvaas", VanvaasHandler),
