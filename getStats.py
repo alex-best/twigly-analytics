@@ -2767,7 +2767,7 @@ class DormantRegularsHandler(BaseHandler):
 		statsengine = sqlalchemy.create_engine(statsengine_url)
 		statssession = scoped_session(sessionmaker(bind=statsengine))
 
-		thissql1 = "select date(o.date_add), u.mobile_number, u.email, aa.cc from users u left join orders o on o.user_id=u.user_id left join (select n.user_id as u_id, count(n.order_id) as cc from orders n where n.order_status in (3,10,11,12,16) group by 1 having cc>=10) as aa on aa.u_id=u.user_id where aa.cc>=10 and u.email is not null and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59');"
+		thissql1 = "select date(o.date_add), u.mobile_number, u.email, aa.cc, aa.tt from users u left join orders o on o.user_id=u.user_id left join (select n.user_id as u_id, count(n.order_id) as cc, sum(n.total) as tt from orders n where n.order_status in (3,10,11,12,16) group by 1 having cc>=10) as aa on aa.u_id=u.user_id where aa.cc>=10 and u.email is not null and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59');"
 		result1 = statsengine.execute(thissql1)
 
 		responselookup = {thisdate:[] for thisdate in daterange}
@@ -2778,12 +2778,15 @@ class DormantRegularsHandler(BaseHandler):
 					responselookup[item[0].strftime("%Y-%m-%d")].append(item[1:])
 					usersAlreadyAdded.add(item[1])
 
-		outputtable = "<table class='table tablesorter table-striped table-hover'><thead><th>Last Order Date</th><th>User Mobile Number</th><th>User Email</th><th>Order Count</th></thead>"
+		outputtable = "<table class='table tablesorter table-striped table-hover'><thead><th>Last Order Date</th><th>User Mobile Number</th><th>User Email</th><th>Order Count</th><th>Avg Order Total</th></thead>"
 		
 		for thisdate in daterange:
 			currentlist = responselookup[thisdate]
-			for (thismobile,thisemail,thisordercount) in currentlist:
-				outputtable += "<tr><td>" + str(thisdate) + "</td><td><a href='http://twigly.in/admin/orders?f="+str(thismobile)+"'>" + str(thismobile) + "</a></td><td>" + str(thisemail)+"</td><td>"+str(thisordercount)+"</td></tr>"
+			for (thismobile,thisemail,thisordercount, thisordertotals) in currentlist:
+				averageordervalue = 0
+				if (thisordercount>0):
+					averageordervalue = thisordertotals/thisordercount
+				outputtable += "<tr><td>" + str(thisdate) + "</td><td><a href='http://twigly.in/admin/orders?f="+str(thismobile)+"'>" + str(thismobile) + "</a></td><td>" + str(thisemail)+"</td><td>"+str(thisordercount)+"</td><td>"+str(int(averageordervalue))+"</td></tr>"
 
 		outputtable += "</table>"
 
@@ -2827,7 +2830,7 @@ class DeadRegularsHandler(BaseHandler):
 		statsengine = sqlalchemy.create_engine(statsengine_url)
 		statssession = scoped_session(sessionmaker(bind=statsengine))
 
-		thissql1 = "select date(o.date_add), u.mobile_number, u.email, aa.cc from users u left join orders o on o.user_id=u.user_id left join (select n.user_id as u_id, count(n.order_id) as cc from orders n where n.order_status in (3,10,11,12,16) group by 1 having cc>=10) as aa on aa.u_id=u.user_id where aa.cc>=10 and u.email is not null and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59');"
+		thissql1 = "select date(o.date_add), u.mobile_number, u.email, aa.cc, aa.tt from users u left join orders o on o.user_id=u.user_id left join (select n.user_id as u_id, count(n.order_id) as cc, sum(n.total) as tt from orders n where n.order_status in (3,10,11,12,16) group by 1 having cc>=10) as aa on aa.u_id=u.user_id where aa.cc>=10 and u.email is not null and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59');"
 		result1 = statsengine.execute(thissql1)
 
 		responselookup = {thisdate:[] for thisdate in daterange}
@@ -2838,12 +2841,16 @@ class DeadRegularsHandler(BaseHandler):
 					responselookup[item[0].strftime("%Y-%m-%d")].append(item[1:])
 					usersAlreadyAdded.add(item[1])
 
-		outputtable = "<table class='table tablesorter table-striped table-hover'><thead><th>Last Order Date</th><th>User Mobile Number</th><th>User Email</th><th>Order Count</th></thead>"
+		outputtable = "<table class='table tablesorter table-striped table-hover'><thead><th>Last Order Date</th><th>User Mobile Number</th><th>User Email</th><th>Order Count</th><th>Avg Order Total</th></thead>"
 		
 		for thisdate in daterange:
 			currentlist = responselookup[thisdate]
-			for (thismobile,thisemail,thisordercount) in currentlist:
-				outputtable += "<tr><td>" + str(thisdate) + "</td><td><a href='http://twigly.in/admin/orders?f="+str(thismobile)+"'>" + str(thismobile) + "</a></td><td>" + str(thisemail)+"</td><td>"+str(thisordercount)+"</td></tr>"
+			for (thismobile,thisemail,thisordercount, thisordertotals) in currentlist:
+				averageordervalue = 0
+				if (thisordercount>0):
+					averageordervalue = thisordertotals/thisordercount
+				outputtable += "<tr><td>" + str(thisdate) + "</td><td><a href='http://twigly.in/admin/orders?f="+str(thismobile)+"'>" + str(thismobile) + "</a></td><td>" + str(thisemail)+"</td><td>"+str(thisordercount)+"</td><td>"+str(int(averageordervalue))+"</td></tr>"
+
 
 		outputtable += "</table>"
 
