@@ -176,11 +176,13 @@ class user(statsBase):
 def getRedirect(username):
 	if (username in ["chef", "chef03", "headchef"]):
 		return "storeitems"
+	elif (username in ["twiglyservice"]):
+		return "dormantregulars"
 	else:
 		return "stats"
 
 def authenticate(thisusername, thispassword):
-	if (thisusername == "admin" and thispassword == "tw1gl7h1") or (thisusername == "review" and thispassword == "rvwdash") or (thisusername == "chef" and thispassword == "twigly123") or (thisusername == "chef03" and thispassword == "twiglychef03") or (thisusername == "headchef" and thispassword == "rahulonly"):
+	if (thisusername == "admin" and thispassword == "tw1gl7h1") or (thisusername == "review" and thispassword == "rvwdash") or (thisusername == "chef" and thispassword == "twigly123") or (thisusername == "chef03" and thispassword == "twiglychef03") or (thisusername == "headchef" and thispassword == "rahulonly") or (thisusername == "twiglyservice" and thispassword == "callcenter"):
 		return {"result": True}
 	else:
 		return {"result": False}
@@ -2735,7 +2737,7 @@ class DormantRegularsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
 		current_user = self.get_current_user().decode()
-		if current_user not in ("admin"):
+		if current_user not in ("admin","twiglyservice"):
 			self.redirect('/stats')
 
 		horizon = self.get_argument("horizon", None)
@@ -2793,7 +2795,7 @@ class DeadRegularsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
 		current_user = self.get_current_user().decode()
-		if current_user not in ("admin"):
+		if current_user not in ("admin","twiglyservice"):
 			self.redirect('/stats')
 
 		horizon = self.get_argument("horizon", None)
