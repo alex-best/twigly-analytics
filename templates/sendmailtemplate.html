@@ -102,6 +102,7 @@
 				<option value="5">Sparkle Red</option>
 				<option value="6">Sparkle Green</option>
 				<option value="7">Sparkle Purple</option>
+				<option value="8">Today's Offers</option>
 			</select>
 		</div>
 	</div>
@@ -224,14 +225,16 @@
 		if (template == "2") {
 			checkvar = 0;
 		}
-		if (parseInt(length) % 2 == checkvar || parseInt(length) < 1) {
-			var required = "even";
-			if (checkvar == 0) {
-				required = "odd";
+		if (template!="8") {
+			if (parseInt(length) % 2 == checkvar || parseInt(length) < 1) {
+				var required = "even";
+				if (checkvar == 0) {
+					required = "odd";
+				}
+				alert ("For this template, number of selected items should be " + required);
+				$('#items').focus();
+				return false;
 			}
-			alert ("For this template, number of selected items should be " + required);
-			$('#items').focus();
-			return false;
 		}
 		$('.cover').show();
 		var sendlist = "";

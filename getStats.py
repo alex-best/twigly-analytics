@@ -1644,6 +1644,8 @@ def getMailTemplate(template):
 		return ("templates/mailtemplate4.html", "green")
 	elif (template == 7):
 		return ("templates/mailtemplate4.html", "purple")
+	elif (template == 8):
+		return ("templates/mailtemplate5.html", "")
 	else:
 		return ("templates/mailtemplate.html", "")
 
