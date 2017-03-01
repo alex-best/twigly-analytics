@@ -247,8 +247,9 @@ def getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, 
 				if (thisorder.date_add.strftime("%c") == firstordersmap[thisorder.mobile_number]):
 					ordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["new"] += 1
 					ordertotals[thisorder.date_add.strftime("%a %b %d, %Y")]["new"] += float(thisorder.total)
-					newusercountsbystore[thisorder.store_id][thisorder.date_add.strftime("%a %b %d, %Y")] += 1
-					newusertotalsbystore[thisorder.store_id][thisorder.date_add.strftime("%a %b %d, %Y")] += float(thisorder.total)
+					if (thisorder.store_id in active_stores_list):
+						newusercountsbystore[thisorder.store_id][thisorder.date_add.strftime("%a %b %d, %Y")] += 1
+						newusertotalsbystore[thisorder.store_id][thisorder.date_add.strftime("%a %b %d, %Y")] += float(thisorder.total)
 					if (thisorder.source == 0):
 						newusercountsbysource[thisorder.date_add.strftime("%a %b %d, %Y")]["Android"] += 1
 					elif (thisorder.source == 1):
@@ -3138,202 +3139,202 @@ class RewardLeaderHandler(BaseHandler):
 		self.render("templates/rewardleaderstemplate.html", outputtable=outputtable, user=current_user)
 
 
-# class ResetSegmentHandler(BaseHandler):
-# 	@tornado.web.authenticated
-# 	def get(self):
-# 		current_user = self.get_current_user().decode()
-# 		if current_user not in ("admin"):
-# 			self.redirect('/stats')
+class ResetSegmentHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		current_user = self.get_current_user().decode()
+		if current_user not in ("admin"):
+			self.redirect('/stats')
 		
-# 		statsengine = sqlalchemy.create_engine(statsengine_url)
-# 		statssession = scoped_session(sessionmaker(bind=statsengine))
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
 
-# 		allorders = statssession.query(order.user_id, order.date_add, order.store_id).filter(order.order_status.in_(deliveredStates + deliveredFreeStates)).order_by(order.date_add.desc())
-# 		#.limit(5000)
+		allorders = statssession.query(order.user_id, order.date_add, order.store_id).filter(order.order_status.in_(deliveredStates + deliveredFreeStates)).order_by(order.date_add.desc())
+		#.limit(5000)
 
-# 		orderUserLookup = {}
-# 		for item in allorders:
-# 			if (item[0] in orderUserLookup):
-# 				if (len(orderUserLookup[item[0]])<10): #limiting to last 10 orders
-# 					orderUserLookup[item[0]].append(item[1:])
-# 			else:
-# 				orderUserLookup[item[0]]=[]
-# 				orderUserLookup[item[0]].append(item[1:])
+		orderUserLookup = {}
+		for item in allorders:
+			if (item[0] in orderUserLookup):
+				if (len(orderUserLookup[item[0]])<10): #limiting to last 10 orders
+					orderUserLookup[item[0]].append(item[1:])
+			else:
+				orderUserLookup[item[0]]=[]
+				orderUserLookup[item[0]].append(item[1:])
 
-# 		morning_users = []
-# 		evening_users = []
-# 		morning_store_users = {thisstore:[] for thisstore in [2,3,5]}
-# 		evening_store_users = {thisstore:[] for thisstore in [2,3,5]}
+		morning_users = []
+		evening_users = []
+		morning_store_users = {thisstore:[] for thisstore in [2,3,5]}
+		evening_store_users = {thisstore:[] for thisstore in [2,3,5]}
 
-# 		for thisuser in orderUserLookup:
-# 			morning_count=0
-# 			evening_count=0
-# 			morning_store=-1
-# 			evening_store=-1
-# 			for (thistime, thisstore) in orderUserLookup[thisuser]:
-# 				thistime.time()
-# 				sameday6pm = thistime.replace(hour=18, minute=0, second=0, microsecond=0)
-# 				if thistime<sameday6pm:
-# 					morning_count+=1
-# 					if morning_count==1:
-# 						morning_store=thisstore						
-# 				else:
-# 					evening_count+=1
-# 					if evening_count==1:
-# 						evening_store=thisstore						
-# 			if morning_count>=evening_count:
-# 				morning_users.append(thisuser)
-# 				if morning_store==4:
-# 					morning_store=2
-# 				morning_store_users[morning_store].append(thisuser)
-# 			else:
-# 				evening_users.append(thisuser)
-# 				if evening_store==4:
-# 					evening_store=2
-# 				evening_store_users[evening_store].append(thisuser)
-
-
-# 		# create 8 segments
-
-# 		# try:
-# 		# 	m = Mailchimp(mailchimpkey)
-# 		# 	mcresponse = m.lists.static_segment_add(list_id,"Morning Users")
-# 		# 	print("Morning Users",mcresponse)
-# 		# 	mcresponse = m.lists.static_segment_add(list_id,"Morning Users - CC")
-# 		# 	print("Morning Users - CC",mcresponse)
-# 		# 	mcresponse = m.lists.static_segment_add(list_id,"Morning Users - 46")
-# 		# 	print("Morning Users - 46",mcresponse)
-# 		# 	mcresponse = m.lists.static_segment_add(list_id,"Morning Users - KKJ")
-# 		# 	print("Morning Users - KKJ",mcresponse)
-# 		# 	mcresponse = m.lists.static_segment_add(list_id,"Evening Users")
-# 		# 	print("Evening Users",mcresponse)
-# 		# 	mcresponse = m.lists.static_segment_add(list_id,"Evening Users - CC")
-# 		# 	print("Evening Users - CC",mcresponse)
-# 		# 	mcresponse = m.lists.static_segment_add(list_id,"Evening Users - 46")
-# 		# 	print("Evening Users - 46",mcresponse)
-# 		# 	mcresponse = m.lists.static_segment_add(list_id,"Evening Users - KKJ")
-# 		# 	print("Evening Users - KKJ",mcresponse)
-
-# 			# environment_production==True:
-# 				# Morning Users {'id': 60413}
-# 				# Morning Users - CC {'id': 60417}
-# 				# Morning Users - 46 {'id': 60421}
-# 				# Morning Users - KKJ {'id': 60425}
-# 				# Evening Users {'id': 60429}
-# 				# Evening Users - CC {'id': 60433}
-# 				# Evening Users - 46 {'id': 60437}
-# 				# Evening Users - KKJ {'id': 60441}
-# 			# environment_production==False:
-# 				# Morning Users {'id': 60445}
-# 				# Morning Users - CC {'id': 60449}
-# 				# Morning Users - 46 {'id': 60453}
-# 				# Morning Users - KKJ {'id': 60457}
-# 				# Evening Users {'id': 60461}
-# 				# Evening Users - CC {'id': 60465}
-# 				# Evening Users - 46 {'id': 60469}
-# 				# Evening Users - KKJ {'id': 60473}
-
-# 		# except Exception as e:
-# 		# 	print ("Unexpected error:",e)
-
-# 		allUsersQuery = statssession.query(user.user_id, user.email)
-# 		userEmailLookup = {}
-# 		emailAlreadyAdded = {}
-# 		for item in allUsersQuery:
-# 			if (item[1] is not None) and len(item[1])>0:
-# 				userEmailLookup[item[0]] = str(item[1]).lower()
-# 				emailAlreadyAdded[userEmailLookup[item[0]]] = False
-
-# 		morning_batch = []
-# 		morning_cc_batch = []
-# 		morning_46_batch = []
-# 		morning_kkj_batch = []
-# 		evening_batch = []
-# 		evening_cc_batch = []
-# 		evening_46_batch = []
-# 		evening_kkj_batch = []
-
-# 		for item in morning_users:
-# 			if item in userEmailLookup:
-# 				morning_batch.append({'email':userEmailLookup[item]})
-# 				emailAlreadyAdded[userEmailLookup[item]] = True
-# 		for item in morning_store_users[2]:
-# 			if item in userEmailLookup:
-# 				morning_cc_batch.append({'email':userEmailLookup[item]})
-# 		for item in morning_store_users[3]:
-# 			if item in userEmailLookup:
-# 				morning_46_batch.append({'email':userEmailLookup[item]})
-# 		for item in morning_store_users[5]:
-# 			if item in userEmailLookup:
-# 				morning_kkj_batch.append({'email':userEmailLookup[item]})
-
-# 		for item in evening_users:
-# 			if item in userEmailLookup:
-# 				evening_batch.append({'email':userEmailLookup[item]})
-# 				emailAlreadyAdded[userEmailLookup[item]] = True
-# 		for item in evening_store_users[2]:
-# 			if item in userEmailLookup:
-# 				evening_cc_batch.append({'email':userEmailLookup[item]})
-# 		for item in evening_store_users[3]:
-# 			if item in userEmailLookup:
-# 				evening_46_batch.append({'email':userEmailLookup[item]})
-# 		for item in evening_store_users[5]:
-# 			if item in userEmailLookup:
-# 				evening_kkj_batch.append({'email':userEmailLookup[item]})
-
-# 		for item in emailAlreadyAdded:
-# 			if emailAlreadyAdded[item] == False:
-# 				morning_batch.append({'email':item})
-# 				morning_cc_batch.append({'email':item})
-# 				emailAlreadyAdded[item] = True
+		for thisuser in orderUserLookup:
+			morning_count=0
+			evening_count=0
+			morning_store=-1
+			evening_store=-1
+			for (thistime, thisstore) in orderUserLookup[thisuser]:
+				thistime.time()
+				sameday6pm = thistime.replace(hour=18, minute=0, second=0, microsecond=0)
+				if thistime<sameday6pm:
+					morning_count+=1
+					if morning_count==1:
+						morning_store=thisstore						
+				else:
+					evening_count+=1
+					if evening_count==1:
+						evening_store=thisstore						
+			if morning_count>=evening_count:
+				morning_users.append(thisuser)
+				if morning_store==4:
+					morning_store=2
+				morning_store_users[morning_store].append(thisuser)
+			else:
+				evening_users.append(thisuser)
+				if evening_store==4:
+					evening_store=2
+				evening_store_users[evening_store].append(thisuser)
 
 
-# 		allSegments = ['morning', 'morning-cc', 'morning-46', 'morning-kkj', 'evening', 'evening-cc', 'evening-46', 'evening-kkj']
-# 		allSegmentsMap = {thisSegment:{'id':-1,'batch':[]} for thisSegment in allSegments}
-# 		if environment_production==True:
-# 			allSegmentsMap = {'morning':{'id':60413,'batch':morning_batch}, 
-# 								'morning-cc':{'id':60417,'batch':morning_cc_batch},
-# 								'morning-46':{'id':60421,'batch':morning_46_batch},
-# 								'morning-kkj':{'id':60425,'batch':morning_kkj_batch},
-# 								'evening':{'id':60429,'batch':evening_batch},
-# 								'evening-cc':{'id':60433,'batch':evening_cc_batch},
-# 								'evening-46':{'id':60437,'batch':evening_46_batch},
-# 								'evening-kkj':{'id':60441,'batch':evening_kkj_batch}
-# 								}
-# 		if environment_production==False:
-# 			allSegmentsMap = {'morning':{'id':60445,'batch':morning_batch}, 
-# 								'morning-cc':{'id':60449,'batch':morning_cc_batch},
-# 								'morning-46':{'id':60453,'batch':morning_46_batch},
-# 								'morning-kkj':{'id':60457,'batch':morning_kkj_batch},
-# 								'evening':{'id':60461,'batch':evening_batch},
-# 								'evening-cc':{'id':60465,'batch':evening_cc_batch},
-# 								'evening-46':{'id':60469,'batch':evening_46_batch},
-# 								'evening-kkj':{'id':60473,'batch':evening_kkj_batch}
-# 								}
+		# create 8 segments
+
+		# try:
+		# 	m = Mailchimp(mailchimpkey)
+		# 	mcresponse = m.lists.static_segment_add(list_id,"Morning Users")
+		# 	print("Morning Users",mcresponse)
+		# 	mcresponse = m.lists.static_segment_add(list_id,"Morning Users - CC")
+		# 	print("Morning Users - CC",mcresponse)
+		# 	mcresponse = m.lists.static_segment_add(list_id,"Morning Users - 46")
+		# 	print("Morning Users - 46",mcresponse)
+		# 	mcresponse = m.lists.static_segment_add(list_id,"Morning Users - KKJ")
+		# 	print("Morning Users - KKJ",mcresponse)
+		# 	mcresponse = m.lists.static_segment_add(list_id,"Evening Users")
+		# 	print("Evening Users",mcresponse)
+		# 	mcresponse = m.lists.static_segment_add(list_id,"Evening Users - CC")
+		# 	print("Evening Users - CC",mcresponse)
+		# 	mcresponse = m.lists.static_segment_add(list_id,"Evening Users - 46")
+		# 	print("Evening Users - 46",mcresponse)
+		# 	mcresponse = m.lists.static_segment_add(list_id,"Evening Users - KKJ")
+		# 	print("Evening Users - KKJ",mcresponse)
+
+			# environment_production==True:
+				# Morning Users {'id': 60413}
+				# Morning Users - CC {'id': 60417}
+				# Morning Users - 46 {'id': 60421}
+				# Morning Users - KKJ {'id': 60425}
+				# Evening Users {'id': 60429}
+				# Evening Users - CC {'id': 60433}
+				# Evening Users - 46 {'id': 60437}
+				# Evening Users - KKJ {'id': 60441}
+			# environment_production==False:
+				# Morning Users {'id': 60445}
+				# Morning Users - CC {'id': 60449}
+				# Morning Users - 46 {'id': 60453}
+				# Morning Users - KKJ {'id': 60457}
+				# Evening Users {'id': 60461}
+				# Evening Users - CC {'id': 60465}
+				# Evening Users - 46 {'id': 60469}
+				# Evening Users - KKJ {'id': 60473}
+
+		# except Exception as e:
+		# 	print ("Unexpected error:",e)
+
+		allUsersQuery = statssession.query(user.user_id, user.email)
+		userEmailLookup = {}
+		emailAlreadyAdded = {}
+		for item in allUsersQuery:
+			if (item[1] is not None) and len(item[1])>0:
+				userEmailLookup[item[0]] = str(item[1]).lower()
+				emailAlreadyAdded[userEmailLookup[item[0]]] = False
+
+		morning_batch = []
+		morning_cc_batch = []
+		morning_46_batch = []
+		morning_kkj_batch = []
+		evening_batch = []
+		evening_cc_batch = []
+		evening_46_batch = []
+		evening_kkj_batch = []
+
+		for item in morning_users:
+			if item in userEmailLookup:
+				morning_batch.append({'email':userEmailLookup[item]})
+				emailAlreadyAdded[userEmailLookup[item]] = True
+		for item in morning_store_users[2]:
+			if item in userEmailLookup:
+				morning_cc_batch.append({'email':userEmailLookup[item]})
+		for item in morning_store_users[3]:
+			if item in userEmailLookup:
+				morning_46_batch.append({'email':userEmailLookup[item]})
+		for item in morning_store_users[5]:
+			if item in userEmailLookup:
+				morning_kkj_batch.append({'email':userEmailLookup[item]})
+
+		for item in evening_users:
+			if item in userEmailLookup:
+				evening_batch.append({'email':userEmailLookup[item]})
+				emailAlreadyAdded[userEmailLookup[item]] = True
+		for item in evening_store_users[2]:
+			if item in userEmailLookup:
+				evening_cc_batch.append({'email':userEmailLookup[item]})
+		for item in evening_store_users[3]:
+			if item in userEmailLookup:
+				evening_46_batch.append({'email':userEmailLookup[item]})
+		for item in evening_store_users[5]:
+			if item in userEmailLookup:
+				evening_kkj_batch.append({'email':userEmailLookup[item]})
+
+		for item in emailAlreadyAdded:
+			if emailAlreadyAdded[item] == False:
+				morning_batch.append({'email':item})
+				morning_cc_batch.append({'email':item})
+				emailAlreadyAdded[item] = True
+
+
+		allSegments = ['morning', 'morning-cc', 'morning-46', 'morning-kkj', 'evening', 'evening-cc', 'evening-46', 'evening-kkj']
+		allSegmentsMap = {thisSegment:{'id':-1,'batch':[]} for thisSegment in allSegments}
+		if environment_production==True:
+			allSegmentsMap = {'morning':{'id':60413,'batch':morning_batch}, 
+								'morning-cc':{'id':60417,'batch':morning_cc_batch},
+								'morning-46':{'id':60421,'batch':morning_46_batch},
+								'morning-kkj':{'id':60425,'batch':morning_kkj_batch},
+								'evening':{'id':60429,'batch':evening_batch},
+								'evening-cc':{'id':60433,'batch':evening_cc_batch},
+								'evening-46':{'id':60437,'batch':evening_46_batch},
+								'evening-kkj':{'id':60441,'batch':evening_kkj_batch}
+								}
+		if environment_production==False:
+			allSegmentsMap = {'morning':{'id':60445,'batch':morning_batch}, 
+								'morning-cc':{'id':60449,'batch':morning_cc_batch},
+								'morning-46':{'id':60453,'batch':morning_46_batch},
+								'morning-kkj':{'id':60457,'batch':morning_kkj_batch},
+								'evening':{'id':60461,'batch':evening_batch},
+								'evening-cc':{'id':60465,'batch':evening_cc_batch},
+								'evening-46':{'id':60469,'batch':evening_46_batch},
+								'evening-kkj':{'id':60473,'batch':evening_kkj_batch}
+								}
 
 		
-# 		# reset 8 segments
-# 		list_id = getMailChimpListId()
-# 		for thissegment in allSegments:
-# 			static_segment_id = allSegmentsMap[thissegment]['id']
+		# reset 8 segments
+		list_id = getMailChimpListId()
+		for thissegment in allSegments:
+			static_segment_id = allSegmentsMap[thissegment]['id']
 
-# 			batch_list = [{'email':'***REMOVED***'}]
-# 			if environment_production == True:
-# 				batch_list = allSegmentsMap[thissegment]['batch']	
+			batch_list = [{'email':'***REMOVED***'}]
+			if environment_production == True:
+				batch_list = allSegmentsMap[thissegment]['batch']	
 
-# 			print(thissegment)
-# 			try:
-# 				m = Mailchimp(mailchimpkey)
-# 				mcresponse = m.lists.static_segment_reset(list_id,static_segment_id)
-# 				print(mcresponse)
-# 				mcresponse = m.lists.static_segment_members_add(list_id,static_segment_id,batch_list)
-# 				print(mcresponse)
-# 			except Exception as e:
-# 				print ("Unexpected error:",e)
+			print(thissegment)
+			try:
+				m = Mailchimp(mailchimpkey)
+				mcresponse = m.lists.static_segment_reset(list_id,static_segment_id)
+				print(mcresponse)
+				mcresponse = m.lists.static_segment_members_add(list_id,static_segment_id,batch_list)
+				print(mcresponse)
+			except Exception as e:
+				print ("Unexpected error:",e)
 
-# 		statssession.remove()
+		statssession.remove()
 		
-# 		self.write({"action":True})
+		self.write({"action":True})
 		
 
 
@@ -3369,7 +3370,7 @@ application = tornado.web.Application([
 	(r"/payments", PaymentStatsHandler),
 	(r"/orderstats", OrderStatsHandler),
 	(r"/customerstats", CustomerStatsHandler),
-	# (r"/resetsegments", ResetSegmentHandler),
+	(r"/resetsegments", ResetSegmentHandler),
 	(r"/dormantregulars", DormantRegularsHandler),
 	(r"/deadregulars", DeadRegularsHandler),
 	(r"/esseltest", EsselTestHandler),
