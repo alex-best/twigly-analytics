@@ -1811,7 +1811,7 @@ class MailchimpLazySignupHandler(BaseHandler):
 
 	def getLazySignupSegmentId(self):
 		if environment_production:
-			lazy_static_segment_id = 60393
+			lazy_static_segment_id = 60477
 		else:
 			lazy_static_segment_id = 60389
 		return lazy_static_segment_id
@@ -1827,10 +1827,11 @@ class MailchimpLazySignupHandler(BaseHandler):
 			list_id = getMailChimpListId()
 			lazy_template_id = self.getLazySignupTemplateId()
 			lazy_static_segment_id = self.getLazySignupSegmentId()
+			mre2 = {}
 			try:
 				m = Mailchimp(mailchimpkey)
 				#Create a segment for lazy signups
-				# mcresponse = m.lists.static_segment_add(list_id,"Lazy Signups")
+				# mcresponse = m.lists.static_segment_add(list_id,"Lazy Signups (New)")
 				# print(mcresponse)
 				mcresponse = m.lists.static_segment_reset(list_id,lazy_static_segment_id)
 				mcresponse = m.lists.static_segment_members_add(list_id,lazy_static_segment_id,batch_list)
@@ -1892,6 +1893,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 			list_id = getMailChimpListId()
 			dormant_template_id = self.getDormantTemplateId()
 			dormant_static_segment_id = self.getDormantSegmentId()		
+			mre2 = {}
 			try:
 				m = Mailchimp(mailchimpkey)
 				# Create a segment for ...
