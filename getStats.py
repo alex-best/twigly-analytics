@@ -580,21 +580,22 @@ class CustomerStatsHandler(BaseHandler):
 
 			active_stores = statssession.query(store).filter(store.is_active == True).all()
 			active_stores_list = [x.store_id for x in active_stores]
+			
 
 			if current_store == "All":
 				store_list = active_stores_list
 			else:
 				store_list = [int(current_store)]
-			
+
 			current_store_name = "All"
 			for thisstore in active_stores:
-				if [thisstore.store_id] == current_store:
+				if (str(thisstore.store_id) == current_store):
 					current_store_name = thisstore.name
 					break
 
-			orders = statssession.query(order.order_id, order.user_id, order.date_add, order.total).filter(order.date_add < parsedenddate, order.date_add >= parsedstartdate, order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress)).all()
+			orders = statssession.query(order.order_id, order.user_id, order.date_add, order.total).filter(order.date_add < parsedenddate, order.date_add >= parsedstartdate, order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.store_id.in_(store_list)).all()
 
-			firstorderquery = statssession.query(order.user_id,order.date_add).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress)).order_by(order.date_add).group_by(order.user_id)
+			firstorderquery = statssession.query(order.user_id,order.date_add).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.store_id.in_(store_list)).order_by(order.date_add).group_by(order.user_id)
 
 
 			firstOrderLookup = {} #customer: first month
@@ -786,7 +787,7 @@ class CustomerStatsHandler(BaseHandler):
 			current_user = self.get_current_user().decode()
 
 			statssession.remove()
-			self.render("templates/customerstatstemplate.html", user=current_user, outputtable=outputtable, months=months, allcustomers=allcustomersbymonth, newcustomers=newcustomersbymonth, repeatcustomers=repeatcustomersbymonth, neworders=newordersbymonth,repeatorders=repeatordersbymonth, alltotals=alltotalsbymonth, newtotals=newtotalsbymonth,repeattotals=repeattotalsbymonth,allAPC=allAPC, newAPC=newAPC,repeatAPC=repeatAPC, outputtableorders=outputtableorders, outputtablevalues=outputtablevalues)
+			self.render("templates/customerstatstemplate.html", user=current_user, active_stores=active_stores, current_store=current_store, current_store_name=current_store_name,outputtable=outputtable, months=months, allcustomers=allcustomersbymonth, newcustomers=newcustomersbymonth, repeatcustomers=repeatcustomersbymonth, neworders=newordersbymonth,repeatorders=repeatordersbymonth, alltotals=alltotalsbymonth, newtotals=newtotalsbymonth,repeattotals=repeattotalsbymonth,allAPC=allAPC, newAPC=newAPC,repeatAPC=repeatAPC, outputtableorders=outputtableorders, outputtablevalues=outputtablevalues)
 
 
 class OrderStatsHandler(BaseHandler):
