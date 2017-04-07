@@ -56,14 +56,14 @@
     </nav>
 </div>
 <div class="container">
-	{% if (user=="admin" or user=="headchef" or user=="chef") %}
+	{% if (user=="admin" or user=="headchef" or user=="chef" or user=="review") %}
 		{% include "navtemplate.html" %}
 	{% end %}
 	<div class="row" style="margin-bottom: 40px; margin-top: 40px;">
 		<div class="col-xs-12 col-md-6" style="text-align: left; font-size: 17px;">
 			Dishwise sales numbers in <span style="font-weight: bold;">{{ current_store_name }}</span>
 		</div>
-		{% if (user=="admin" or user=="headchef") %}
+		{% if (user=="admin" or user=="headchef" or user=="review") %}
 		<div class="col-xs-12 col-md-6" style="text-align: right;">
 			<select id="storeselect">
 				<option value="All" 

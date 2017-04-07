@@ -863,7 +863,7 @@ class ItemStatsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
 		current_user = self.get_current_user().decode()
-		if current_user not in ["admin", "headchef", "chef", "chef03"]:
+		if current_user not in ["admin", "headchef", "chef", "chef03","review"]:
 			self.redirect('/stats')
 		else:
 			horizon = self.get_argument("horizon", None)
