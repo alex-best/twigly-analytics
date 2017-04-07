@@ -44,7 +44,7 @@ settings = {
     "login_url": "/"
 }
 statsBase = declarative_base()
-statsengine_url = 'mysql+pymysql://twigly:***REMOVED***@***REMOVED***/twigly_prod?charset=utf8'
+statsengine_url = 'mysql+pymysql://twiglydb:***REMOVED***@twigly-prod-db2.csx0bnm7lllz.ap-southeast-1.rds.amazonaws.com/twigly_prod?charset=utf8'
 #statsengine_url = 'mysql+pymysql://root@localhost:3306/twigly_dev?charset=utf8'
 mailchimpkey = "***REMOVED***"
 
