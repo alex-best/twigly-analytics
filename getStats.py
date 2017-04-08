@@ -173,6 +173,36 @@ class user(statsBase):
 	name = Column("name", String)
 	email = Column("email", String)
 
+
+class storemenuitem(statsBase):
+	__tablename__ = "store_menu_items"
+	store_menu_item_id = Column("store_menu_item_id", Integer, primary_key=True)
+	store_id = Column("store_id", String)
+	menu_item_id = Column("menu_item_id", String)
+	avl_quantity = Column("avl_quantity", String)
+	selling_price = Column("selling_price", Integer)
+	cost_price = Column("cost_price", Integer)
+	discount = Column("discount", Integer)
+	discount_type = Column("discount_type", Integer)
+	discount_quantity = Column("discount_quantity", Integer)
+	packaging_cost = Column("packaging_cost", Integer)
+	is_active = Column("is_active", Integer)
+	priority = Column("priority", Integer)
+
+	def getJson(self):
+		return {
+			"store_menu_item_id": self.store_menu_item_id,
+			"store_id": self.store_id,
+			"menu_item_id": self.menu_item_id
+		}
+
+class store(statsBase):
+	__tablename__ = "stores"
+	store_id = Column("store_id", Integer, primary_key=True)
+	name = Column("name", String)
+	is_active = Column("is_active", Boolean)
+	
+
 def getRedirect(username):
 	if (username in ["chef", "chef03", "headchef"]):
 		return "storeitems"
@@ -869,6 +899,15 @@ class ItemStatsHandler(BaseHandler):
 			horizon = self.get_argument("horizon", None)
 			startdate = self.get_argument("startdate", None)
 			enddate = self.get_argument("enddate", None)
+			current_day = self.get_argument("d", "All")
+
+			alldays = [{"id":0,"name":"Mon"},{"id":1,"name":"Tue"},{"id":2,"name":"Wed"},{"id":3,"name":"Thu"},{"id":4,"name":"Fri"},{"id":5,"name":"Sat"},{"id":6,"name":"Sun"}]
+
+			include_days = []
+			if current_day=="All":
+				include_days = [x["id"] for x in alldays]
+			else:
+				include_days = [int(current_day)]
 
 			if startdate is None:
 				if horizon is None:
@@ -879,9 +918,11 @@ class ItemStatsHandler(BaseHandler):
 				parsedenddate = datetime.date.today() +  datetime.timedelta(days=1)
 
 				parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
-				daterange = [parsedstartdate.strftime("%a %b %d, %Y")]
-				for c in range(horizon-1):
-					daterange.append((parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%a %b %d, %Y"))
+				daterange = []#parsedstartdate.strftime("%a %b %d, %Y")]
+				for c in range(horizon):
+					tempdate = parsedstartdate + datetime.timedelta(days=(c))
+					if tempdate.weekday() in include_days:
+						daterange.append((tempdate).strftime("%a %b %d, %Y"))
 			
 			else:
 				parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date()
@@ -889,7 +930,9 @@ class ItemStatsHandler(BaseHandler):
 				parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
 				daterange = []
 				for c in range((parsedenddate - parsedstartdate).days):
-					daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%a %b %d, %Y"))
+					tempdate = parsedstartdate + datetime.timedelta(days=c)
+					if tempdate.weekday() in include_days:
+						daterange.append((tempdate).strftime("%a %b %d, %Y"))
 
 			statsengine = sqlalchemy.create_engine(statsengine_url)
 			statssession = scoped_session(sessionmaker(bind=statsengine))
@@ -910,8 +953,11 @@ class ItemStatsHandler(BaseHandler):
 					current_store_name = thisstore.name
 					break
 
+			# dailyordersquery = statssession.query(order).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), sqlalchemy.func.weekday(order.date_add).in_(include_days), order.store_id.in_(store_list))
 
-			dailyordersquery = statssession.query(order).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.store_id.in_(store_list))
+			dailyordersquery = statssession.query(order).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.store_id.in_(store_list),sqlalchemy.func.weekday(order.date_add).in_(include_days))
+
+			#, sqlalchemy.func.weekday(order.date_add).in_(include_days)
 
 			dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
 			dailyordersdatelookup = {thisorder.order_id: thisorder.date_add.strftime("%a %b %d, %Y") for thisorder in dailyordersquery}
@@ -936,12 +982,27 @@ class ItemStatsHandler(BaseHandler):
 
 			allcsidtoname = {0:'None',1:'Sandwich', 2:'Hot Station',4:'Salad Station',8:'Dessert',16:'Pizza',32:'Grilled',64:'Soup',3:'Combo',5:'Combo',10:'Combo',11:'Combo',12:'Combo',13:'Combo'}
 
-			menuitems = {thismenuitem.menu_item_id: {"name": thismenuitem.name, "cooking_station":allcsidtoname[thismenuitem.cooking_station], "total": 0, "datelookup": {thisdate: 0 for thisdate in daterange}} for thismenuitem in statssession.query(menuitem)}
+			menuitems = {thismenuitem.menu_item_id: {"name": thismenuitem.name, "cooking_station":allcsidtoname[thismenuitem.cooking_station], "total": 0, "soldout": {thisdate: [] for thisdate in daterange}, "datelookup": {thisdate: 0 for thisdate in daterange}} for thismenuitem in statssession.query(menuitem)}
 
 			for suborder in statssession.query(orderdetail).filter(orderdetail.order_id.in_(dailyorderids)):
-				menuitems[suborder.menu_item_id]["datelookup"][dailyordersdatelookup[suborder.order_id]] += suborder.quantity
-				menuitems[suborder.menu_item_id]["total"] += suborder.quantity
+				if (dailyordersdatelookup[suborder.order_id] in daterange):
+					menuitems[suborder.menu_item_id]["datelookup"][dailyordersdatelookup[suborder.order_id]] += suborder.quantity
+					menuitems[suborder.menu_item_id]["total"] += suborder.quantity
 
+
+			smis_all = statssession.query(storemenuitem).filter(storemenuitem.store_id.in_(store_list), storemenuitem.menu_item_id.in_(menuitems.keys())).all()
+
+			smi_lookup = {x.store_menu_item_id:{"menu_item_id":x.menu_item_id, "store_id":x.store_id} for x in smis_all}
+
+			dwactivestates = [1,3,5,7,9]
+			soldout_items = statssession.query(datewise_store_menu_item).filter(datewise_store_menu_item.is_active.in_(dwactivestates),datewise_store_menu_item.eod_quantity==0,datewise_store_menu_item.avl_quantity>0,datewise_store_menu_item.date_effective < parsedenddate, datewise_store_menu_item.date_effective >= parsedstartdate, sqlalchemy.func.weekday(datewise_store_menu_item.date_effective).in_(include_days), datewise_store_menu_item.store_menu_item_id.in_(smi_lookup.keys())).all()
+			
+			for item in soldout_items:
+				menu_item_id = smi_lookup[item.store_menu_item_id]["menu_item_id"]
+				store_id = smi_lookup[item.store_menu_item_id]["store_id"] 
+				date_effective = item.date_effective
+				menuitems[menu_item_id]["soldout"][date_effective.strftime("%a %b %d, %Y")].append(store_id)
+				
 			active_stores = statssession.query(store).filter(store.is_active == True).all()
 
 			current_store_name = "All"
@@ -965,12 +1026,16 @@ class ItemStatsHandler(BaseHandler):
 					if menuitems[thismenuitem]["datelookup"][thisdate] == 0:
 						itemhtml += "<td>-</td>"
 					else:
-						itemhtml += "<td>" + str(menuitems[thismenuitem]["datelookup"][thisdate]) + "</td>"
+						if len(menuitems[thismenuitem]["soldout"][thisdate])>0:
+							itemhtml += "<td style='color:red;' title='"+str(menuitems[thismenuitem]["soldout"][thisdate])+"'>"
+						else:
+							itemhtml += "<td>"
+						itemhtml += str(menuitems[thismenuitem]["datelookup"][thisdate]) + "</td>"
 				itemhtml += "</tr>"
 			itemhtml += "</tbody></table>"
 
 			statssession.remove()
-			self.render("templates/itemstatstemplate.html", daterange=daterange, csmap=csmap, itemhtml=itemhtml, active_stores=active_stores, current_store=current_store, current_store_name=current_store_name, user=current_user)
+			self.render("templates/itemstatstemplate.html", daterange=daterange, csmap=csmap, itemhtml=itemhtml, active_stores=active_stores, current_store=current_store, current_store_name=current_store_name, user=current_user, current_day=current_day, alldays=alldays)
 
 class UserStatsHandler(BaseHandler):
 	@tornado.web.authenticated
@@ -1089,34 +1154,8 @@ class UserStatsHandler(BaseHandler):
 			statssession.remove()
 			self.render("templates/userstemplate.html", daterange=daterange, lossmakers=lossmakers, med1makers=med1makers, med2makers=med2makers, med3makers=med3makers, highmakers=highmakers, counter1=counter1, counter2=counter2, counter3=counter3, counter4=counter4, counter5=counter5, users=users, lossmakerids=lossmakerids, user=current_user)
 
-class storemenuitem(statsBase):
-	__tablename__ = "store_menu_items"
-	store_menu_item_id = Column("store_menu_item_id", Integer, primary_key=True)
-	store_id = Column("store_id", String)
-	menu_item_id = Column("menu_item_id", String)
-	avl_quantity = Column("avl_quantity", String)
-	selling_price = Column("selling_price", Integer)
-	cost_price = Column("cost_price", Integer)
-	discount = Column("discount", Integer)
-	discount_type = Column("discount_type", Integer)
-	discount_quantity = Column("discount_quantity", Integer)
-	packaging_cost = Column("packaging_cost", Integer)
-	is_active = Column("is_active", Integer)
-	priority = Column("priority", Integer)
 
-	def getJson(self):
-		return {
-			"store_menu_item_id": self.store_menu_item_id,
-			"store_id": self.store_id,
-			"menu_item_id": self.menu_item_id
-		}
 
-class store(statsBase):
-	__tablename__ = "stores"
-	store_id = Column("store_id", Integer, primary_key=True)
-	name = Column("name", String)
-	is_active = Column("is_active", Boolean)
-	
 def getDishType():
 	statsengine = sqlalchemy.create_engine(statsengine_url)
 	statssession = scoped_session(sessionmaker(bind=statsengine))
@@ -2024,6 +2063,7 @@ class datewise_store_menu_item(statsBase):
 	priority = Column("priority", Integer)
 	avl_quantity = Column("avl_quantity", Integer)
 	is_active = Column("is_active", Boolean)
+	eod_quantity = Column("eod_quantity", Integer)
 
 
 class store_ingredient_inventory(statsBase):

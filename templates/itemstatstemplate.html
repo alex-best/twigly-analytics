@@ -65,6 +65,23 @@
 		</div>
 		{% if (user=="admin" or user=="headchef" or user=="review") %}
 		<div class="col-xs-12 col-md-6" style="text-align: right;">
+			{% if (user=="admin") %}
+			<select id="dayofweekselect">
+				<option value="All" 
+					{% if current_day == "All" %}
+						selected="selected"
+					{% end %}>
+					All
+				</option>
+				{% for day in alldays %}
+					<option value="{{ day["id"] }}" 
+					{% if str(day["id"]) == current_day %}
+						selected="selected"
+					{% end %}>
+					{{ day["name"] }}</option>
+				{% end %}
+			</select>
+			{% end %}
 			<select id="storeselect">
 				<option value="All" 
 					{% if current_store == "All" %}
@@ -179,13 +196,19 @@
 		});
 	}
 
+
 	$(document).ready(function() {
 		$('#horizonselect').on('change', function() {
 			var storeid = $('#storeselect').val();
 			if (storeid == "") {
 				storeid = "All";
 			}
-			window.location.href = "/itemstats?horizon=" + $(this).val() + "&store=" + storeid;
+
+			var dayofweekid = $('#dayofweekselect').val();
+			if (dayofweekid == "" || dayofweekid === undefined ) {
+				dayofweekid = "All";
+			}
+			window.location.href = "/itemstats?horizon=" + $(this).val() + "&store=" + storeid + "&d="+dayofweekid;
 		});
 		var thishorizon = getUrlParameter("horizon");
 		if (thishorizon) {
@@ -214,17 +237,40 @@
 			if (storeid == "") {
 				storeid = 2;
 			}
-			window.location.href = "/itemstats?startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val() + "&store=" + storeid;
+
+			var dayofweekid = $('#dayofweekselect').val();
+			if (dayofweekid == "" || dayofweekid === undefined) {
+				dayofweekid = "All";
+			}
+
+			window.location.href = "/itemstats?startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val() + "&store=" + storeid+ "&d="+dayofweekid;
 		});
 		$('.showFilters').on('click', function() {
 			$('#horizon').fadeToggle();
 		});
         $('.tablesorter').tablesorter({sortList: [[1,1], [0,0]]});
         $(document).on('change', '#storeselect', function() {
+
+			var dayofweekid = $('#dayofweekselect').val();
+			if (dayofweekid == "" || dayofweekid === undefined) {
+				dayofweekid = "All";
+			}
+
 			if ($("#startdate").val() == "" || $("#enddate").val() == "") {
-				window.location = "/itemstats?store=" + $(this).val();
+				window.location = "/itemstats?store=" + $(this).val() + "&d="+dayofweekid;
 			} else {
-				window.location = "/itemstats?store=" + $(this).val() + "&startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val();
+				window.location = "/itemstats?store=" + $(this).val() + "&startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val() + "&d="+dayofweekid;
+			}
+		});
+		$(document).on('change', '#dayofweekselect', function() {
+			var storeid = $('#storeselect').val();
+			if (storeid == "") {
+				storeid = "All";
+			}
+			if ($("#startdate").val() == "" || $("#enddate").val() == "") {
+				window.location = "/itemstats?d=" + $(this).val() +"&store="+storeid ;
+			} else {
+				window.location = "/itemstats?d=" + $(this).val() + "&startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val()+"&store="+storeid ;
 			}
 		});
 	});
