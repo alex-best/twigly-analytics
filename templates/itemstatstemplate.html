@@ -259,8 +259,9 @@
 			if ($("#startdate").val() == "" || $("#enddate").val() == "") {
 				if (thishorizon) {
 					window.location = "/itemstats?store=" + $(this).val() + "&d="+dayofweekid + "&horizon="+thishorizon;	
+				} else {
+					window.location = "/itemstats?store=" + $(this).val() + "&d="+dayofweekid;
 				}
-				window.location = "/itemstats?store=" + $(this).val() + "&d="+dayofweekid;
 			} else {
 				window.location = "/itemstats?store=" + $(this).val() + "&startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val() + "&d="+dayofweekid;
 			}
@@ -273,8 +274,9 @@
 			if ($("#startdate").val() == "" || $("#enddate").val() == "") {
 				if (thishorizon) {
 					window.location = "/itemstats?d=" + $(this).val() +"&store="+storeid + "&horizon="+thishorizon;	
+				} else {
+					window.location = "/itemstats?d=" + $(this).val() +"&store="+storeid ;
 				}
-				window.location = "/itemstats?d=" + $(this).val() +"&store="+storeid ;
 			} else {
 				window.location = "/itemstats?d=" + $(this).val() + "&startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val()+"&store="+storeid ;
 			}
