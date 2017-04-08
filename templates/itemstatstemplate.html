@@ -257,6 +257,9 @@
 			}
 
 			if ($("#startdate").val() == "" || $("#enddate").val() == "") {
+				if (thishorizon) {
+					window.location = "/itemstats?store=" + $(this).val() + "&d="+dayofweekid + "&horizon="+thishorizon;	
+				}
 				window.location = "/itemstats?store=" + $(this).val() + "&d="+dayofweekid;
 			} else {
 				window.location = "/itemstats?store=" + $(this).val() + "&startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val() + "&d="+dayofweekid;
@@ -268,6 +271,9 @@
 				storeid = "All";
 			}
 			if ($("#startdate").val() == "" || $("#enddate").val() == "") {
+				if (thishorizon) {
+					window.location = "/itemstats?d=" + $(this).val() +"&store="+storeid + "&horizon="+thishorizon;	
+				}
 				window.location = "/itemstats?d=" + $(this).val() +"&store="+storeid ;
 			} else {
 				window.location = "/itemstats?d=" + $(this).val() + "&startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val()+"&store="+storeid ;
