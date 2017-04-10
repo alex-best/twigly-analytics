@@ -83,8 +83,8 @@ class order(statsBase):
 	__tablename__ = "orders"
 	order_id = Column('order_id', Integer, primary_key=True)
 	user_id = Column("user_id", Integer)
-	delivery_zone_id = Column("delivery_zone_id", Integer)
-	delivery_address = Column("delivery_address", String)
+	# delivery_zone_id = Column("delivery_zone_id", Integer)
+	#delivery_address = Column("delivery_address", String)
 	coupon_id = Column("coupon_id", Integer)
 	mobile_number = Column("mobile_number", String)
 	cost = Column("cost", Float)
@@ -2048,8 +2048,17 @@ class FeedbackHandler(BaseHandler):
 		relevantusers = [thisorder.user_id for thisorder in thisorders]
 		users = statssession.query(user).filter(user.user_id.in_(relevantusers))
 		userlookup = {thisuser.user_id: thisuser for thisuser in users}
+		
+		from sqlalchemy import text
+		relevantordersstr = [str(x) for x in relevantorders]
+		thissql1 = text("select a.order_id,a.delivery_address from orders a where a.order_id in ("+",".join(relevantordersstr)+");")
+		result1 = statsengine.execute(thissql1)
+		delivery_address = {x[0]: x[1] for x in result1}
+		# deliver_address =
 
-		results = [{"feedback": thisfeedback, "order": orderslookup[thisfeedback.order_id], "orderdetails": orderdetailslookup[thisfeedback.order_id]} for thisfeedback in feedbacks]
+
+
+		results = [{"feedback": thisfeedback, "order": orderslookup[thisfeedback.order_id], "orderdetails": orderdetailslookup[thisfeedback.order_id],"address":delivery_address[thisfeedback.order_id]} for thisfeedback in feedbacks]
 
 		statssession.remove()
 
