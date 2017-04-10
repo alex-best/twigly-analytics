@@ -90,7 +90,7 @@
                             {{orderdetail.quantity}} x {{menuitems[orderdetail.menu_item_id]}}<br>
                         {% end %}
                     </td>
-                    <td style="width: 25%;">{{result["order"].delivery_address}}</td>
+                    <td style="width: 25%;">{{result["address"]}}</td>
                     <td style="width: 26%;">{{result["feedback"].comment}}</td>
                 </tr>
             {% end %}
