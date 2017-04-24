@@ -48,7 +48,7 @@ statsengine_url = 'mysql+pymysql://twigly:***REMOVED***@***REMOVED***/twigly_pro
 #statsengine_url = 'mysql+pymysql://root@localhost:3306/twigly_dev?charset=utf8'
 mailchimpkey = "***REMOVED***"
 
-environment_production=True #True for prod, False for dev
+environment_production=False #True for prod, False for dev
 
 #relevantStates = [3,10,11,12,16]
 deliveredStates = [3]
@@ -1941,7 +1941,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 				# print(mcresponse)
 				mcresponse = m.lists.static_segment_reset(list_id,dormant_static_segment_id)
 				mcresponse = m.lists.static_segment_members_add(list_id,dormant_static_segment_id,batch_list)
-				subject = "We miss you - Get 10% off on your next order"
+				subject = "We wanted to share what we have been upto" #"We miss you - Get 10% off on your next order"
 				mcresponse = m.campaigns.create(type="regular", options={"list_id": list_id, "subject": subject, "from_email": "@testmail.com", "from_name": "Twigly", "to_name": "*|FNAME|*", "title": subject, "authenticate": True, "generate_text": True, "template_id":dormant_template_id}, content={"sections": {}}, segment_opts={"saved_segment_id":dormant_static_segment_id})
 				mre2 = m.campaigns.send(mcresponse["id"])
 			except Exception as e:
