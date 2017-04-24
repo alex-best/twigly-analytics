@@ -1912,7 +1912,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 
 
 	def getDormantTemplateId(self):
-		dormant_template_id = 139749 # int
+		dormant_template_id = 139773 #139749 for missyou10 # int #139773 for summer10
 		return dormant_template_id
 
 	def getDormantSegmentId(self):
