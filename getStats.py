@@ -48,7 +48,7 @@ statsengine_url = 'mysql+pymysql://twigly:***REMOVED***@***REMOVED***/twigly_pro
 #statsengine_url = 'mysql+pymysql://root@localhost:3306/twigly_dev?charset=utf8'
 mailchimpkey = "***REMOVED***"
 
-environment_production=False #True for prod, False for dev
+environment_production=True #True for prod, False for dev
 
 #relevantStates = [3,10,11,12,16]
 deliveredStates = [3]
