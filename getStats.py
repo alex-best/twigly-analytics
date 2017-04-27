@@ -1749,12 +1749,13 @@ class MailchimpHandler(BaseHandler):
 			else:
 				self.write({"result": True})
 
-def sendTwiglyMail(fromaddr, toaddr, subject, body):
+
+def sendTwiglyMail(fromaddr, toaddr, subject, body, mailtype):
 	msg = MIMEMultipart()
 	msg['From'] = fromaddr
 	msg['To'] = toaddr
 	msg['Subject'] = subject
-	msg.attach(MIMEText(body, 'plain'))
+	msg.attach(MIMEText(body, mailtype))
 	host = 'email-smtp.us-east-1.amazonaws.com'
 	port = 587
 	user = "***REMOVED***"
@@ -1798,7 +1799,7 @@ class MailchimpUpdateHandler(BaseHandler):
 				print ("Unexpected error:",e)
 			if (mailchimpresponse['error_count']>0):
 				self.write({"result": False})
-				sendTwiglyMail('@testmail.com','***REMOVED***',str(mailchimpresponse['error_count'])+" error(s) in mailchimp List for "+parsedstartdate.strftime("%Y-%m-%d"), str(mailchimpresponse))
+				sendTwiglyMail('@testmail.com','***REMOVED***',str(mailchimpresponse['error_count'])+" error(s) in mailchimp List for "+parsedstartdate.strftime("%Y-%m-%d"), str(mailchimpresponse),'plain')
 			else:
 				self.write({"result": True})
 
@@ -1884,10 +1885,10 @@ class MailchimpLazySignupHandler(BaseHandler):
 
 			if ('complete' in mre2 and mre2['complete']==True):
 				self.write({"result": True})
-				sendTwiglyMail('@testmail.com','***REMOVED***',str(len(batch_list))+" recepients of Lazy campaign for "+parsedstartdate.strftime("%Y-%m-%d"), "Email sent successfully to " + str(batch_list))
+				sendTwiglyMail('@testmail.com','***REMOVED***',str(len(batch_list))+" recepients of Lazy campaign for "+parsedstartdate.strftime("%Y-%m-%d"), "Email sent successfully to " + str(batch_list),'plain')
 			else:
 				self.write({"result": False})
-				sendTwiglyMail('@testmail.com','***REMOVED***',"Some error in the Lazy campaign for "+parsedstartdate.strftime("%Y-%m-%d"), str(mre2))
+				sendTwiglyMail('@testmail.com','***REMOVED***',"Some error in the Lazy campaign for "+parsedstartdate.strftime("%Y-%m-%d"), str(mre2),'plain')
 
 
 class MailchimpDormantUserHandler(BaseHandler):
@@ -1901,6 +1902,112 @@ class MailchimpDormantUserHandler(BaseHandler):
 			for item in result1:
 				userids.append({"email":str(item[0]).lower()})
 			statssession.remove()
+			batch_list = []
+			for item in userids:
+				batch_list.append({'email':item['email']})
+			return batch_list
+		else:
+			batch_list = []
+			batch_list.append({'email':'***REMOVED***'})
+			return batch_list
+
+	def sendBadDeliveryFeedbackMail(self,parsedstartdate):
+		if environment_production:
+			statsengine = sqlalchemy.create_engine(statsengine_url)
+			statssession = scoped_session(sessionmaker(bind=statsengine))
+			thissql1 = "select u.email, u.name, o.order_id from users u left join orders o on o.user_id=u.user_id left join feedbacks f on o.order_id = f.order_id where u.email is not null and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59') and (f.delivery_rating<4 and f.delivery_rating<f.food_rating);"
+
+			result1 = statsengine.execute(thissql1)
+			userids = []
+			orderids = []
+			emailids = []
+			for item in result1:
+				userids.append({"email":str(item[0]).lower(), "name":str(item[1]).title(), "orderid":str(item[2])})
+				orderids.append(str(item[2]))
+				if len(item[0])>0:
+					emailids.append(str(item[0]))
+
+			if len(orderids) > 0:
+				thissql2 = "select distinct o.order_id, mi.name from orders o left join order_details od on o.order_id = od.order_id left join menu_items mi on od.menu_item_id = mi.menu_item_id where o.order_id in  ("+",".join(orderids)+");"
+				result2 = statsengine.execute(thissql2)
+
+				order_details = {}
+				for item in result2:
+					thisorderid = str(item[0])
+					if (thisorderid in order_details):
+						order_details[thisorderid] = order_details[thisorderid] + ", " + str(item[1]).strip() 
+					else:
+						order_details[thisorderid] = str(item[1]).strip()
+
+				thissql3 = "select o.order_id, time_to_sec(timediff(b.time_add,a.time_add)) from orders o left join order_status_times as a on o.order_id = a.order_id left join order_status_times as b on o.order_id=b.order_id where a.order_status=1 and b.order_status=3 and o.order_id in ("+",".join(orderids)+");"
+				result3 = statsengine.execute(thissql3)
+
+				order_time = {}
+				for item in result3:
+					order_time[str(item[0])] = int(int(item[1]/60/5)*5)
+
+				thissql4 = "update users set free_dessert_counter=1 where email in ('"+"','".join(emailids)+"');"
+				result4 = statsengine.execute(thissql4)
+
+				statssession.remove()
+				for item in userids:
+					thisorder = item['orderid']
+					content = self.render_string(template_name = "templates/baddeliverytemplate.html", username=item['name'], order_items=order_details[thisorder], order_time=order_time[thisorder])
+					content = content.decode("utf-8").strip('\n')
+
+					sendTwiglyMail('Twigly <@testmail.com>',item['name']+' <'+item['email']+'>',"Free dessert on your next order with Twigly!", str(content), 'html')
+
+			sendTwiglyMail('Bad Delivery <@testmail.com>','Raghav <***REMOVED***>',str(len(emailids))+" emails sent for Bad Delivery on "+parsedstartdate.strftime("%Y-%m-%d"), "Emails sent to '"+"','".join(emailids)+"'", 'plain')
+
+			batch_list = []
+			for item in userids:
+				batch_list.append({'email':item['email']})
+			return batch_list
+		else:
+			batch_list = []
+			batch_list.append({'email':'***REMOVED***'})
+			return batch_list
+
+	def sendBadFoodFeedbackMail(self,parsedstartdate):
+		if environment_production:
+			statsengine = sqlalchemy.create_engine(statsengine_url)
+			statssession = scoped_session(sessionmaker(bind=statsengine))
+			thissql1 = "select u.email, u.name, o.order_id from users u left join orders o on o.user_id=u.user_id left join feedbacks f on o.order_id = f.order_id where u.email is not null and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59') and (f.food_rating<4 and f.delivery_rating>=f.food_rating and char_length(f.comment)=0);"
+			result1 = statsengine.execute(thissql1)
+			userids = []
+			orderids = []
+			emailids = []
+			for item in result1:
+				userids.append({"email":str(item[0]).lower(), "name":str(item[1]).title(), "orderid":str(item[2])})
+				orderids.append(str(item[2]))
+				if len(item[0])>0:
+					emailids.append(str(item[0]))
+
+			if len(orderids) > 0:
+				thissql2 = "select distinct o.order_id, mi.name from orders o left join order_details od on o.order_id = od.order_id left join menu_items mi on od.menu_item_id = mi.menu_item_id where o.order_id in  ("+",".join(orderids)+");"
+				result2 = statsengine.execute(thissql2)
+
+				order_details = {}
+				for item in result2:
+					thisorderid = str(item[0])
+					if (thisorderid in order_details):
+						order_details[thisorderid] = order_details[thisorderid] + ", " + str(item[1]).strip() 
+					else:
+						order_details[thisorderid] = str(item[1]).strip()
+
+				thissql4 = "update users set free_dessert_counter=1 where email in ('"+"','".join(emailids)+"');"
+				result4 = statsengine.execute(thissql4)
+
+				statssession.remove()
+				for item in userids:
+					thisorder = item['orderid']
+					content = self.render_string(template_name = "templates/badfoodtemplate.html", username=item['name'], order_items=order_details[thisorder])
+					content = content.decode("utf-8").strip('\n')
+
+					sendTwiglyMail('Twigly <@testmail.com>',item['name']+' <'+item['email']+'>',"Free dessert on your next order with Twigly!", str(content), 'html')
+
+			sendTwiglyMail('Bad Food <@testmail.com>','Raghav <***REMOVED***>',str(len(emailids))+" emails sent for Bad Food on "+parsedstartdate.strftime("%Y-%m-%d"), "Emails sent to '"+"','".join(emailids)+"'", 'plain')
+
 			batch_list = []
 			for item in userids:
 				batch_list.append({'email':item['email']})
@@ -1929,19 +2036,27 @@ class MailchimpDormantUserHandler(BaseHandler):
 			self.redirect('/stats')
 		else:
 			parsedstartdate = datetime.date.today() - datetime.timedelta(days=30)
-			batch_list = self.getDormantUsersBatch(parsedstartdate)
+
+			bad_delivery_feedback_list = self.sendBadDeliveryFeedbackMail(parsedstartdate)
+			bad_food_feedback_list = self.sendBadFoodFeedbackMail(parsedstartdate)
+			batch_list_old = self.getDormantUsersBatch(parsedstartdate)
+			batch_list = []
+			for item in batch_list_old:
+				if item in bad_delivery_feedback_list:
+					continue
+				if item in bad_food_feedback_list:
+					continue
+				batch_list.append(item)
+
 			list_id = getMailChimpListId()
 			dormant_template_id = self.getDormantTemplateId()
 			dormant_static_segment_id = self.getDormantSegmentId()		
 			mre2 = {}
 			try:
 				m = Mailchimp(mailchimpkey)
-				# Create a segment for ...
-				# mcresponse = m.lists.static_segment_add(list_id,"Dormant Users")
-				# print(mcresponse)
 				mcresponse = m.lists.static_segment_reset(list_id,dormant_static_segment_id)
 				mcresponse = m.lists.static_segment_members_add(list_id,dormant_static_segment_id,batch_list)
-				subject = "We wanted to share what we have been upto" #"We miss you - Get 10% off on your next order"
+				subject = "Summer update! Get 10% off on your next order" #"We miss you - Get 10% off on your next order"
 				mcresponse = m.campaigns.create(type="regular", options={"list_id": list_id, "subject": subject, "from_email": "@testmail.com", "from_name": "Twigly", "to_name": "*|FNAME|*", "title": subject, "authenticate": True, "generate_text": True, "template_id":dormant_template_id}, content={"sections": {}}, segment_opts={"saved_segment_id":dormant_static_segment_id})
 				mre2 = m.campaigns.send(mcresponse["id"])
 			except Exception as e:
@@ -2016,10 +2131,10 @@ class MailchimpAdhocMailHandler(BaseHandler):
 				print ("Unexpected error:",e)
 			if ('complete' in mre2 and mre2['complete']==True):
 				self.write({"result": True})
-				sendTwiglyMail('@testmail.com','***REMOVED***',str(len(batch_list))+" recepients of Adhoc campaign for "+parsedstartdate.strftime("%Y-%m-%d"), "Email sent successfully to " + str(batch_list))
+				sendTwiglyMail('@testmail.com','***REMOVED***',str(len(batch_list))+" recepients of Adhoc campaign for "+parsedstartdate.strftime("%Y-%m-%d"), "Email sent successfully to " + str(batch_list),'plain')
 			else:
 				self.write({"result": False})
-				sendTwiglyMail('@testmail.com','***REMOVED***',"Some error in the Adhoc campaign for "+parsedstartdate.strftime("%Y-%m-%d"), str(mre2))
+				sendTwiglyMail('@testmail.com','***REMOVED***',"Some error in the Adhoc campaign for "+parsedstartdate.strftime("%Y-%m-%d"), str(mre2),'plain')
 
 
 class FeedbackHandler(BaseHandler):
