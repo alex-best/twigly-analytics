@@ -1786,6 +1786,15 @@ def sendTwiglyMailwBCC(fromaddr, toaddr, subject, body, mailtype):
 	server.sendmail(fromaddr, toaddrs, msg.as_string())
 	server.quit()
 
+import urllib.request
+
+def sendTwiglySMS(number, message):
+	url="http://enterprise.smsgupshup.com/GatewayAPI/rest?msg="+message+"&send_to="+number+"&password=***REMOVED***&method=SendMessage&v1.1&format=TEXT&msg_type=TEXT&auth_scheme=plain&userid=***REMOVED***&mask=TWIGLY"
+	response = urllib.request.urlopen(url).read()
+	print(response)
+
+
+
 def getMailChimpListId():
 	if environment_production:#Change this variable to change the list
 		# ea0d1e3356 is the main Twigly list
@@ -2037,6 +2046,27 @@ class MailchimpDormantUserHandler(BaseHandler):
 			batch_list.append({'email':'***REMOVED***'})
 			return batch_list
 
+	def sendZomatoDormantUserSMS(self,parsedstartdate):
+		if environment_production:
+			statsengine = sqlalchemy.create_engine(statsengine_url)
+			statssession = scoped_session(sessionmaker(bind=statsengine))
+			thissql1 = "select u.mobile_number, u.name from users u left join orders o on o.user_id=u.user_id where (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.source=6 and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59');"
+			result1 = statsengine.execute(thissql1)
+			userids = []
+			mobiles = []
+			for item in result1:
+				userids.append({"mobile":str(item[0]).lower(), "name":str(item[1]).title()})
+				mobiles.append(str(item[0]).lower())
+
+			statssession.remove()
+			if len(userids) > 0:
+				for item in userids:
+					msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20hope%20you%20liked%20your%20last%20order%20with%20Twigly.%20For%20better%20experience%2C%20recently%20launched%20dishes%20and%20Rs%2050%20off%20on%20your%20first%20order%20try%20our%20Twigly%20app%20%28https%3A%2F%2Fgoo.gl%2FY4jnAt%29."
+					number = item['mobile']
+					sendTwiglySMS(number,msg)
+
+			sendTwiglyMail('Dormant Zomato Only <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for Dormant Zomato on "+parsedstartdate.strftime("%Y-%m-%d"), "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
+
 
 	def getDormantTemplateId(self):
 		dormant_template_id = 139773 #139749 for missyou10 # int #139773 for summer10
@@ -2056,6 +2086,8 @@ class MailchimpDormantUserHandler(BaseHandler):
 			self.redirect('/stats')
 		else:
 			parsedstartdate = datetime.date.today() - datetime.timedelta(days=30)
+
+			self.sendZomatoDormantUserSMS(parsedstartdate)
 
 			bad_delivery_feedback_list = self.sendBadDeliveryFeedbackMail(parsedstartdate)
 			bad_food_feedback_list = self.sendBadFoodFeedbackMail(parsedstartdate)
