@@ -330,7 +330,13 @@
 																		<td class="mcnTextContent" style="padding-top:0; padding-right:18px; padding-bottom:9px; padding-left:18px;" valign="top">
 																			We apologize for the bad experience you had with us. <br><br>
 																			We understand that due to this you are not keen to try us again.<br><br>
-																			Your order - {{ order_items }} - was delivered in {{ order_time }} mins which is not usual.<br><br>
+																			Your order - {{ order_items }} - 
+																			{% if order_time>45 %}
+																			was delivered in {{ order_time }} mins which is not usual.
+																			{% else %}
+																			wasn't delivered to your satisfaction.
+																			{% end %}
+																			<br><br>
 																			Since your last order we have added 4-5 delivery boys and are far better equipped to handle peak load. We have activated location detection feature so that the delivery boys reach your exact location and save that extra 10 mins.<br><br>
 																			We can assure you that typically we deliver food within 45 mins for our service guarantee orders and with 60-75 mins for non-service guarantee orders.<br><br>
 																			We would love to do our bit to have you back. We would love to offer you a complimentary dessert with your next order. <br>

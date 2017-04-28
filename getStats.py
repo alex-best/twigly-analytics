@@ -1766,6 +1766,26 @@ def sendTwiglyMail(fromaddr, toaddr, subject, body, mailtype):
 	server.sendmail(fromaddr, toaddr, msg.as_string())
 	server.quit()
 
+
+def sendTwiglyMailwBCC(fromaddr, toaddr, subject, body, mailtype):
+	# bcc=['***REMOVED***']
+	bcc=['***REMOVED***','***REMOVED***','***REMOVED***']
+	toaddrs = [toaddr]+bcc
+	msg = MIMEMultipart()
+	msg['From'] = fromaddr
+	msg['To'] = toaddr
+	msg['Subject'] = subject
+	msg.attach(MIMEText(body, mailtype))
+	host = 'email-smtp.us-east-1.amazonaws.com'
+	port = 587
+	user = "***REMOVED***"
+	password = "***REMOVED***"
+	server = smtplib.SMTP(host, port)
+	server.starttls()
+	server.login(user, password)
+	server.sendmail(fromaddr, toaddrs, msg.as_string())
+	server.quit()
+
 def getMailChimpListId():
 	if environment_production:#Change this variable to change the list
 		# ea0d1e3356 is the main Twigly list
@@ -1915,7 +1935,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 		if environment_production:
 			statsengine = sqlalchemy.create_engine(statsengine_url)
 			statssession = scoped_session(sessionmaker(bind=statsengine))
-			thissql1 = "select u.email, u.name, o.order_id from users u left join orders o on o.user_id=u.user_id left join feedbacks f on o.order_id = f.order_id where u.email is not null and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59') and (f.delivery_rating<4 and f.delivery_rating<f.food_rating);"
+			thissql1 = "select u.email, u.name, o.order_id from users u left join orders o on o.user_id=u.user_id left join feedbacks f on o.order_id = f.order_id left join delivery_zones dz on dz.delivery_zone_id=o.delivery_zone_id  where u.email is not null and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59') and (f.delivery_rating<4 and f.delivery_rating<f.food_rating) and dz.falls_under_gurantee=0;"
 
 			result1 = statsengine.execute(thissql1)
 			userids = []
@@ -1955,7 +1975,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 					content = self.render_string(template_name = "templates/baddeliverytemplate.html", username=item['name'], order_items=order_details[thisorder], order_time=order_time[thisorder])
 					content = content.decode("utf-8").strip('\n')
 
-					sendTwiglyMail('Twigly <@testmail.com>',item['name']+' <'+item['email']+'>',"Free dessert on your next order with Twigly!", str(content), 'html')
+					sendTwiglyMailwBCC('Twigly <@testmail.com>',item['name']+' <'+item['email']+'>',"Free dessert on your next order with Twigly!", str(content), 'html')
 
 			sendTwiglyMail('Bad Delivery <@testmail.com>','Raghav <***REMOVED***>',str(len(emailids))+" emails sent for Bad Delivery on "+parsedstartdate.strftime("%Y-%m-%d"), "Emails sent to '"+"','".join(emailids)+"'", 'plain')
 
@@ -2004,7 +2024,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 					content = self.render_string(template_name = "templates/badfoodtemplate.html", username=item['name'], order_items=order_details[thisorder])
 					content = content.decode("utf-8").strip('\n')
 
-					sendTwiglyMail('Twigly <@testmail.com>',item['name']+' <'+item['email']+'>',"Free dessert on your next order with Twigly!", str(content), 'html')
+					sendTwiglyMailwBCC('Twigly <@testmail.com>',item['name']+' <'+item['email']+'>',"Free dessert on your next order with Twigly!", str(content), 'html')
 
 			sendTwiglyMail('Bad Food <@testmail.com>','Raghav <***REMOVED***>',str(len(emailids))+" emails sent for Bad Food on "+parsedstartdate.strftime("%Y-%m-%d"), "Emails sent to '"+"','".join(emailids)+"'", 'plain')
 
@@ -2067,7 +2087,6 @@ class MailchimpDormantUserHandler(BaseHandler):
 			else:
 				self.write({"result": False})
 				sendTwiglyMail('@testmail.com','***REMOVED***',"Some error in the Dormant campaign for "+parsedstartdate.strftime("%Y-%m-%d"), str(mre2))
-
 
 class MailchimpAdhocMailHandler(BaseHandler):
 	def getAdhocBatch(self):#,parsedstartdate):
