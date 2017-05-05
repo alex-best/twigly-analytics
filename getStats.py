@@ -1984,7 +1984,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 					content = self.render_string(template_name = "templates/baddeliverytemplate.html", username=item['name'], order_items=order_details[thisorder], order_time=order_time[thisorder])
 					content = content.decode("utf-8").strip('\n')
 
-					sendTwiglyMailwBCC('Twigly <@testmail.com>',item['name']+' <'+item['email']+'>',"Free dessert on your next order with Twigly!", str(content), 'html')
+					sendTwiglyMailwBCC('Twigly <@testmail.com>',item['name']+' <'+item['email']+'>',"We apologize if something wasn't right with your last order", str(content), 'html')
 
 			sendTwiglyMail('Bad Delivery <@testmail.com>','Raghav <***REMOVED***>',str(len(emailids))+" emails sent for Bad Delivery on "+parsedstartdate.strftime("%Y-%m-%d"), "Emails sent to '"+"','".join(emailids)+"'", 'plain')
 
@@ -2033,7 +2033,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 					content = self.render_string(template_name = "templates/badfoodtemplate.html", username=item['name'], order_items=order_details[thisorder])
 					content = content.decode("utf-8").strip('\n')
 
-					sendTwiglyMailwBCC('Twigly <@testmail.com>',item['name']+' <'+item['email']+'>',"Free dessert on your next order with Twigly!", str(content), 'html')
+					sendTwiglyMailwBCC('Twigly <@testmail.com>',item['name']+' <'+item['email']+'>',"We apologize if something wasn't right with your last order", str(content), 'html')
 
 			sendTwiglyMail('Bad Food <@testmail.com>','Raghav <***REMOVED***>',str(len(emailids))+" emails sent for Bad Food on "+parsedstartdate.strftime("%Y-%m-%d"), "Emails sent to '"+"','".join(emailids)+"'", 'plain')
 
