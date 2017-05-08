@@ -22,6 +22,7 @@ from fb import *
 
 import tornado.ioloop
 import tornado.web
+import urllib.request
 
 import argparse
 
@@ -1786,12 +1787,15 @@ def sendTwiglyMailwBCC(fromaddr, toaddr, subject, body, mailtype):
 	server.sendmail(fromaddr, toaddrs, msg.as_string())
 	server.quit()
 
-import urllib.request
 
 def sendTwiglySMS(number, message):
 	url="http://enterprise.smsgupshup.com/GatewayAPI/rest?msg="+message+"&send_to="+number+"&password=***REMOVED***&method=SendMessage&v1.1&format=TEXT&msg_type=TEXT&auth_scheme=plain&userid=***REMOVED***&mask=TWIGLY"
-	response = urllib.request.urlopen(url).read()
-	print(response)
+	print(url)
+	try:
+		response = urllib.request.urlopen(url).read()
+		print(response)
+	except Exception as e:	
+		print ("Unexpected error:",e)
 
 
 
@@ -2065,6 +2069,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 					number = item['mobile']
 					sendTwiglySMS(number,msg)
 
+
 			sendTwiglyMail('Dormant Zomato Only <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for Dormant Zomato on "+parsedstartdate.strftime("%Y-%m-%d"), "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
 
 
@@ -2086,9 +2091,6 @@ class MailchimpDormantUserHandler(BaseHandler):
 			self.redirect('/stats')
 		else:
 			parsedstartdate = datetime.date.today() - datetime.timedelta(days=30)
-
-			self.sendZomatoDormantUserSMS(parsedstartdate)
-
 			bad_delivery_feedback_list = self.sendBadDeliveryFeedbackMail(parsedstartdate)
 			bad_food_feedback_list = self.sendBadFoodFeedbackMail(parsedstartdate)
 			batch_list_old = self.getDormantUsersBatch(parsedstartdate)
@@ -2119,6 +2121,9 @@ class MailchimpDormantUserHandler(BaseHandler):
 			else:
 				self.write({"result": False})
 				sendTwiglyMail('@testmail.com','***REMOVED***',"Some error in the Dormant campaign for "+parsedstartdate.strftime("%Y-%m-%d"), str(mre2))
+
+			self.sendZomatoDormantUserSMS(parsedstartdate)
+
 
 class MailchimpAdhocMailHandler(BaseHandler):
 	def getAdhocBatch(self):#,parsedstartdate):
