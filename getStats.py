@@ -2115,6 +2115,9 @@ class MailchimpDormantUserHandler(BaseHandler):
 				mre2 = m.campaigns.send(mcresponse["id"])
 			except Exception as e:
 				print ("Unexpected error:",e)
+
+			self.sendZomatoDormantUserSMS(parsedstartdate)
+
 			if ('complete' in mre2 and mre2['complete']==True):
 				self.write({"result": True})
 				sendTwiglyMail('@testmail.com','***REMOVED***',str(len(batch_list))+" recepients of Dormant campaign for "+parsedstartdate.strftime("%Y-%m-%d"), "Email sent successfully to " + str(batch_list))
@@ -2122,7 +2125,6 @@ class MailchimpDormantUserHandler(BaseHandler):
 				self.write({"result": False})
 				sendTwiglyMail('@testmail.com','***REMOVED***',"Some error in the Dormant campaign for "+parsedstartdate.strftime("%Y-%m-%d"), str(mre2))
 
-			self.sendZomatoDormantUserSMS(parsedstartdate)
 
 
 class MailchimpAdhocMailHandler(BaseHandler):
