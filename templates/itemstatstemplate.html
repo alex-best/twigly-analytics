@@ -81,6 +81,21 @@
 					{{ day["name"] }}</option>
 				{% end %}
 			</select>
+			<select id="timeofdayselect">
+				<option value="All" 
+					{% if time_of_day == "All" %}
+						selected="selected"
+					{% end %}>
+					All
+				</option>
+				{% for thistime in alltime %}
+					<option value="{{ thistime["id"] }}" 
+					{% if str(thistime["id"]) == time_of_day %}
+						selected="selected"
+					{% end %}>
+					{{ thistime["name"] }}</option>
+				{% end %}
+			</select>
 			{% end %}
 			<select id="storeselect">
 				<option value="All" 
@@ -196,19 +211,37 @@
 		});
 	}
 
+	function getUrl (addDaterange) {
+		var storeid = $('#storeselect').val();
+		if (storeid == "") {
+			storeid = "All";
+		}
+		var dayofweekid = $('#dayofweekselect').val();
+		if (dayofweekid == "" || dayofweekid === undefined ) {
+			dayofweekid = "All";
+		}
+		var timeofdayid = $('#timeofdayselect').val();
+		if (timeofdayid == "" || timeofdayid === undefined ) {
+			timeofdayid = "All";
+		}
+
+		if (addDaterange == true) {
+			if ($("#startdate").val() == "" || $("#enddate").val() == "") {
+				if (thishorizon) {
+					return "/itemstats?store=" + storeid + "&d="+dayofweekid + "&horizon="+thishorizon;	
+				} else {
+					return "/itemstats?store=" + storeid + "&d="+dayofweekid+ "&t="+timeofdayid ;
+				}
+			} else {
+				return "/itemstats?store=" + storeid + "&startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val() + "&d="+dayofweekid+ "&t="+timeofdayid ;
+			}
+		}
+		return "/itemstats?store=" + storeid + "&d="+dayofweekid+ "&t="+timeofdayid;
+	}
 
 	$(document).ready(function() {
 		$('#horizonselect').on('change', function() {
-			var storeid = $('#storeselect').val();
-			if (storeid == "") {
-				storeid = "All";
-			}
-
-			var dayofweekid = $('#dayofweekselect').val();
-			if (dayofweekid == "" || dayofweekid === undefined ) {
-				dayofweekid = "All";
-			}
-			window.location.href = "/itemstats?horizon=" + $(this).val() + "&store=" + storeid + "&d="+dayofweekid;
+			window.location.href = getUrl(false) + "&horizon=" + $(this).val();
 		});
 		var thishorizon = getUrlParameter("horizon");
 		if (thishorizon) {
@@ -233,54 +266,24 @@
 		    format: "dd/mm/yy",
 		});
 		$('#setDates').on('click', function() {
-			var storeid = $('#storeselect').val();
-			if (storeid == "") {
-				storeid = 2;
-			}
-
-			var dayofweekid = $('#dayofweekselect').val();
-			if (dayofweekid == "" || dayofweekid === undefined) {
-				dayofweekid = "All";
-			}
-
-			window.location.href = "/itemstats?startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val() + "&store=" + storeid+ "&d="+dayofweekid;
+			window.location.href = getUrl(false) + "&startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val() ;
 		});
+
 		$('.showFilters').on('click', function() {
 			$('#horizon').fadeToggle();
 		});
         $('.tablesorter').tablesorter({sortList: [[1,1], [0,0]]});
+
         $(document).on('change', '#storeselect', function() {
-
-			var dayofweekid = $('#dayofweekselect').val();
-			if (dayofweekid == "" || dayofweekid === undefined) {
-				dayofweekid = "All";
-			}
-
-			if ($("#startdate").val() == "" || $("#enddate").val() == "") {
-				if (thishorizon) {
-					window.location = "/itemstats?store=" + $(this).val() + "&d="+dayofweekid + "&horizon="+thishorizon;	
-				} else {
-					window.location = "/itemstats?store=" + $(this).val() + "&d="+dayofweekid;
-				}
-			} else {
-				window.location = "/itemstats?store=" + $(this).val() + "&startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val() + "&d="+dayofweekid;
-			}
+			window.location = getUrl(true);
 		});
 		$(document).on('change', '#dayofweekselect', function() {
-			var storeid = $('#storeselect').val();
-			if (storeid == "") {
-				storeid = "All";
-			}
-			if ($("#startdate").val() == "" || $("#enddate").val() == "") {
-				if (thishorizon) {
-					window.location = "/itemstats?d=" + $(this).val() +"&store="+storeid + "&horizon="+thishorizon;	
-				} else {
-					window.location = "/itemstats?d=" + $(this).val() +"&store="+storeid ;
-				}
-			} else {
-				window.location = "/itemstats?d=" + $(this).val() + "&startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val()+"&store="+storeid ;
-			}
+			window.location = getUrl(true);
 		});
+		$(document).on('change', '#timeofdayselect', function() {
+			window.location = getUrl(true);
+		});
+
 	});
 	
 </script>

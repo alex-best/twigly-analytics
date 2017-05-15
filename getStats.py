@@ -103,6 +103,14 @@ class order(statsBase):
 	source = Column("source", Integer)
 	store_id = Column("store_id", Integer)
 
+class orderstatustimes(statsBase):
+	__tablename__ = "order_status_times"
+	order_status_time_id = Column('order_status_time_id', Integer, primary_key=True)
+	order_id = Column('order_id', Integer,ForeignKey("orders.order_id"))
+	order_status = Column("order_status", Integer)
+	time_add = Column("time_add", DateTime)
+	
+
 class orderdetail(statsBase):
 	__tablename__ = "order_details"
 	order_detail_id = Column("order_detail_id", Integer, primary_key=True)
@@ -901,6 +909,7 @@ class ItemStatsHandler(BaseHandler):
 			startdate = self.get_argument("startdate", None)
 			enddate = self.get_argument("enddate", None)
 			current_day = self.get_argument("d", "All")
+			time_of_day = self.get_argument("t", "All")
 
 			alldays = [{"id":0,"name":"Mon"},{"id":1,"name":"Tue"},{"id":2,"name":"Wed"},{"id":3,"name":"Thu"},{"id":4,"name":"Fri"},{"id":5,"name":"Sat"},{"id":6,"name":"Sun"}]
 
@@ -909,6 +918,8 @@ class ItemStatsHandler(BaseHandler):
 				include_days = [x["id"] for x in alldays]
 			else:
 				include_days = [int(current_day)]
+
+			alltime = [{"id":0,"name":"After 4pm"},{"id":1,"name":"Before 4pm"}]
 
 			if startdate is None:
 				if horizon is None:
@@ -960,7 +971,14 @@ class ItemStatsHandler(BaseHandler):
 
 			#, sqlalchemy.func.weekday(order.date_add).in_(include_days)
 
+			if time_of_day=='0':
+				dailyordersquery = statssession.query(order).join(orderstatustimes).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.store_id.in_(store_list),sqlalchemy.func.weekday(order.date_add).in_(include_days), orderstatustimes.order_status==1, sqlalchemy.func.time(orderstatustimes.time_add)>='16:00:00')
+
+			elif time_of_day=='1':
+				dailyordersquery = statssession.query(order).join(orderstatustimes).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.store_id.in_(store_list),sqlalchemy.func.weekday(order.date_add).in_(include_days), orderstatustimes.order_status==1, sqlalchemy.func.time(orderstatustimes.time_add)<'16:00:00')
+
 			dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
+
 			dailyordersdatelookup = {thisorder.order_id: thisorder.date_add.strftime("%a %b %d, %Y") for thisorder in dailyordersquery}
 
 			cookingstations = [{'id':1,'name':'Sandwich'}, {'id':2,'name':'HotStation'},{'id':8,'name':'Dessert'},{'id':16,'name':'Pizza'},{'id':32,'name':'Grilled'}]
@@ -1036,7 +1054,7 @@ class ItemStatsHandler(BaseHandler):
 			itemhtml += "</tbody></table>"
 
 			statssession.remove()
-			self.render("templates/itemstatstemplate.html", daterange=daterange, csmap=csmap, itemhtml=itemhtml, active_stores=active_stores, current_store=current_store, current_store_name=current_store_name, user=current_user, current_day=current_day, alldays=alldays)
+			self.render("templates/itemstatstemplate.html", daterange=daterange, csmap=csmap, itemhtml=itemhtml, active_stores=active_stores, current_store=current_store, current_store_name=current_store_name, user=current_user, current_day=current_day, alldays=alldays, time_of_day=time_of_day, alltime=alltime)
 
 class UserStatsHandler(BaseHandler):
 	@tornado.web.authenticated
@@ -2118,12 +2136,13 @@ class MailchimpDormantUserHandler(BaseHandler):
 
 			self.sendZomatoDormantUserSMS(parsedstartdate)
 
+			print (mre2)
 			if ('complete' in mre2 and mre2['complete']==True):
 				self.write({"result": True})
-				sendTwiglyMail('@testmail.com','***REMOVED***',str(len(batch_list))+" recepients of Dormant campaign for "+parsedstartdate.strftime("%Y-%m-%d"), "Email sent successfully to " + str(batch_list))
+				sendTwiglyMail('@testmail.com','***REMOVED***',str(len(batch_list))+" recepients of Dormant campaign for "+parsedstartdate.strftime("%Y-%m-%d"), "Email sent successfully to " + str(batch_list),'plain')
 			else:
 				self.write({"result": False})
-				sendTwiglyMail('@testmail.com','***REMOVED***',"Some error in the Dormant campaign for "+parsedstartdate.strftime("%Y-%m-%d"), str(mre2))
+				sendTwiglyMail('@testmail.com','***REMOVED***',"Some error in the Dormant campaign for "+parsedstartdate.strftime("%Y-%m-%d"), str(mre2),'plain')
 
 
 
