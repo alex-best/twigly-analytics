@@ -229,12 +229,10 @@
 			if ($("#startdate").val() == "" || $("#enddate").val() == "") {
 				var thishorizon = getUrlParameter("horizon");
 				if (thishorizon) {
-					return "/itemstats?store=" + storeid + "&d="+dayofweekid + "&horizon="+thishorizon;	
-				} else {
-					return "/itemstats?store=" + storeid + "&d="+dayofweekid+ "&t="+timeofdayid ;
-				}
+					return "/itemstats?store=" + storeid + "&d="+dayofweekid + "&t="+timeofdayid + "&horizon="+thishorizon;	
+				} 
 			} else {
-				return "/itemstats?store=" + storeid + "&startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val() + "&d="+dayofweekid+ "&t="+timeofdayid ;
+				return "/itemstats?store=" + storeid + "&startdate="+ "&d="+dayofweekid+ "&t="+timeofdayid + $("#startdate").val() + "&enddate=" + $("#enddate").val()  ;
 			}
 		}
 		return "/itemstats?store=" + storeid + "&d="+dayofweekid+ "&t="+timeofdayid;
