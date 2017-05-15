@@ -227,6 +227,7 @@
 
 		if (addDaterange == true) {
 			if ($("#startdate").val() == "" || $("#enddate").val() == "") {
+				var thishorizon = getUrlParameter("horizon");
 				if (thishorizon) {
 					return "/itemstats?store=" + storeid + "&d="+dayofweekid + "&horizon="+thishorizon;	
 				} else {
