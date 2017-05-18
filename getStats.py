@@ -999,8 +999,8 @@ class ItemStatsHandler(BaseHandler):
 
 				csmap.append({"name": thiscs['name'], "data":thiscslist})
 
-			allcsidtoname = {0:'None',1:'Sandwich', 2:'Hot Station',4:'Salad Station',8:'Dessert',16:'Pizza',32:'Grilled',64:'Soup',3:'Combo',5:'Combo',10:'Combo',11:'Combo',12:'Combo',13:'Combo'}
-
+			allcsidtoname = {0:'None',1:'Sandwich', 2:'Hot Station',4:'Salad Station',8:'Dessert',16:'Pizza',32:'Grilled',64:'Soup',3:'Combo',5:'Combo',10:'Combo',11:'Combo',12:'Combo',13:'Combo',9:'Combo'}
+                        
 			menuitems = {thismenuitem.menu_item_id: {"name": thismenuitem.name, "cooking_station":allcsidtoname[thismenuitem.cooking_station], "total": 0, "soldout": {thisdate: [] for thisdate in daterange}, "datelookup": {thisdate: 0 for thisdate in daterange}} for thismenuitem in statssession.query(menuitem)}
 
 			for suborder in statssession.query(orderdetail).filter(orderdetail.order_id.in_(dailyorderids)):
