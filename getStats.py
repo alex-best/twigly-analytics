@@ -217,11 +217,13 @@ def getRedirect(username):
 		return "storeitems"
 	elif (username in ["twiglyservice"]):
 		return "dormantregulars"
+	elif (username in ["@testmail.com","@testmail.com","@testmail.com"]):
+		return "itemstats"
 	else:
 		return "stats"
 
 def authenticate(thisusername, thispassword):
-	if (thisusername == "admin" and thispassword == "tw1gl7h1") or (thisusername == "review" and thispassword == "rvwdash") or (thisusername == "chef" and thispassword == "twigly123") or (thisusername == "chef03" and thispassword == "twiglychef03") or (thisusername == "headchef" and thispassword == "rahulonly") or (thisusername == "twiglyservice" and thispassword == "callcenter"):
+	if (thisusername == "admin" and thispassword == "tw1gl7h1") or (thisusername == "review" and thispassword == "rvwdash") or (thisusername == "chef" and thispassword == "twigly123") or (thisusername == "chef03" and thispassword == "twiglychef03") or (thisusername == "headchef" and thispassword == "rahulonly") or (thisusername == "twiglyservice" and thispassword == "callcenter") or (thisusername == "@testmail.com" and thispassword == "dispatch02")  or (thisusername == "@testmail.com" and thispassword == "dispatch03")  or (thisusername == "@testmail.com" and thispassword == "dispatch05") :
 		return {"result": True}
 	else:
 		return {"result": False}
@@ -902,7 +904,7 @@ class ItemStatsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
 		current_user = self.get_current_user().decode()
-		if current_user not in ["admin", "headchef", "chef", "chef03","review"]:
+		if current_user not in ["admin", "headchef", "chef", "chef03","review","@testmail.com","@testmail.com","@testmail.com"]:
 			self.redirect('/stats')
 		else:
 			horizon = self.get_argument("horizon", None)
@@ -951,6 +953,13 @@ class ItemStatsHandler(BaseHandler):
 
 			current_store = self.get_argument("store", "All")
 
+			if current_user == "@testmail.com":
+				current_store="2"
+			elif current_user == "@testmail.com":
+				current_store="3"
+			elif current_user == "@testmail.com":
+				current_store="5"
+
 			active_stores = statssession.query(store).filter(store.is_active == True).all()
 			active_stores_list = [x.store_id for x in active_stores]
 
@@ -961,7 +970,7 @@ class ItemStatsHandler(BaseHandler):
 			
 			current_store_name = "All"
 			for thisstore in active_stores:
-				if [thisstore.store_id] == current_store:
+				if str(thisstore.store_id) == current_store:
 					current_store_name = thisstore.name
 					break
 
@@ -1023,12 +1032,6 @@ class ItemStatsHandler(BaseHandler):
 				menuitems[menu_item_id]["soldout"][date_effective.strftime("%a %b %d, %Y")].append(store_id)
 				
 			active_stores = statssession.query(store).filter(store.is_active == True).all()
-
-			current_store_name = "All"
-			for thisstore in active_stores:
-				if [thisstore.store_id] == current_store:
-					current_store_name = thisstore.name
-					break
 
 			itemhtml = "<table class='table table-striped table-hover tablesorter' style='width: 100%;'><thead><tr><th>Dish</th><th>Cooking Station</th><th>Total</th>"
 			for thisdate in daterange:

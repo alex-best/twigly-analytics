@@ -63,9 +63,9 @@
 		<div class="col-xs-12 col-md-6" style="text-align: left; font-size: 17px;">
 			Dishwise sales numbers in <span style="font-weight: bold;">{{ current_store_name }}</span>
 		</div>
-		{% if (user=="admin" or user=="headchef" or user=="review") %}
+		{% if (user=="admin" or user=="headchef" or user=="review" or user == "@testmail.com" or user =="@testmail.com" or user =="@testmail.com") %}
 		<div class="col-xs-12 col-md-6" style="text-align: right;">
-			{% if (user=="admin") %}
+			{% if (user!="review") %}
 			<select id="dayofweekselect">
 				<option value="All" 
 					{% if current_day == "All" %}
@@ -97,6 +97,7 @@
 				{% end %}
 			</select>
 			{% end %}
+			{% if (user != "@testmail.com" and user !="@testmail.com" and user !="@testmail.com") %}
 			<select id="storeselect">
 				<option value="All" 
 					{% if current_store == "All" %}
@@ -112,15 +113,19 @@
 					{{ store.name }}</option>
 				{% end %}
 			</select>
+			{% end %}
+
 		</div>
 		{% end %}
 	</div>
+	{% if (user != "@testmail.com" and user !="@testmail.com" and user !="@testmail.com") %}
     <div class="row" style="margin-bottom: 40px;" id="tagsheader">
     	<h2>Cooking Station Data</h2>
     </div>
     <div class="row" style="margin-bottom: 40px;" id="tagscontainer">
         
     </div>
+	{% end %}
     <div class="row" style="margin-bottom: 40px;" id="inputsheader">
     	<h2>Dish Data</h2>
     </div>
@@ -168,6 +173,8 @@
 	    }
 	};
 
+	{% if (user != "@testmail.com" and user !="@testmail.com" and user !="@testmail.com") %}
+
 	Highcharts.theme = {
     	colors: ['#44917b', '#ff6600', '#666666', '#FF0000', '#0000FF'],
     	title: {
@@ -210,10 +217,11 @@
 	        }]
 		});
 	}
+		{% end %}
 
 	function getUrl (addDaterange) {
 		var storeid = $('#storeselect').val();
-		if (storeid == "") {
+		if (storeid == "" || storeid === undefined ) {
 			storeid = "All";
 		}
 		var dayofweekid = $('#dayofweekselect').val();
