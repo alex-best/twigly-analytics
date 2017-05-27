@@ -403,7 +403,7 @@ def getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, 
 	newzomatoorders = []
 	newswiggyorders = []
 	newoncallorders = []
-	fpneworders = []
+	newfporders = []
 
 	for thisdate in daterange:
 		newandroidorders.append(newusercountsbysource[thisdate]["Android"])
