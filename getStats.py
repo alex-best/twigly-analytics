@@ -441,7 +441,7 @@ class StatsHandler(BaseHandler):
 		enddate = self.get_argument("enddate", None)
 		if startdate is None:
 			if horizon is None:
-				horizon = 7
+				horizon = 8
 			else:
 				horizon = int(horizon)
 
