@@ -1969,7 +1969,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 		if environment_production:
 			statsengine = sqlalchemy.create_engine(statsengine_url)
 			statssession = scoped_session(sessionmaker(bind=statsengine))
-			thissql1 = "select u.email, u.name, o.order_id from users u left join orders o on o.user_id=u.user_id left join feedbacks f on o.order_id = f.order_id left join delivery_zones dz on dz.delivery_zone_id=o.delivery_zone_id  where u.email is not null and o.order_status in (3,10,11,12,16) and o.source in (0,1,2,8) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59') and (f.delivery_rating<4 and f.delivery_rating<f.food_rating) and dz.falls_under_gurantee=0;"
+			thissql1 = "select u.email, u.name, o.order_id from users u left join orders o on o.user_id=u.user_id left join feedbacks f on o.order_id = f.order_id left join delivery_zones dz on dz.delivery_zone_id=o.delivery_zone_id  where u.email is not null and o.order_status in (3,10,11,12,16) and o.source in (0,1,2,8) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59') and (f.delivery_rating<4 and f.delivery_rating<f.food_rating) and dz.falls_under_gurantee=0 and u.email not like '%%zomatouseremail.com%%';"
 
 			result1 = statsengine.execute(thissql1)
 			userids = []
@@ -2026,7 +2026,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 		if environment_production:
 			statsengine = sqlalchemy.create_engine(statsengine_url)
 			statssession = scoped_session(sessionmaker(bind=statsengine))
-			thissql1 = "select u.email, u.name, o.order_id from users u left join orders o on o.user_id=u.user_id left join feedbacks f on o.order_id = f.order_id where u.email is not null and o.order_status in (3,10,11,12,16) and o.source in (0,1,2,8) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59') and (f.food_rating<4 and f.delivery_rating>=f.food_rating and char_length(f.comment)=0);"
+			thissql1 = "select u.email, u.name, o.order_id from users u left join orders o on o.user_id=u.user_id left join feedbacks f on o.order_id = f.order_id where u.email is not null and o.order_status in (3,10,11,12,16) and o.source in (0,1,2,8) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59') and (f.food_rating<4 and f.delivery_rating>=f.food_rating and char_length(f.comment)=0) and u.email not like '%%zomatouseremail.com%%';"
 			result1 = statsengine.execute(thissql1)
 			userids = []
 			orderids = []
