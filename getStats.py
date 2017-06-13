@@ -228,6 +228,28 @@ def authenticate(thisusername, thispassword):
 	else:
 		return {"result": False}
 
+# def getFirstName(name):
+# 	if(name==None):
+# 		return ""
+# 	arr[] = name.split(" ")
+# 	if(arr == None || len(arr)==0):
+# 		return ""
+# 	if(arr[0]==None):
+# 		return "";
+# 	fname = arr[0]
+# 	if(len(fname) < 3 || "Swiggy" in fname || "swiggy" in fname):
+# 		return ""
+# 	if(fname[1] == '.'):
+# 		return ""
+# 	if(fname[0] in '0123456789'):
+# 		return ""
+# 	if(len(fname) > 3):
+# 	    if( fname[0:3].equalsIgnoreCase("Dr. ") || fname[0:3].equalsIgnoreCase("Dr ") || fname[0:3].equalsIgnoreCase("Mr.") || fname[0:3].equalsIgnoreCase("Mr ") || fname.[0:4].equalsIgnoreCase("Mrs.") || fname[0:4].equalsIgnoreCase("Mrs ")):
+# 	        return ""
+# 	return upper(fname[0:1]) + fname[1:];
+
+# print(getFirstName("raghav takkar"))
+
 class BaseHandler(tornado.web.RequestHandler):
 	def get_current_user(self):
 		return self.get_secure_cookie("user")
@@ -2102,6 +2124,42 @@ class MailchimpDormantUserHandler(BaseHandler):
 			sendTwiglyMail('Dormant Zomato Only <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for Dormant Zomato on "+parsedstartdate.strftime("%Y-%m-%d"), "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
 
 
+	def sendRewardSMS(self,parsedstartdate):
+		if environment_production:
+			statsengine = sqlalchemy.create_engine(statsengine_url)
+			statssession = scoped_session(sessionmaker(bind=statsengine))
+			thissql1 = "select u.mobile_number, u.name, u.reward_points from users u left join orders o on o.user_id=u.user_id where u.reward_points>=20 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59');"
+			result1 = statsengine.execute(thissql1)
+			userids = []
+			mobiles = []
+			for item in result1:
+				userids.append({"mobile":str(item[0]).lower(), "name":str(item[1]).title(), 'points':int(item[2])})
+				mobiles.append(str(item[0]).lower())
+
+			statssession.remove()
+			if len(userids) > 0:
+				for item in userids:
+					msg=""
+					reward_points = item['points']
+					if (reward_points>=20 and reward_points<50):
+						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%2020%20points%20for%20Rs%2050%20wallet%20money.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
+					elif (reward_points>=50 and reward_points<100):
+						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%2050%20points%20for%20Rs%20150%20wallet%20money.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
+					elif (reward_points>=100 and reward_points<150):
+						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%20100%20points%20for%20Rs%20400%20wallet%20money.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
+					elif (reward_points>=150 and reward_points<300):
+						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%20150%20points%20for%2015%25%20discount.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
+					elif (reward_points>=300 and reward_points<500):
+						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%20300%20points%20for%2030%25%20discount.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
+					elif (reward_points>=500):
+						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%20500%20points%20for%2050%25%20discount.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
+					number = item['mobile']
+					sendTwiglySMS(number,msg)
+
+
+			sendTwiglyMail('Reward SMS <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for Rewards on "+parsedstartdate.strftime("%Y-%m-%d"), "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
+
+
 	def getDormantTemplateId(self):
 		dormant_template_id = 139773 #139749 for missyou10 # int #139773 for summer10
 		return dormant_template_id
@@ -2146,6 +2204,9 @@ class MailchimpDormantUserHandler(BaseHandler):
 				print ("Unexpected error:",e)
 
 			self.sendZomatoDormantUserSMS(parsedstartdate)
+
+			parsedrewarddate = datetime.date.today() - datetime.timedelta(days=15)
+			self.sendRewardSMS(parsedrewarddate)
 
 			print (mre2)
 			if ('complete' in mre2 and mre2['complete']==True):
