@@ -228,27 +228,26 @@ def authenticate(thisusername, thispassword):
 	else:
 		return {"result": False}
 
-# def getFirstName(name):
-# 	if(name==None):
-# 		return ""
-# 	arr[] = name.split(" ")
-# 	if(arr == None || len(arr)==0):
-# 		return ""
-# 	if(arr[0]==None):
-# 		return "";
-# 	fname = arr[0]
-# 	if(len(fname) < 3 || "Swiggy" in fname || "swiggy" in fname):
-# 		return ""
-# 	if(fname[1] == '.'):
-# 		return ""
-# 	if(fname[0] in '0123456789'):
-# 		return ""
-# 	if(len(fname) > 3):
-# 	    if( fname[0:3].equalsIgnoreCase("Dr. ") || fname[0:3].equalsIgnoreCase("Dr ") || fname[0:3].equalsIgnoreCase("Mr.") || fname[0:3].equalsIgnoreCase("Mr ") || fname.[0:4].equalsIgnoreCase("Mrs.") || fname[0:4].equalsIgnoreCase("Mrs ")):
-# 	        return ""
-# 	return upper(fname[0:1]) + fname[1:];
+def getFirstName(name):
+	if(name==None):
+		return "Customer"
+	arr = name.split(' ')
+	if(arr == None or len(arr)==0):
+		return "Customer"
+	if(arr[0]==None):
+		return "Customer";
+	fname = arr[0]
+	if(len(fname) < 3 or fname.lower() == "swiggy"):
+		return "Customer"
+	if(fname[1] == '.'):
+		return "Customer"
+	if(fname[0] in '0123456789'):
+		return "Customer"
+	if(len(fname) >= 3):
+	    if(fname[0:3].lower() in ("dr.", "dr ", "mr.","mr ") or fname[0:4].lower() in ("mrs.","mrs ")):
+	        return "Customer"
+	return fname[0:1].upper() + fname[1:].lower();
 
-# print(getFirstName("raghav takkar"))
 
 class BaseHandler(tornado.web.RequestHandler):
 	def get_current_user(self):
@@ -291,8 +290,8 @@ def getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, 
 	ordercounts = {thisdate: {"new": 0, "old": 0} for thisdate in daterange}
 	ordertotals = {thisdate: {"new": 0.0, "old": 0.0} for thisdate in daterange}
 
-	platformcounts = {thisdate: {"Android": 0, "Web": 0, "iOS": 0, "Zomato": 0, "Swiggy": 0, "Call":0,"FP": 0} for thisdate in daterange}
-	newusercountsbysource = {thisdate: {"Android": 0, "Web": 0, "iOS": 0, "Zomato": 0, "Swiggy": 0, "Call":0,"FP": 0} for thisdate in daterange}
+	platformcounts = {thisdate: {"Android": 0, "Web": 0, "iOS": 0, "Zomato": 0, "Swiggy": 0, "Call":0,"FP": 0, "UberEats":0} for thisdate in daterange}
+	newusercountsbysource = {thisdate: {"Android": 0, "Web": 0, "iOS": 0, "Zomato": 0, "Swiggy": 0, "Call":0,"FP": 0,"UberEats":0} for thisdate in daterange}
 	
 	freeordercounts = {thisdate: {"FoodTrial": 0, "FreeDelivery": 0, "Returned": 0} for thisdate in daterange}
 	freeordersums = {thisdate: {"FoodTrial": 0.0, "FreeDelivery": 0.0, "Returned": 0.0} for thisdate in daterange}
@@ -327,6 +326,8 @@ def getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, 
 						newusercountsbysource[thisorder.date_add.strftime("%a %b %d, %Y")]["Call"] += 1
 					elif (thisorder.source ==9):
 						newusercountsbysource[thisorder.date_add.strftime("%a %b %d, %Y")]["FP"] += 1
+					elif (thisorder.source ==10):
+						newusercountsbysource[thisorder.date_add.strftime("%a %b %d, %Y")]["UberEats"] += 1
 				else:
 					ordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["old"] += 1
 					ordertotals[thisorder.date_add.strftime("%a %b %d, %Y")]["old"] += float(thisorder.total)
@@ -360,6 +361,8 @@ def getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, 
 				platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Call"] += 1
 			elif (thisorder.source ==9):
 				platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["FP"] += 1
+			elif (thisorder.source ==10):
+				platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["UberEats"] += 1
 
 
 		elif thisorder.order_status in returnedStates: #refunds
@@ -409,6 +412,7 @@ def getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, 
 	swiggyorders = []
 	oncallorders = []
 	fporders = []
+	uberorders = []
 
 	for thisdate in daterange:
 		androidorders.append(platformcounts[thisdate]["Android"])
@@ -418,6 +422,7 @@ def getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, 
 		swiggyorders.append(platformcounts[thisdate]["Swiggy"])
 		oncallorders.append(platformcounts[thisdate]["Call"])
 		fporders.append(platformcounts[thisdate]["FP"])
+		uberorders.append(platformcounts[thisdate]["UberEats"])
 
 	newandroidorders = []
 	newweborders = []
@@ -426,6 +431,7 @@ def getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, 
 	newswiggyorders = []
 	newoncallorders = []
 	newfporders = []
+	newuberorders = []
 
 	for thisdate in daterange:
 		newandroidorders.append(newusercountsbysource[thisdate]["Android"])
@@ -435,6 +441,7 @@ def getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, 
 		newswiggyorders.append(newusercountsbysource[thisdate]["Swiggy"])
 		newoncallorders.append(newusercountsbysource[thisdate]["Call"])
 		newfporders.append(newusercountsbysource[thisdate]["FP"])
+		newuberorders.append(newusercountsbysource[thisdate]["UberEats"])
 
 	foodtrialscount = []
 	freedeliverycount = []
@@ -451,7 +458,7 @@ def getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, 
 		freedeliverytotal.append(freeordersums[thisdate]["FreeDelivery"])
 		returntotal.append(freeordersums[thisdate]["Returned"])
 
-	result = {"neworders": neworders, "repeatorders": repeatorders, "totalneworders": totalneworders, "totalrepeatorders": totalrepeatorders, "newsums": newsums, "repeatsums": repeatsums, "androidorders": androidorders, "weborders": weborders, "iosorders": iosorders, "zomatoorders": zomatoorders, "swiggyorders": swiggyorders,"oncallorders":oncallorders,"fporders": fporders, "newandroidorders": newandroidorders, "newweborders": newweborders, "newiosorders": newiosorders, "newzomatoorders": newzomatoorders, "newswiggyorders": newswiggyorders,"newoncallorders":newoncallorders,"newfporders": newfporders, "foodtrialscount": foodtrialscount, "freedeliverycount": freedeliverycount, "returncount": returncount, "foodtrialstotal": foodtrialstotal, "freedeliverytotal": freedeliverytotal, "returntotal":returntotal, "newusersbystore":newusersbystore,"newusersumsbystore":newusersumsbystore}
+	result = {"neworders": neworders, "repeatorders": repeatorders, "totalneworders": totalneworders, "totalrepeatorders": totalrepeatorders, "newsums": newsums, "repeatsums": repeatsums, "androidorders": androidorders, "weborders": weborders, "iosorders": iosorders, "zomatoorders": zomatoorders, "swiggyorders": swiggyorders,"oncallorders":oncallorders,"fporders": fporders,"uberorders": uberorders, "newandroidorders": newandroidorders, "newweborders": newweborders, "newiosorders": newiosorders, "newzomatoorders": newzomatoorders, "newswiggyorders": newswiggyorders,"newoncallorders":newoncallorders,"newfporders": newfporders,"newuberorders": newuberorders, "foodtrialscount": foodtrialscount, "freedeliverycount": freedeliverycount, "returncount": returncount, "foodtrialstotal": foodtrialstotal, "freedeliverytotal": freedeliverytotal, "returntotal":returntotal, "newusersbystore":newusersbystore,"newusersumsbystore":newusersumsbystore}
 	return (result)
 
 class StatsHandler(BaseHandler):
@@ -616,7 +623,7 @@ class StatsHandler(BaseHandler):
 		current_user = self.get_current_user().decode()
 
 		statssession.remove()
-		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=detailedordercounts["neworders"], repeatorders=detailedordercounts["repeatorders"], newsums=detailedordercounts["newsums"], repeatsums=detailedordercounts["repeatsums"], dailyapc=dailyapc, feedback_chart_data=feedback_chart_data, food_rating_counts=food_rating_counts, delivery_rating_counts=delivery_rating_counts, totalsalesvalue=totalsalesvalue, totalorders=totalorders, totalneworders=detailedordercounts["totalneworders"], totalrepeatorders=detailedordercounts["totalrepeatorders"], averageapc=averageapc, androidorders=detailedordercounts["androidorders"], weborders=detailedordercounts["weborders"], iosorders=detailedordercounts["iosorders"], zomatoorders=detailedordercounts["zomatoorders"], swiggyorders=detailedordercounts["swiggyorders"], oncallorders=detailedordercounts["oncallorders"],fporders=detailedordercounts["fporders"], newandroidorders=detailedordercounts["newandroidorders"], newweborders=detailedordercounts["newweborders"], newiosorders=detailedordercounts["newiosorders"], newzomatoorders=detailedordercounts["newzomatoorders"], newswiggyorders=detailedordercounts["newswiggyorders"], newoncallorders=detailedordercounts["newoncallorders"],newfporders=detailedordercounts["newfporders"], foodtrialstotal=detailedordercounts["foodtrialstotal"], freedeliverytotal=detailedordercounts["freedeliverytotal"], returntotal=detailedordercounts["returntotal"], foodtrialscount=detailedordercounts["foodtrialscount"], freedeliverycount=detailedordercounts["freedeliverycount"], returncount=detailedordercounts["returncount"], grosssales = grosssales, totalgrosssales = totalgrosssales, netsalespretax = netsalespretax, totalnetsalespretax = totalnetsalespretax, user=current_user, active_stores=active_stores, current_store=current_store, current_store_name=current_store_name, newusersbystore=newusersbystore)
+		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=detailedordercounts["neworders"], repeatorders=detailedordercounts["repeatorders"], newsums=detailedordercounts["newsums"], repeatsums=detailedordercounts["repeatsums"], dailyapc=dailyapc, feedback_chart_data=feedback_chart_data, food_rating_counts=food_rating_counts, delivery_rating_counts=delivery_rating_counts, totalsalesvalue=totalsalesvalue, totalorders=totalorders, totalneworders=detailedordercounts["totalneworders"], totalrepeatorders=detailedordercounts["totalrepeatorders"], averageapc=averageapc, androidorders=detailedordercounts["androidorders"], weborders=detailedordercounts["weborders"], iosorders=detailedordercounts["iosorders"], zomatoorders=detailedordercounts["zomatoorders"], swiggyorders=detailedordercounts["swiggyorders"], oncallorders=detailedordercounts["oncallorders"],fporders=detailedordercounts["fporders"],uberorders=detailedordercounts["uberorders"], newandroidorders=detailedordercounts["newandroidorders"], newweborders=detailedordercounts["newweborders"], newiosorders=detailedordercounts["newiosorders"], newzomatoorders=detailedordercounts["newzomatoorders"], newswiggyorders=detailedordercounts["newswiggyorders"], newoncallorders=detailedordercounts["newoncallorders"],newfporders=detailedordercounts["newfporders"],newuberorders=detailedordercounts["newuberorders"], foodtrialstotal=detailedordercounts["foodtrialstotal"], freedeliverytotal=detailedordercounts["freedeliverytotal"], returntotal=detailedordercounts["returntotal"], foodtrialscount=detailedordercounts["foodtrialscount"], freedeliverycount=detailedordercounts["freedeliverycount"], returncount=detailedordercounts["returncount"], grosssales = grosssales, totalgrosssales = totalgrosssales, netsalespretax = netsalespretax, totalnetsalespretax = totalnetsalespretax, user=current_user, active_stores=active_stores, current_store=current_store, current_store_name=current_store_name, newusersbystore=newusersbystore)
 
 class CustomerStatsHandler(BaseHandler):
 	@tornado.web.authenticated
@@ -1063,6 +1070,8 @@ class ItemStatsHandler(BaseHandler):
 				
 			active_stores = statssession.query(store).filter(store.is_active == True).all()
 
+			today = datetime.date.today().strftime("%a %b %d, %Y")
+
 			itemhtml = "<table class='table table-striped table-hover tablesorter' style='width: 100%;'><thead><tr><th>Dish</th><th>Cooking Station</th><th>Total</th>"
 			for thisdate in daterange:
 				itemhtml += "<th>" + thisdate + "</th>"
@@ -1078,7 +1087,7 @@ class ItemStatsHandler(BaseHandler):
 					if menuitems[thismenuitem]["datelookup"][thisdate] == 0:
 						itemhtml += "<td>-</td>"
 					else:
-						if len(menuitems[thismenuitem]["soldout"][thisdate])>0:
+						if len(menuitems[thismenuitem]["soldout"][thisdate])>0 and thisdate!=today:
 							itemhtml += "<td style='color:red;' title='"+str(menuitems[thismenuitem]["soldout"][thisdate])+"'>"
 						else:
 							itemhtml += "<td>"
@@ -2006,7 +2015,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 			orderids = []
 			emailids = []
 			for item in result1:
-				userids.append({"email":str(item[0]).lower(), "name":str(item[1]).title(), "orderid":str(item[2])})
+				userids.append({"email":str(item[0]).lower(), "name":getFirstName(str(item[1])), "orderid":str(item[2])})
 				orderids.append(str(item[2]))
 				if len(item[0])>0:
 					emailids.append(str(item[0]))
@@ -2062,7 +2071,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 			orderids = []
 			emailids = []
 			for item in result1:
-				userids.append({"email":str(item[0]).lower(), "name":str(item[1]).title(), "orderid":str(item[2])})
+				userids.append({"email":str(item[0]).lower(), "name":getFirstName(str(item[1])), "orderid":str(item[2])})
 				orderids.append(str(item[2]))
 				if len(item[0])>0:
 					emailids.append(str(item[0]))
@@ -2110,7 +2119,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 			userids = []
 			mobiles = []
 			for item in result1:
-				userids.append({"mobile":str(item[0]).lower(), "name":str(item[1]).title()})
+				userids.append({"mobile":str(item[0]).lower(), "name":getFirstName(str(item[1]))})
 				mobiles.append(str(item[0]).lower())
 
 			statssession.remove()
@@ -2133,7 +2142,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 			userids = []
 			mobiles = []
 			for item in result1:
-				userids.append({"mobile":str(item[0]).lower(), "name":str(item[1]).title(), 'points':int(item[2])})
+				userids.append({"mobile":str(item[0]).lower(), "name":getFirstName(str(item[1])), 'points':int(item[2])})
 				mobiles.append(str(item[0]).lower())
 
 			statssession.remove()
