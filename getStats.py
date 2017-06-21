@@ -93,6 +93,8 @@ class order(statsBase):
 	vat = Column("vat", Float)
 	sub_total = Column("sub_total", Float)
 	delivery_charges = Column("delivery_charges", Float)
+	wallet_amount = Column("wallet_amount", Float)
+	coupon_discount = Column("coupon_discount", Float)
 	total = Column("total", Float)
 	wallet_transaction_id = Column("wallet_transaction_id", Integer)
 	order_status = Column("order_status", Integer)
@@ -114,7 +116,7 @@ class orderstatustimes(statsBase):
 class orderdetail(statsBase):
 	__tablename__ = "order_details"
 	order_detail_id = Column("order_detail_id", Integer, primary_key=True)
-	order_id = Column("order_id", Integer)
+	order_id = Column('order_id', Integer,ForeignKey("orders.order_id"))
 	menu_item_id = Column("menu_item_id", Integer)
 	quantity = Column("quantity", Integer)
 	price = Column("price", Float)
@@ -334,17 +336,17 @@ def getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, 
 
 			if thisorder.order_status == 12: #food trials
 				freeordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["FoodTrial"] += 1
-				freeordersums[thisorder.date_add.strftime("%a %b %d, %Y")]["FoodTrial"] += float(thisorder.total)
+				# freeordersums[thisorder.date_add.strftime("%a %b %d, %Y")]["FoodTrial"] += float(thisorder.total)
 			elif thisorder.order_status in [10,11]: #free on delivery
 				freeordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["FreeDelivery"] += 1
-				freeordersums[thisorder.date_add.strftime("%a %b %d, %Y")]["FreeDelivery"] += float(thisorder.total)
+				# freeordersums[thisorder.date_add.strftime("%a %b %d, %Y")]["FreeDelivery"] += float(thisorder.total)
 
-			if thisorder.coupon_id == 58: #coupon RKK
+			if thisorder.coupon_id == 58 and thisorder.order_status != 12: #coupon RKK
 				freeordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["FoodTrial"] += 1
-				freeordersums[thisorder.date_add.strftime("%a %b %d, %Y")]["FoodTrial"] += float(thisorder.sub_total)*1.13
-			elif thisorder.coupon_id == 29: #free on delivery and coupon matata
+				freeordersums[thisorder.date_add.strftime("%a %b %d, %Y")]["FoodTrial"] += float(thisorder.sub_total)
+			elif thisorder.coupon_id == 29 and thisorder.order_status not in [10,11]: #free on delivery and coupon matata
 				freeordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["FreeDelivery"] += 1
-				freeordersums[thisorder.date_add.strftime("%a %b %d, %Y")]["FreeDelivery"] += float(thisorder.sub_total)*1.13
+				freeordersums[thisorder.date_add.strftime("%a %b %d, %Y")]["FreeDelivery"] += float(thisorder.sub_total)
 
 			
 			if (thisorder.source == 0):
@@ -367,7 +369,7 @@ def getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, 
 
 		elif thisorder.order_status in returnedStates: #refunds
 			freeordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Returned"] += 1
-			freeordersums[thisorder.date_add.strftime("%a %b %d, %Y")]["Returned"] += float(thisorder.total)
+			# freeordersums[thisorder.date_add.strftime("%a %b %d, %Y")]["Returned"] += float(thisorder.total)
 		
 
 	neworders = []
@@ -507,16 +509,38 @@ class StatsHandler(BaseHandler):
 				current_store_name = thisstore.name
 				break
 
-		dailysalesquery = statssession.query(order.date_add, sqlalchemy.func.sum(order.total), sqlalchemy.func.sum(order.vat)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.order_status.in_(deliveredStates + inProgress), order.store_id.in_(store_list)).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
+		dailysalesquery = statssession.query(order.date_add, sqlalchemy.func.sum(order.total), sqlalchemy.func.sum(order.vat), sqlalchemy.func.sum(order.delivery_charges), sqlalchemy.func.sum(order.wallet_amount), sqlalchemy.func.sum(order.coupon_discount) ).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.order_status.in_(deliveredStates + inProgress), order.store_id.in_(store_list)).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
 
 		totalsales = []
+		deliverycharges=[]
+		wallettotal = []
+		coupontotal = []
+
 
 		thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): float(thisresult[1]) for thisresult in dailysalesquery}
+		thisdeliverydetails = {thisresult[0].strftime("%a %b %d, %Y"): float(thisresult[3]) for thisresult in dailysalesquery}
+		wallettransactionlookup = {thisresult[0].strftime("%a %b %d, %Y"): float(thisresult[4]) for thisresult in dailysalesquery}
+		couponlookup = {thisresult[0].strftime("%a %b %d, %Y"): float(thisresult[5]) for thisresult in dailysalesquery}
 		for thisdate in daterange:
 			if thisdate in thiscountdetails:
 				totalsales.append(thiscountdetails[thisdate])
 			else:
 				totalsales.append(0)
+
+			if thisdate in thisdeliverydetails:
+				deliverycharges.append(thisdeliverydetails[thisdate])
+			else:
+				deliverycharges.append(0)
+			
+			if thisdate in wallettransactionlookup:
+				wallettotal.append(float(wallettransactionlookup[thisdate])) 
+			else:
+				wallettotal.append(0)
+			
+			if thisdate in couponlookup:
+				coupontotal.append(float(couponlookup[thisdate])) 
+			else:
+				coupontotal.append(0) 
 
 		totalsalesvalue = sum(totalsales)
 
@@ -527,13 +551,19 @@ class StatsHandler(BaseHandler):
 		detailedordercounts = getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, statssession)
 
 		dailyorderids = [thisorder.order_id for thisorder in dailyordersquery if (thisorder.order_status not in returnedStates)]
+		
+		freeorderids = [thisorder.order_id for thisorder in dailyordersquery if (thisorder.order_status in [10,11])]
+		foodtrialids = [thisorder.order_id for thisorder in dailyordersquery if (thisorder.order_status in [12])]
+		returnedorderids = [thisorder.order_id for thisorder in dailyordersquery if (thisorder.order_status in returnedStates)]
 
 
 		#### Now looking at actual sales
 
-		grosssalesquery = statssession.query(orderdetail.date_add,orderdetail.quantity,orderdetail.price,orderdetailoption.price,orderdetail.menu_item_id).outerjoin(orderdetailoption).filter(orderdetail.order_id.in_(dailyorderids))
+		grosssalesquery = statssession.query(orderdetail.date_add,orderdetail.quantity,orderdetail.price,orderdetailoption.price,orderdetail.discount).outerjoin(orderdetailoption).filter(orderdetail.order_id.in_(dailyorderids))
 			
 		grosssaleslookup = {}
+		itemdisclookup = {}
+
 		for grossdetail in grosssalesquery:
 			if grossdetail[0].strftime("%a %b %d, %Y") in grosssaleslookup:
 				grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] += (grossdetail[1]*grossdetail[2])	 	
@@ -541,21 +571,35 @@ class StatsHandler(BaseHandler):
 			 	grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] = (grossdetail[1]*grossdetail[2])
 			if grossdetail[3]:
 				grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] += (grossdetail[1]*grossdetail[3])
+			
+			if grossdetail[0].strftime("%a %b %d, %Y") in itemdisclookup:
+				itemdisclookup[grossdetail[0].strftime("%a %b %d, %Y")] += grossdetail[1]*grossdetail[4]
+			else:
+				itemdisclookup[grossdetail[0].strftime("%a %b %d, %Y")] = grossdetail[1]*grossdetail[4]
 
 		vatlookup = {thisresult[0].strftime("%a %b %d, %Y"): float(thisresult[2]) for thisresult in dailysalesquery}
 
+
 		grosssales = []
 		netsalespretax = []
+		itemdiscounttotal = []
 
 		for c in range(0, len(daterange)):
 			try:
-				grosssales.append(float(grosssaleslookup[daterange[c]]))
+				# grosssales.append(float(grosssaleslookup[daterange[c]]))
+				grosssales.append(float(grosssaleslookup[daterange[c]])+float(deliverycharges[c]))
 			except KeyError:
 				grosssales.append(0.0)
 			try:
 				netsalespretax.append(float(totalsales[c]) - float(vatlookup[daterange[c]]))
 			except KeyError:
 				netsalespretax.append(0.0)
+
+			if (daterange[c] in itemdisclookup):
+				itemdiscounttotal.append(float(itemdisclookup[daterange[c]])) 
+			else:
+				itemdiscounttotal.append(0) 
+
 
 		dailyapc = []
 
@@ -576,6 +620,56 @@ class StatsHandler(BaseHandler):
 			averageapc = totalgrosssales/totalorders
 		except ZeroDivisionError:
 			averageapc = 0
+
+		allfreeids=freeorderids+foodtrialids+returnedorderids
+
+		freeordersquery1 = statssession.query(order.date_add,orderdetail.quantity,orderdetail.price,orderdetailoption.price,order.order_id).join(orderdetail).outerjoin(orderdetailoption).filter(order.order_id.in_(allfreeids))
+
+		# print(freeorderids,foodtrialids,returnedorderids)
+		freeorderslookup = {}
+		foodtriallookup = {}
+		returnedorderslookup = {}
+		for itemdetail in freeordersquery1:
+			if itemdetail[4] in freeorderids:
+				if itemdetail[0].strftime("%a %b %d, %Y") in freeorderslookup:
+					freeorderslookup[itemdetail[0].strftime("%a %b %d, %Y")] += (itemdetail[1]*itemdetail[2])	 	
+				else:
+				 	freeorderslookup[itemdetail[0].strftime("%a %b %d, %Y")] = (itemdetail[1]*itemdetail[2])
+				if itemdetail[3]:
+					freeorderslookup[itemdetail[0].strftime("%a %b %d, %Y")] += (itemdetail[1]*itemdetail[3])
+			elif itemdetail[4] in foodtrialids:
+				if itemdetail[0].strftime("%a %b %d, %Y") in foodtriallookup:
+					foodtriallookup[itemdetail[0].strftime("%a %b %d, %Y")] += (itemdetail[1]*itemdetail[2])	 	
+				else:
+				 	foodtriallookup[itemdetail[0].strftime("%a %b %d, %Y")] = (itemdetail[1]*itemdetail[2])
+				if itemdetail[3]:
+					foodtriallookup[itemdetail[0].strftime("%a %b %d, %Y")] += (itemdetail[1]*itemdetail[3])
+			elif itemdetail[4] in returnedorderids:
+				if itemdetail[0].strftime("%a %b %d, %Y") in returnedorderslookup:
+					returnedorderslookup[itemdetail[0].strftime("%a %b %d, %Y")] += (itemdetail[1]*itemdetail[2])	 	
+				else:
+				 	returnedorderslookup[itemdetail[0].strftime("%a %b %d, %Y")] = (itemdetail[1]*itemdetail[2])
+				if itemdetail[3]:
+					returnedorderslookup[itemdetail[0].strftime("%a %b %d, %Y")] += (itemdetail[1]*itemdetail[3])
+
+		freegross = []
+		ftgross = []
+		retgross = []
+		for c in range(0, len(daterange)):
+			if (daterange[c] in freeorderslookup):
+				freegross.append(float(freeorderslookup[daterange[c]])+float(detailedordercounts["freedeliverytotal"][c]))
+			else:
+				freegross.append(0.0+float(detailedordercounts["freedeliverytotal"][c]))
+			
+			if (daterange[c] in foodtriallookup):
+				ftgross.append(float(foodtriallookup[daterange[c]])+float(detailedordercounts["foodtrialstotal"][c]))
+			else:
+				ftgross.append(0.0+float(detailedordercounts["foodtrialstotal"][c]))
+				
+			if (daterange[c] in returnedorderslookup):
+				retgross.append(float(returnedorderslookup[daterange[c]]))
+			else:
+				retgross.append(0.0)
 
 		orders_with_feedback = len(feedbackonorders)
 
@@ -598,9 +692,14 @@ class StatsHandler(BaseHandler):
 		for thisstore in active_stores:
 			newusersbystore.append({"store_id": thisstore.store_id, "name": thisstore.name, "usercounts":detailedordercounts["newusersbystore"][thisstore.store_id], "usertotals":detailedordercounts["newusersumsbystore"][thisstore.store_id]})
 
+		# diff = []
+		# diff2 = []
+		# for c in range(0, len(daterange)):
+		# 	diff.append(grosssales[c]-netsalespretax[c]-wallettotal[c]-coupontotal[c]-itemdiscounttotal[c])
+		# 	diff2.append(freegross[c]+ftgross[c]+retgross[c])
 
-		
-
+		# print(diff)
+		# print(diff2)
 		# predefs = {"Combos": [41,42,47,48], "Minute Maid": [25], "Pasta": [10,11,13,14,18,19,26,37,45], "Sandwich": [5,7,8,9,12,15,22,32,35,36], "Cheese Cake": [30], "Carrot Cake": [31], "Pita (/3)": [28,29], "Apple Strudel": [46], "Blueberry Brainfreezer": [49]}
 
 		# predefitems = [cat for cat in predefs]
@@ -623,7 +722,7 @@ class StatsHandler(BaseHandler):
 		current_user = self.get_current_user().decode()
 
 		statssession.remove()
-		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=detailedordercounts["neworders"], repeatorders=detailedordercounts["repeatorders"], newsums=detailedordercounts["newsums"], repeatsums=detailedordercounts["repeatsums"], dailyapc=dailyapc, feedback_chart_data=feedback_chart_data, food_rating_counts=food_rating_counts, delivery_rating_counts=delivery_rating_counts, totalsalesvalue=totalsalesvalue, totalorders=totalorders, totalneworders=detailedordercounts["totalneworders"], totalrepeatorders=detailedordercounts["totalrepeatorders"], averageapc=averageapc, androidorders=detailedordercounts["androidorders"], weborders=detailedordercounts["weborders"], iosorders=detailedordercounts["iosorders"], zomatoorders=detailedordercounts["zomatoorders"], swiggyorders=detailedordercounts["swiggyorders"], oncallorders=detailedordercounts["oncallorders"],fporders=detailedordercounts["fporders"],uberorders=detailedordercounts["uberorders"], newandroidorders=detailedordercounts["newandroidorders"], newweborders=detailedordercounts["newweborders"], newiosorders=detailedordercounts["newiosorders"], newzomatoorders=detailedordercounts["newzomatoorders"], newswiggyorders=detailedordercounts["newswiggyorders"], newoncallorders=detailedordercounts["newoncallorders"],newfporders=detailedordercounts["newfporders"],newuberorders=detailedordercounts["newuberorders"], foodtrialstotal=detailedordercounts["foodtrialstotal"], freedeliverytotal=detailedordercounts["freedeliverytotal"], returntotal=detailedordercounts["returntotal"], foodtrialscount=detailedordercounts["foodtrialscount"], freedeliverycount=detailedordercounts["freedeliverycount"], returncount=detailedordercounts["returncount"], grosssales = grosssales, totalgrosssales = totalgrosssales, netsalespretax = netsalespretax, totalnetsalespretax = totalnetsalespretax, user=current_user, active_stores=active_stores, current_store=current_store, current_store_name=current_store_name, newusersbystore=newusersbystore)
+		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=detailedordercounts["neworders"], repeatorders=detailedordercounts["repeatorders"], newsums=detailedordercounts["newsums"], repeatsums=detailedordercounts["repeatsums"], dailyapc=dailyapc, feedback_chart_data=feedback_chart_data, food_rating_counts=food_rating_counts, delivery_rating_counts=delivery_rating_counts, totalsalesvalue=totalsalesvalue, totalorders=totalorders, totalneworders=detailedordercounts["totalneworders"], totalrepeatorders=detailedordercounts["totalrepeatorders"], averageapc=averageapc, androidorders=detailedordercounts["androidorders"], weborders=detailedordercounts["weborders"], iosorders=detailedordercounts["iosorders"], zomatoorders=detailedordercounts["zomatoorders"], swiggyorders=detailedordercounts["swiggyorders"], oncallorders=detailedordercounts["oncallorders"],fporders=detailedordercounts["fporders"],uberorders=detailedordercounts["uberorders"], newandroidorders=detailedordercounts["newandroidorders"], newweborders=detailedordercounts["newweborders"], newiosorders=detailedordercounts["newiosorders"], newzomatoorders=detailedordercounts["newzomatoorders"], newswiggyorders=detailedordercounts["newswiggyorders"], newoncallorders=detailedordercounts["newoncallorders"],newfporders=detailedordercounts["newfporders"],newuberorders=detailedordercounts["newuberorders"], foodtrialstotal=ftgross, freedeliverytotal=freegross, returntotal=retgross, foodtrialscount=detailedordercounts["foodtrialscount"], freedeliverycount=detailedordercounts["freedeliverycount"], returncount=detailedordercounts["returncount"], grosssales = grosssales, totalgrosssales = totalgrosssales, netsalespretax = netsalespretax, totalnetsalespretax = totalnetsalespretax, user=current_user, active_stores=active_stores, current_store=current_store, current_store_name=current_store_name, newusersbystore=newusersbystore, itemdiscounttotal=itemdiscounttotal,wallettotal=wallettotal,coupontotal=coupontotal)
 
 class CustomerStatsHandler(BaseHandler):
 	@tornado.web.authenticated
