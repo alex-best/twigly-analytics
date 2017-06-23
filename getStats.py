@@ -2249,12 +2249,16 @@ class MailchimpDormantUserHandler(BaseHandler):
 				for item in userids:
 					msg=""
 					reward_points = item['points']
-					if (reward_points>=20 and reward_points<50):
-						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%2020%20points%20for%20Rs%2050%20wallet%20money.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
-					elif (reward_points>=50 and reward_points<100):
-						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%2050%20points%20for%20Rs%20150%20wallet%20money.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
+					if (reward_points>=20 and reward_points<30):
+						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%2020%20points%20for%20Rs%2040%20wallet%20money.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
+					elif (reward_points>=30 and reward_points<50):
+						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%2030%20points%20for%2015%25%20discount.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
+					elif (reward_points>=50 and reward_points<75):
+						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%2050%20points%20for%20Rs%20125%20wallet%20money.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
+					elif (reward_points>=75 and reward_points<100):
+						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%2075%20points%20for%2015%25%20discount.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
 					elif (reward_points>=100 and reward_points<150):
-						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%20100%20points%20for%20Rs%20400%20wallet%20money.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
+						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%20100%20points%20for%20Rs%20300%20wallet%20money.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
 					elif (reward_points>=150 and reward_points<300):
 						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%20150%20points%20for%2015%25%20discount.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
 					elif (reward_points>=300 and reward_points<500):
