@@ -15,7 +15,7 @@
     <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
       <ul class="nav navbar-nav">
         {% if user=="admin" or user == "headchef" or user=="review" %}<li><a href="/stats" style="color: #FFFFFF;">Vital Stats</a></li>{% end %}
-        {% if user!="twiglyservice" %}<li><a href="/itemstats" style="color: #FFFFFF;">Item Stats</a></li>{% end %}
+        <li><a href="/itemstats" style="color: #FFFFFF;">Item Stats</a></li>
         {% if user=="admin" or user=="review"%}<li><a href="/userstats" style="color: #FFFFFF;">User Stats</a></li>{% end %}
         {% if user!="review" and user!="twiglyservice" %}<li><a href="/storeitems" style="color: #FFFFFF;">Update Menu</a></li>{% end %}
         {% if user=="admin" %}<li><a href="/sendmail" style="color: #FFFFFF;">Send Email</a></li>{% end %}
