@@ -509,7 +509,7 @@ class StatsHandler(BaseHandler):
 				current_store_name = thisstore.name
 				break
 
-		dailysalesquery = statssession.query(order.date_add, sqlalchemy.func.sum(order.total), sqlalchemy.func.sum(order.vat), sqlalchemy.func.sum(order.delivery_charges), sqlalchemy.func.sum(order.wallet_amount), sqlalchemy.func.sum(order.coupon_discount) ).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.order_status.in_(deliveredStates + inProgress), order.store_id.in_(store_list)).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
+		dailysalesquery = statssession.query(order.date_add, sqlalchemy.func.sum(order.total), sqlalchemy.func.sum(order.vat), sqlalchemy.func.sum(order.delivery_charges), sqlalchemy.func.sum(order.wallet_amount), sqlalchemy.func.sum(order.coupon_discount),sqlalchemy.func.sum(order.service_tax) ).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.order_status.in_(deliveredStates + inProgress), order.store_id.in_(store_list)).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
 
 		totalsales = []
 		deliverycharges=[]
@@ -566,18 +566,18 @@ class StatsHandler(BaseHandler):
 
 		for grossdetail in grosssalesquery:
 			if grossdetail[0].strftime("%a %b %d, %Y") in grosssaleslookup:
-				grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] += (grossdetail[1]*grossdetail[2])	 	
+				grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] += (grossdetail[1]*grossdetail[2])
 			else:
 			 	grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] = (grossdetail[1]*grossdetail[2])
 			if grossdetail[3]:
 				grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] += (grossdetail[1]*grossdetail[3])
-			
+
 			if grossdetail[0].strftime("%a %b %d, %Y") in itemdisclookup:
 				itemdisclookup[grossdetail[0].strftime("%a %b %d, %Y")] += grossdetail[1]*grossdetail[4]
 			else:
 				itemdisclookup[grossdetail[0].strftime("%a %b %d, %Y")] = grossdetail[1]*grossdetail[4]
 
-		vatlookup = {thisresult[0].strftime("%a %b %d, %Y"): float(thisresult[2]) for thisresult in dailysalesquery}
+		vatlookup = {thisresult[0].strftime("%a %b %d, %Y"): (float(thisresult[2])+float(thisresult[6])) for thisresult in dailysalesquery}
 
 
 		grosssales = []
@@ -625,7 +625,6 @@ class StatsHandler(BaseHandler):
 
 		freeordersquery1 = statssession.query(order.date_add,orderdetail.quantity,orderdetail.price,orderdetailoption.price,order.order_id).join(orderdetail).outerjoin(orderdetailoption).filter(order.order_id.in_(allfreeids))
 
-		# print(freeorderids,foodtrialids,returnedorderids)
 		freeorderslookup = {}
 		foodtriallookup = {}
 		returnedorderslookup = {}
@@ -695,11 +694,12 @@ class StatsHandler(BaseHandler):
 		# diff = []
 		# diff2 = []
 		# for c in range(0, len(daterange)):
-		# 	diff.append(grosssales[c]-netsalespretax[c]-wallettotal[c]-coupontotal[c]-itemdiscounttotal[c])
+		# 	diff.append(grosssales[c]-netsalespretax[c]-wallettotal[c]-coupontotal[c]-itemdiscounttotal[c]-deliverycharges[c])
 		# 	diff2.append(freegross[c]+ftgross[c]+retgross[c])
 
 		# print(diff)
 		# print(diff2)
+
 		# predefs = {"Combos": [41,42,47,48], "Minute Maid": [25], "Pasta": [10,11,13,14,18,19,26,37,45], "Sandwich": [5,7,8,9,12,15,22,32,35,36], "Cheese Cake": [30], "Carrot Cake": [31], "Pita (/3)": [28,29], "Apple Strudel": [46], "Blueberry Brainfreezer": [49]}
 
 		# predefitems = [cat for cat in predefs]
