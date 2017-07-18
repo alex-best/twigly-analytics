@@ -2244,7 +2244,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 		if environment_production:
 			statsengine = sqlalchemy.create_engine(statsengine_url)
 			statssession = scoped_session(sessionmaker(bind=statsengine))
-			thissql1 = "select u.mobile_number, u.name, u.reward_points from users u left join orders o on o.user_id=u.user_id where u.reward_points>=20 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59');"
+			thissql1 = "select u.mobile_number, u.name, u.reward_points from users u left join orders o on o.user_id=u.user_id where u.reward_points>=15 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59');"
 			result1 = statsengine.execute(thissql1)
 			userids = []
 			mobiles = []
@@ -2257,7 +2257,9 @@ class MailchimpDormantUserHandler(BaseHandler):
 				for item in userids:
 					msg=""
 					reward_points = item['points']
-					if (reward_points>=20 and reward_points<30):
+					if (reward_points>=15 and reward_points<20):
+						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%2015%20points%20to%20get%20zero%20delivery%20charges%20on%20all%20orders%20for%20the%20next%207%20days.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
+					elif (reward_points>=20 and reward_points<30):
 						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%2020%20points%20for%20Rs%2040%20wallet%20money.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
 					elif (reward_points>=30 and reward_points<50):
 						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%2030%20points%20for%2015%25%20discount.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
