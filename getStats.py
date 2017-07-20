@@ -1398,6 +1398,299 @@ class TodayMenuHandler(BaseHandler):
 			storeitems = getStoreItems(current_store)
 			self.render("templates/todaysmenu.html", activelist = storeitems[0], activeitems = len(storeitems[0]), user=current_user)
 
+class DiscountAnalysisHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		current_user = self.get_current_user().decode()
+		if current_user != "admin":
+			self.redirect('/stats')
+		else:
+			horizon = self.get_argument("horizon", None)
+			startdate = self.get_argument("startdate", None)
+			enddate = self.get_argument("enddate", None)
+			if startdate is None:
+				if horizon is None:
+					horizon = 7
+				else:
+					horizon = int(horizon)
+
+				parsedenddate = datetime.date.today() +  datetime.timedelta(days=1)
+				parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
+				daterange = [parsedstartdate.strftime("%a %b %d, %Y")]
+				for c in range(horizon-1):
+					daterange.append((parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%a %b %d, %Y"))
+
+			else:
+				parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date()
+				parsedenddate = parsedenddate + datetime.timedelta(days=1)
+				parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
+				daterange = []
+				for c in range((parsedenddate - parsedstartdate).days):
+					daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%a %b %d, %Y"))
+
+			statsengine = sqlalchemy.create_engine(statsengine_url)
+			statssession = scoped_session(sessionmaker(bind=statsengine))
+
+			current_store = self.get_argument("store", "All")
+
+			active_stores = statssession.query(store).filter(store.is_active == True).all()
+			active_stores_list = [x.store_id for x in active_stores]
+
+			if current_store == "All":
+				store_list = active_stores_list
+			else:
+				store_list = [int(current_store)]
+			
+			current_store_name = "All"
+			for thisstore in active_stores:
+				if [thisstore.store_id] == current_store:
+					current_store_name = thisstore.name
+					break
+
+			dailyordersquery = statssession.query(order).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress + returnedStates), order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.store_id.in_(store_list)).all()
+
+			dailyorderids = [thisorder.order_id for thisorder in dailyordersquery if (thisorder.order_status not in returnedStates)]
+
+			grosssalesquery = statssession.query(orderdetail.date_add,orderdetail.quantity,orderdetail.price,orderdetailoption.price).outerjoin(orderdetailoption).filter(orderdetail.order_id.in_(dailyorderids))
+			
+			grosssaleslookup = {}
+
+			for grossdetail in grosssalesquery:
+				if grossdetail[0].strftime("%a %b %d, %Y") in grosssaleslookup:
+					grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] += (grossdetail[1]*grossdetail[2])	 	
+				else:
+				 	grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] = (grossdetail[1]*grossdetail[2])
+				if grossdetail[3]:
+					grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] += (grossdetail[1]*grossdetail[3])
+				
+
+			totalsales = []
+
+			dailysalesquery = statssession.query(order.date_add, sqlalchemy.func.sum(order.wallet_amount), sqlalchemy.func.sum(order.coupon_discount), sqlalchemy.func.sum(order.delivery_charges)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.order_status.in_(deliveredStates + inProgress), order.store_id.in_(store_list)).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
+
+			wallettotal = []
+			coupontotal = []
+			deliverycharges = []
+
+			wallettransactionlookup = {thisresult[0].strftime("%a %b %d, %Y"): float(thisresult[1]) for thisresult in dailysalesquery}
+			couponlookup = {thisresult[0].strftime("%a %b %d, %Y"): float(thisresult[2]) for thisresult in dailysalesquery}
+			thisdeliverydetails = {thisresult[0].strftime("%a %b %d, %Y"): float(thisresult[3]) for thisresult in dailysalesquery}
+
+			for thisdate in daterange:
+				if thisdate in wallettransactionlookup:
+					wallettotal.append(float(wallettransactionlookup[thisdate])) 
+				else:
+					wallettotal.append(0)
+				
+				if thisdate in couponlookup:
+					coupontotal.append(float(couponlookup[thisdate])) 
+				else:
+					coupontotal.append(0)
+
+				if thisdate in thisdeliverydetails:
+					deliverycharges.append(thisdeliverydetails[thisdate])
+				else:
+					deliverycharges.append(0) 
+
+			for c in range(0, len(daterange)):
+				try:
+					# grosssales.append(float(grosssaleslookup[daterange[c]]))
+					totalsales.append(float(grosssaleslookup[daterange[c]])+float(deliverycharges[c]))
+				except KeyError:
+					totalsales.append(0.0)
+
+			resulthtml = "<table style='border-collapse: separate; border-spacing: 4px;'><thead><tr><th>&nbsp;</th>"
+			for thisdate in daterange:
+				resulthtml += ("<th>" + thisdate + "</th>")
+			resulthtml += "</tr></thead><tbody>"
+
+			resulthtml += "<tr><td style='font-weight: bold; text-align: left;'>Gross Sales</td>"
+			for x in totalsales:
+				resulthtml += ("<td style='text-align: right;'>" + str(x) + "</td>")
+			resulthtml += "</tr>"
+
+
+			itemdiscountsql = "select date(date_add), sum(quantity*discount) from order_details where discount > 0 and order_id in (select order_id from orders where order_status in (3,10,11,12,16) and date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and date_add<'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59') group by 1;"
+			itemdiscountresult = statsengine.execute(itemdiscountsql)
+			itemdiscountlookup = {fd[0].strftime("%a %b %d, %Y"): fd[1] for fd in itemdiscountresult}
+			itemdiscountlist = []
+			for thisdate in daterange:
+				if thisdate in itemdiscountlookup:
+					itemdiscountlist.append(float(itemdiscountlookup[thisdate]))
+				else:
+					itemdiscountlist.append(0)
+
+			totaldiscounts = []
+			for index, x in enumerate(itemdiscountlist):
+				totaldiscounts.append(x + wallettotal[index] + coupontotal[index])
+			resulthtml += "<tr><td style='font-weight: bold; text-align: left;'>Total Discounts</td>"
+			for index, x  in enumerate(totaldiscounts):
+				try:
+					resulthtml += ("<td style='text-align: right;'>" + str(round(x,2)) + " (" + str(round(x/totalsales[index]*100,2))+ "%)</td>")
+				except ZeroDivisionError:
+					resulthtml += "<td style='text-align: right;'>-</td>"
+			resulthtml += "</tr>"
+
+
+			resulthtml += "<tr style='border-top: 1px solid #000;'><td style='font-weight: bold; text-align: left;'>Item Discounts</td>"
+			for index, x  in enumerate(itemdiscountlist):
+				try:
+					resulthtml += ("<td style='text-align: right;'>" + str(round(x,2)) + " (" + str(round(x/totaldiscounts[index]*100,2))+ "%)</td>")
+				except ZeroDivisionError:
+					resulthtml += "<td  style='text-align: right;'>-</td>"
+			resulthtml += "</tr>"
+
+			freedessertssql = "select date(date_add), sum(a.quantity*a.discount) from order_details as a join menu_items as b on a.menu_item_id = b.menu_item_id where a.price-a.discount = 0 and a.order_id in (select order_id from orders where order_status = 3 and date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and date_add<'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59') and b.cooking_station =8 group by 1;"
+			freedessertresult = statsengine.execute(freedessertssql)
+			freedessertlookup = {fd[0].strftime("%a %b %d, %Y"): fd[1] for fd in freedessertresult}
+			freedessertlist = []
+			for thisdate in daterange:
+				if thisdate in freedessertlookup:
+					freedessertlist.append(float(freedessertlookup[thisdate]))
+				else:
+					freedessertlist.append(0)
+
+			resulthtml += "<tr style='background: #ccc; text-align: right;'><td>Free Desserts</td>"
+			for index, x  in enumerate(freedessertlist):
+				try:
+					resulthtml += ("<td>" + str(round(x,2)) + " (" + str(round(x/itemdiscountlist[index]*100,2))+ "%)</td>")
+				except ZeroDivisionError:
+					resulthtml += "<td>-</td>"
+			resulthtml += "</tr>"
+
+			sotdsql = "select date(date_add), sum(a.quantity*a.discount) from order_details as a join menu_items as b on a.menu_item_id = b.menu_item_id where ((a.price-a.discount = 140) or (a.price-a.discount = 160)) and a.order_id in (select order_id from orders where order_status = 3 and date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and date_add<'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59') and b.cooking_station = 1 group by 1;"
+			sotdresult = statsengine.execute(sotdsql)
+			sotdlookup = {fd[0].strftime("%a %b %d, %Y"): fd[1] for fd in sotdresult}
+			sotdlist = []
+			for thisdate in daterange:
+				if thisdate in sotdlookup:
+					sotdlist.append(float(sotdlookup[thisdate]))
+				else:
+					sotdlist.append(0)
+
+			resulthtml += "<tr style='background: #ccc; text-align: right;'><td>Sandwich of the Day</td>"
+			for index, x  in enumerate(sotdlist):
+				try:
+					resulthtml += ("<td>" + str(round(x,2)) + " (" + str(round(x/itemdiscountlist[index]*100,2))+ "%)</td>")
+				except ZeroDivisionError:
+					resulthtml += "<td>-</td>"
+			resulthtml += "</tr>"
+
+			potdsql = "select date(date_add), sum(a.quantity*a.discount) from order_details as a join menu_items as b on a.menu_item_id = b.menu_item_id where (a.discount = 50 or a.discount = 100) and a.order_id in (select order_id from orders where order_status = 3 and date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and date_add<'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59') and b.cooking_station = 16 group by 1;"
+			potdresult = statsengine.execute(potdsql)
+			potdlookup = {fd[0].strftime("%a %b %d, %Y"): fd[1] for fd in potdresult}
+			potdlist = []
+			for thisdate in daterange:
+				if thisdate in potdlookup:
+					potdlist.append(float(potdlookup[thisdate]))
+				else:
+					potdlist.append(0)
+
+			resulthtml += "<tr style='background: #ccc; text-align: right;'><td>Pizza of the Day</td>"
+			for index, x  in enumerate(potdlist):
+				try:
+					resulthtml += ("<td>" + str(round(x,2)) + " (" + str(round(x/itemdiscountlist[index]*100,2))+ "%)</td>")
+				except ZeroDivisionError:
+					resulthtml += "<td>-</td>"
+			resulthtml += "</tr>"
+
+			freepizzasql = "select date(date_add), sum(a.quantity*a.discount) from order_details as a join menu_items as b on a.menu_item_id = b.menu_item_id where a.price-a.discount = 0 and a.order_id in (select order_id from orders where order_status = 3 and date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and date_add<'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59') and b.cooking_station =16 group by 1;"
+			freepizzaresult = statsengine.execute(freepizzasql)
+			freepizzalookup = {fd[0].strftime("%a %b %d, %Y"): fd[1] for fd in freepizzaresult}
+			freepizzalist = []
+			for thisdate in daterange:
+				if thisdate in freepizzalookup:
+					freepizzalist.append(float(freepizzalookup[thisdate]))
+				else:
+					freepizzalist.append(0)
+
+			resulthtml += "<tr style='background: #ccc; text-align: right;'><td>Free Pizza</td>"
+			for index, x  in enumerate(freepizzalist):
+				try:
+					resulthtml += ("<td>" + str(round(x,2)) + " (" + str(round(x/itemdiscountlist[index]*100,2))+ "%)</td>")
+				except ZeroDivisionError:
+					resulthtml += "<td>-</td>"
+			resulthtml += "</tr>"
+
+			resulthtml += "<tr style='border-top: 1px solid #000;'><td style='font-weight: bold; text-align: left;'>Wallet Usage</td>"
+			for index, x  in enumerate(wallettotal):
+				try:
+					resulthtml += ("<td style='text-align: right;'>" + str(round(x,2)) + " (" + str(round(x/totaldiscounts[index]*100,2))+ "%)</td>")
+				except ZeroDivisionError:
+					resulthtml += "<td style='text-align: right;'>-</td>"
+			resulthtml += "</tr>"
+
+			firstordersql = "select date(date_add), sum(wallet_amount) from orders where wallet_amount=50 and order_id in (select order_id from orders where order_status in (3) and date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and date_add<'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and source in (0,1,2,7) and user_id not in (select user_id from orders where order_status in (3,10,11,12,16) and source in (0,1,2,7) and date_add < @startdate)) group by 1;"
+			firstorderresult = statsengine.execute(firstordersql)
+			firstorderlookup = {fd[0].strftime("%a %b %d, %Y"): fd[1] for fd in firstorderresult}
+			firstorderlist = []
+			for thisdate in daterange:
+				if thisdate in firstorderlookup:
+					firstorderlist.append(float(firstorderlookup[thisdate]))
+				else:
+					firstorderlist.append(0)
+
+			resulthtml += "<tr style='background: #ccc; text-align: right;'><td>First Order Discount</td>"
+			for index, x  in enumerate(firstorderlist):
+				try:
+					resulthtml += ("<td>" + str(round(x,2)) + " (" + str(round(x/wallettotal[index]*100,2))+ "%)</td>")
+				except ZeroDivisionError:
+					resulthtml += "<td>-</td>"
+			resulthtml += "</tr>"
+
+			resulthtml += "<tr style='border-top: 1px solid #000;'><td style='font-weight: bold;'>Coupons Usage</td>"
+			for index, x  in enumerate(coupontotal):
+				try:
+					resulthtml += ("<td style='text-align: right;'>" + str(round(x,2)) + " (" + str(round(x/totaldiscounts[index]*100,2))+ "%)</td>")
+				except ZeroDivisionError:
+					resulthtml += "<td style='text-align: right;'>-</td>"
+			resulthtml += "</tr>"
+
+			couponsql = "select date(o.date_add), c.coupon_code, sum(o.coupon_discount) from orders o left join coupons c on o.coupon_id=c.coupon_id where o.coupon_id is not null and o.order_status = 3 and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1,2 order by 3 desc;"
+			couponresult = statsengine.execute(couponsql)
+
+			couponlookup = {}
+			coupontotallookup = {}
+
+			for fd in couponresult:
+				if fd[0].strftime("%a %b %d, %Y") in couponlookup:
+					if fd[1] in couponlookup[fd[0].strftime("%a %b %d, %Y")]:
+						couponlookup[fd[0].strftime("%a %b %d, %Y")][fd[1]] += fd[2]
+					else:
+						couponlookup[fd[0].strftime("%a %b %d, %Y")][fd[1]] = fd[2]
+				else:
+					couponlookup[fd[0].strftime("%a %b %d, %Y")] = {}
+					couponlookup[fd[0].strftime("%a %b %d, %Y")][fd[1]] = fd[2]
+
+				if fd[1] in coupontotallookup:
+					coupontotallookup[fd[1]] += fd[2]
+				else:
+					coupontotallookup[fd[1]] = fd[2]
+
+			sortedcoupons = sorted(coupontotallookup.items(), key=lambda x: -x[1])
+			selectedcoupons = sortedcoupons[:10]
+			selectedcoupons = [x[0] for x in selectedcoupons]
+
+			for c in selectedcoupons:
+				resulthtml += "<tr style='background: #ccc; text-align: right;'><td>" + c + "</td>"
+				for index, thisdate in enumerate(daterange):
+					if thisdate in couponlookup:
+						if c in couponlookup[thisdate]:
+							try:
+								resulthtml += ("<td>" + str(round(couponlookup[thisdate][c])) + " (" + str(round(float(couponlookup[thisdate][c])/coupontotal[index]*100, 2)) + "%)</td>")
+							except ZeroDivisionError:
+								resulthtml += "<td>-</td>"
+						else:
+							resulthtml += ("<td>0 (0%)</td>")
+					else:
+						resulthtml += ("<td>0 (0%)</td>")
+				resulthtml += "</tr>"
+
+			resulthtml += "</tbody></table>"
+			statssession.remove()
+
+			self.render("templates/simpletabletemplate.html", page_url="/discountanalysis", page_title="Discounts Analysis",table_title="",tableSort="", daterange=daterange, outputtable=resulthtml, user=current_user)
+
 def flip(input, status):
 	inputb = format(input, "08b")
 	output = ""
@@ -3777,6 +4070,7 @@ application = tornado.web.Application([
 	#(r"/userstats", UserStatsHandler),
 	(r"/storeitems", StoreItemsHandler),
 	(r"/todaysmenu", TodayMenuHandler),
+	(r"/discountanalysis", DiscountAnalysisHandler),
 	(r"/updateActive", UpdateItemsActiveHandler),
 	(r"/moveActive", MoveItemsHandler),
 	(r"/updateQuantity", UpdateQuantityHandler),
