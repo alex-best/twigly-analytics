@@ -582,7 +582,7 @@ class StatsHandler(BaseHandler):
 
 		#### Now looking at actual sales
 
-		grosssalesquery = statssession.query(orderdetail.date_add,orderdetail.quantity,orderdetail.price,orderdetailoption.price,orderdetail.discount).outerjoin(orderdetailoption).filter(orderdetail.order_id.in_(dailyorderids))
+		grosssalesquery = statssession.query(order.date_add,orderdetail.quantity,orderdetail.price,orderdetailoption.price,orderdetail.discount).outerjoin(orderdetail).outerjoin(orderdetailoption).filter(order.order_id.in_(dailyorderids))
 			
 		grosssaleslookup = {}
 		itemdisclookup = {}
@@ -1165,7 +1165,7 @@ class ItemStatsHandler(BaseHandler):
 
 			for thiscs in cookingstations:
 				relevantmenuitems = statssession.query(menuitem.menu_item_id).filter(menuitem.cooking_station == thiscs['id'])
-				thiscountquery = statssession.query(orderdetail.date_add, sqlalchemy.func.sum(orderdetail.quantity), orderdetail.order_id).filter(orderdetail.order_id.in_(dailyorderids), orderdetail.menu_item_id.in_(relevantmenuitems)).group_by(sqlalchemy.func.year(orderdetail.date_add), sqlalchemy.func.month(orderdetail.date_add), sqlalchemy.func.day(orderdetail.date_add))
+				thiscountquery = statssession.query(order.date_add, sqlalchemy.func.sum(orderdetail.quantity), orderdetail.order_id).outerjoin(orderdetail).filter(order.order_id.in_(dailyorderids), orderdetail.menu_item_id.in_(relevantmenuitems)).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
 				thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): int(thisresult[1]) for thisresult in thiscountquery}
 				thiscslist = []
 				for thisdate in daterange:
@@ -1491,7 +1491,7 @@ class DiscountAnalysisHandler(BaseHandler):
 
 			dailyorderids = [thisorder.order_id for thisorder in dailyordersquery if (thisorder.order_status not in returnedStates)]
 
-			grosssalesquery = statssession.query(orderdetail.date_add,orderdetail.quantity,orderdetail.price,orderdetailoption.price).outerjoin(orderdetailoption).filter(orderdetail.order_id.in_(dailyorderids))
+			grosssalesquery = statssession.query(order.date_add,orderdetail.quantity,orderdetail.price,orderdetailoption.price).outerjoin(orderdetail).outerjoin(orderdetailoption).filter(order.order_id.in_(dailyorderids))
 			
 			grosssaleslookup = {}
 
@@ -2890,7 +2890,7 @@ class WastageHandler(BaseHandler):
 
 			thisstoreorders = [thisorder.order_id for thisorder in dailyordersquery if thisorder.store_id == thisstore.store_id]
 			
-			grosssalesquery = statssession.query(orderdetail.date_add,orderdetail.quantity,orderdetail.price,orderdetailoption.price,orderdetail.menu_item_id).outerjoin(orderdetailoption).filter(orderdetail.order_id.in_(thisstoreorders))
+			grosssalesquery = statssession.query(order.date_add,orderdetail.quantity,orderdetail.price,orderdetailoption.price,orderdetail.menu_item_id).outerjoin(orderdetail).outerjoin(orderdetailoption).filter(order.order_id.in_(thisstoreorders))
 				
 			grosssaleslookup = {}
 			for grossdetail in grosssalesquery:
