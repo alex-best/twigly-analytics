@@ -915,7 +915,8 @@ class CustomerStatsHandler(BaseHandler):
 			#### Now looking at actual sales
 
 			thisstoreorders = [thisorder.order_id for thisorder in orders]
-			grosssalesquery = statssession.query(orderdetail.order_id,orderdetail.quantity,orderdetail.price,orderdetailoption.price).outerjoin(orderdetailoption).filter(orderdetail.order_id.in_(thisstoreorders))
+			#TODO
+			grosssalesquery = statssession.query(order.order_id,orderdetail.quantity,orderdetail.price,orderdetailoption.price, order.delivery_charges).outerjoin(orderdetail).outerjoin(orderdetailoption).filter(order.order_id.in_(thisstoreorders))
 			
 			grosssaleslookup = {}
 			for grossdetail in grosssalesquery:
@@ -925,6 +926,8 @@ class CustomerStatsHandler(BaseHandler):
 					 grosssaleslookup[grossdetail[0]]=float(grossdetail[1]*grossdetail[2])
 				if grossdetail[3]:
 					grosssaleslookup[grossdetail[0]] += float(grossdetail[1]*grossdetail[3])
+				if grossdetail[4]:
+					grosssaleslookup[grossdetail[0]] += float(grossdetail[4])
 			
 			alltotalsbymonth = [0.0 for m in range(len(months))]
 			newtotalsbymonth = [0.0 for m in range(len(months))]
