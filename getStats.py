@@ -3347,7 +3347,7 @@ class DeliveryStatsHandler(BaseHandler):
 
 
 		# Average deliveries per delivery boy per day by store
-		thissql9 = "select o.store_id, date(o.date_add), count(d.delivery_id), count( distinct db.delivery_boy_id) from orders o left join deliveries d on o.order_id=d.order_id left join delivery_boys db on db.delivery_boy_id = d.delivery_boy_id where o.date_add>'2017-07-01 00:00:00' and o.order_status in (3,10,11,12,16) and o.source not in (7,9,10) group by 1,2;"
+		thissql9 = "select o.store_id, date(o.date_add), count(d.delivery_id), count( distinct db.delivery_boy_id) from orders o left join deliveries d on o.order_id=d.order_id left join delivery_boys db on db.delivery_boy_id = d.delivery_boy_id where o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and o.order_status in (3,10,11,12,16) and o.source not in (7,9,10) group by 1,2;"
 		result9 = statsengine.execute(thissql9)
 		avgdeliveriesbystorelookup = {x.store_id: { thisdate:[] for thisdate in daterange} for x in active_stores}
 		for item in result9:
