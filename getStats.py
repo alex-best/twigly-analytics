@@ -3345,8 +3345,26 @@ class DeliveryStatsHandler(BaseHandler):
 					list3.append(float(reachtodeliverlookup[thisstore.store_id][thisdate][1]/reachtodeliverlookup[thisstore.store_id][thisdate][0]/60)) # avg time in minutes
 			cookingtimes.append({"store_id": thisstore.store_id, "name": thisstore.name,"cookingtime":list1,"dispatchtime":list2,"deliverytime":list3})
 
+
+		# Average deliveries per delivery boy per day by store
+		thissql9 = "select o.store_id, date(o.date_add), count(d.delivery_id), count( distinct db.delivery_boy_id) from orders o left join deliveries d on o.order_id=d.order_id left join delivery_boys db on db.delivery_boy_id = d.delivery_boy_id where o.date_add>'2017-07-01 00:00:00' and o.order_status in (3,10,11,12,16) and o.source not in (7,9,10) group by 1,2;"
+		result9 = statsengine.execute(thissql9)
+		avgdeliveriesbystorelookup = {x.store_id: { thisdate:[] for thisdate in daterange} for x in active_stores}
+		for item in result9:
+			if item[0] in active_stores_list:
+				if item[1].strftime("%a %b %d, %Y") in daterange:
+					avgdeliveriesbystorelookup[item[0]][item[1].strftime("%a %b %d, %Y")] = item[2:]
+
+		averagedeliveries = {}
+		for thisstore in active_stores:
+			list1 = []
+			for thisdate in daterange:
+				if (len(avgdeliveriesbystorelookup[thisstore.store_id][thisdate])==2):
+					list1.append(float(avgdeliveriesbystorelookup[thisstore.store_id][thisdate][0]/avgdeliveriesbystorelookup[thisstore.store_id][thisdate][1]))  
+			averagedeliveries[thisstore.store_id]=list1
+
 		statssession.remove()
-		self.render("templates/deliverystatstemplate.html", daterange=daterange,avgdeliveryscorebystore=avgdeliveryscorebystore, deliverytimestack=deliverytimestack, priorityorderstack=priorityorderstack, cookingtimes=cookingtimes, user=current_user)
+		self.render("templates/deliverystatstemplate.html", daterange=daterange,avgdeliveryscorebystore=avgdeliveryscorebystore, deliverytimestack=deliverytimestack, priorityorderstack=priorityorderstack, cookingtimes=cookingtimes, user=current_user, averagedeliveries=averagedeliveries)
 
 class PaymentStatsHandler(BaseHandler):
 	@tornado.web.authenticated
