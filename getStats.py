@@ -213,6 +213,8 @@ class store(statsBase):
 	store_id = Column("store_id", Integer, primary_key=True)
 	name = Column("name", String)
 	is_active = Column("is_active", Boolean)
+	store_type = Column("store_type", Integer)
+	
 	
 
 def getRedirect(username):
@@ -299,7 +301,7 @@ def getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, 
 	freeordercounts = {thisdate: {"FoodTrial": 0, "FreeDelivery": 0, "Returned": 0} for thisdate in daterange}
 	freeordersums = {thisdate: {"FoodTrial": 0.0, "FreeDelivery": 0.0, "Returned": 0.0} for thisdate in daterange}
 
-	active_stores = statssession.query(store).filter(store.is_active == True).all()
+	active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
 	active_stores_list = [x.store_id for x in active_stores]
 
 	newusercountsbystore = {x.store_id: {thisdate:0 for thisdate in daterange} for x in active_stores}
@@ -518,7 +520,7 @@ class StatsHandler(BaseHandler):
 
 		current_store = self.get_argument("store", "All")
 
-		active_stores = statssession.query(store).filter(store.is_active == True).all()
+		active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
 		active_stores_list = [x.store_id for x in active_stores]
 
 		if current_store == "All":
@@ -787,7 +789,7 @@ class CustomerStatsHandler(BaseHandler):
 
 			current_store = self.get_argument("store", "All")
 
-			active_stores = statssession.query(store).filter(store.is_active == True).all()
+			active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
 			active_stores_list = [x.store_id for x in active_stores]
 			
 
@@ -1035,7 +1037,7 @@ class OrderStatsHandler(BaseHandler):
 
 		current_store = self.get_argument("store", "All")
 
-		active_stores = statssession.query(store).filter(store.is_active == True).all()
+		active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
 		active_stores_list = [x.store_id for x in active_stores]
 
 		if current_store == "All":
@@ -1131,7 +1133,7 @@ class ItemStatsHandler(BaseHandler):
 			elif current_user == "@testmail.com":
 				current_store="5"
 
-			active_stores = statssession.query(store).filter(store.is_active == True).all()
+			active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
 			active_stores_list = [x.store_id for x in active_stores]
 
 			if current_store == "All":
@@ -1210,7 +1212,7 @@ class ItemStatsHandler(BaseHandler):
 				date_effective = item.date_effective
 				menuitems[menu_item_id]["soldout"][date_effective.strftime("%a %b %d, %Y")].append(store_id)
 				
-			active_stores = statssession.query(store).filter(store.is_active == True).all()
+			active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
 
 			today = datetime.date.today().strftime("%a %b %d, %Y")
 
@@ -1397,7 +1399,7 @@ def getStoreItems(current_store):
 	# for i in store_items:
 	# 	print (menu_item_mapping[i.menu_item_id].name, format(i.is_active, '08b'), bool(int(format(i.is_active, '08b')[-1])))
 	
-	active_stores = statssession.query(store).filter(store.is_active == True).all()
+	active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
 
 	current_store_name = ""
 	for thisstore in active_stores:
@@ -1476,7 +1478,7 @@ class DiscountAnalysisHandler(BaseHandler):
 
 			current_store = self.get_argument("store", "All")
 
-			active_stores = statssession.query(store).filter(store.is_active == True).all()
+			active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
 			active_stores_list = [x.store_id for x in active_stores]
 
 			if current_store == "All":
@@ -1982,7 +1984,7 @@ class AnalyticsHandler(BaseHandler):
 			statsengine = sqlalchemy.create_engine(statsengine_url)
 			statssession = scoped_session(sessionmaker(bind=statsengine))
 
-			active_stores = statssession.query(store).filter(store.is_active == True).all()
+			active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
 			active_stores_list = [x.store_id for x in active_stores]
 
 			if current_store == "All":
@@ -2851,7 +2853,7 @@ class WastageHandler(BaseHandler):
 		statsengine = sqlalchemy.create_engine(statsengine_url)
 		statssession = scoped_session(sessionmaker(bind=statsengine))
 
-		active_stores = statssession.query(store).filter(store.is_active == True).all()
+		active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
 
 		dwactivestates = [1,3,5,7,9]
 		dwstoreitemsquery = statssession.query(datewise_store_menu_item).filter(datewise_store_menu_item.date_effective < parsedenddate, datewise_store_menu_item.date_effective >= parsedstartdate, datewise_store_menu_item.is_active.in_(dwactivestates))
@@ -3019,7 +3021,7 @@ class GetStoreItemsHandler(BaseHandler):
 
 		response = {"storeitems": [x.getJson() for x in storeitems], "menuitems": [y.getJson() for y in menuitems]}
 
-		active_stores = statssession.query(store).filter(store.is_active == True).all()
+		active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
 		active_stores_list = [x.store_id for x in active_stores]
 
 		enddate = self.get_argument("date", None)
@@ -3227,7 +3229,7 @@ class DeliveryStatsHandler(BaseHandler):
 
 
 		# average delivery rating by store
-		active_stores = statssession.query(store).filter(store.is_active == True).all()
+		active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
 		active_stores_list = [x.store_id for x in active_stores]
 
 		thissql3 = "select b.store_id, date(b.date_add), sum(case when g.delivery_rating>0 then delivery_rating else 0 end), sum(case when g.delivery_rating>0 then 1 else 0 end), sum(case when g.delivery_rating>0 then delivery_rating else 0 end)/sum(case when g.delivery_rating>0 then 1 else 0 end), sum(case when b.order_id>0 then 1 else 0 end) from orders b left join feedbacks g on g.order_id = b.order_id where b.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and b.order_status in (3,10,11,12,16) group by 1,2;" 
