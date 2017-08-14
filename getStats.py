@@ -3126,17 +3126,36 @@ class DeliveryHandler(BaseHandler):
 		statsengine = sqlalchemy.create_engine(statsengine_url)
 		statssession = scoped_session(sessionmaker(bind=statsengine))
 
+		current_store = self.get_argument("store", "All")
+
+		active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
+		active_stores_list = [x.store_id for x in active_stores]
+
+
+		if current_store == "All":
+			store_list = active_stores_list
+		else:
+			store_list = [int(current_store)]
+
+
+		current_store_name = "All"
+		for thisstore in active_stores:
+			if str(thisstore.store_id) == current_store:
+				current_store_name = thisstore.name
+				break
+
+		store_list_str = ",".join(map(str,store_list))
 
 		#delivery boy rating query 1
 		from sqlalchemy import text
-		thissql1 = text("select a.delivery_boy_id,d.name,count(*),sum(case when c.falls_under_gurantee = 1 then 1 else 0 end) as count_priority,sum(case when c.falls_under_gurantee = 0 then 1 else 0 end) as count_np,sum(case when g.delivery_rating>0 then 1 else 0 end) as total_rated,sum(case when g.delivery_rating>0 then delivery_rating else 0 end)/sum(case when g.delivery_rating>0 then 1 else 0 end) as avg_rated,sum(case when g.delivery_rating=1 then 1 else 0 end) as rated_1,sum(case when g.delivery_rating=2 then 1 else 0 end) as rated_2, sum(case when b.order_status = 10 then 1 else 0 end) as free_orders from orders b left join deliveries a on a.order_id=b.order_id left join delivery_zones c on b.delivery_zone_id=c.delivery_zone_id left join delivery_boys d on d.delivery_boy_id=a.delivery_boy_id left join feedbacks g on g.order_id = b.order_id where b.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and b.order_status in (3,10,11) group by 1,2;")
+		thissql1 = text("select a.delivery_boy_id,d.name,count(*),sum(case when c.falls_under_gurantee = 1 then 1 else 0 end) as count_priority,sum(case when c.falls_under_gurantee = 0 then 1 else 0 end) as count_np,sum(case when g.delivery_rating>0 then 1 else 0 end) as total_rated,sum(case when g.delivery_rating>0 then delivery_rating else 0 end)/sum(case when g.delivery_rating>0 then 1 else 0 end) as avg_rated,sum(case when g.delivery_rating=1 then 1 else 0 end) as rated_1,sum(case when g.delivery_rating=2 then 1 else 0 end) as rated_2, sum(case when b.order_status = 10 then 1 else 0 end) as free_orders from orders b left join deliveries a on a.order_id=b.order_id left join delivery_zones c on b.delivery_zone_id=c.delivery_zone_id left join delivery_boys d on d.delivery_boy_id=a.delivery_boy_id left join feedbacks g on g.order_id = b.order_id where b.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and b.order_status in (3,10,11) and b.store_id in ("+store_list_str+") group by 1,2;")
 
 		result1 = statsengine.execute(thissql1)
 
 		resultlookup = {x[0]: x[1:] for x in result1}
 
 		#delivery boy rating query 2
-		thissql2 = text("select a.delivery_boy_id, d.name, count(*), sum(case when c.falls_under_gurantee = 1 then timestampdiff(minute,e.time_add,f.time_add) else 0 end)/sum(case when c.falls_under_gurantee = 1 then 1 else 0 end) as time_p, sum(case when c.falls_under_gurantee = 0 then timestampdiff(minute,e.time_add,f.time_add) else 0 end)/sum(case when c.falls_under_gurantee = 0 then 1 else 0 end) as time_np from orders b left join deliveries a on a.order_id=b.order_id left join delivery_zones c on b.delivery_zone_id=c.delivery_zone_id left join delivery_boys d on d.delivery_boy_id=a.delivery_boy_id left join order_status_times e on b.order_id=e.order_id left join order_status_times f on b.order_id=f.order_id left join feedbacks g on g.order_id = a.order_id where b.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and b.order_status in (3,10,11) and e.order_status=2 and f.order_status =15 group by 1,2;")
+		thissql2 = text("select a.delivery_boy_id, d.name, count(*), sum(case when c.falls_under_gurantee = 1 then timestampdiff(minute,e.time_add,f.time_add) else 0 end)/sum(case when c.falls_under_gurantee = 1 then 1 else 0 end) as time_p, sum(case when c.falls_under_gurantee = 0 then timestampdiff(minute,e.time_add,f.time_add) else 0 end)/sum(case when c.falls_under_gurantee = 0 then 1 else 0 end) as time_np from orders b left join deliveries a on a.order_id=b.order_id left join delivery_zones c on b.delivery_zone_id=c.delivery_zone_id left join delivery_boys d on d.delivery_boy_id=a.delivery_boy_id left join order_status_times e on b.order_id=e.order_id left join order_status_times f on b.order_id=f.order_id left join feedbacks g on g.order_id = a.order_id where b.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and b.order_status in (3,10,11) and e.order_status=2 and f.order_status =15 and b.store_id in ("+store_list_str+") group by 1,2;")
 
 		result2 = statsengine.execute(thissql2)
 		# for row in result2:
@@ -3150,47 +3169,57 @@ class DeliveryHandler(BaseHandler):
 
 		outputtable = "<table class='table tablesorter table-striped table-hover'><thead><th>DB ID</th><th>Name</th><th>Total Orders</th><th>Priority Orders</th><th>Non Priority Orders</th><th>Total Ratings</th><th>Average Rating</th><th>Orders Rated 1</th><th>Orders Rated 2</th><th>Free Orders</th><th class='part2'>Count with Rating</th><th class='part2'>Time for Priority Orders</th><th class='part2'>Time for Non-Priority Orders</th></thead>"
 		
+		rows = ''
 		for db in resultlookup:
 			if len(resultlookup[db]) == 12:
-				outputtable += "<tr><td>" + str(db) + "</td><td>" + resultlookup[db][0] + "</td><td>" + str(resultlookup[db][1]) + "</td><td>" + str(resultlookup[db][2]) + "</td><td>" + str(resultlookup[db][3]) + "</td><td>" + str(resultlookup[db][4]) + "</td><td>" + str(resultlookup[db][5]) + "</td><td>" + str(resultlookup[db][6]) + "</td><td>" + str(resultlookup[db][7]) + "</td><td>" + str(resultlookup[db][8]) + "</td><td class='part2'>" + str(resultlookup[db][9]) + "</td><td class='part2'>" + str(resultlookup[db][10]) + "</td><td class='part2'>" + str(resultlookup[db][11]) + "</td></tr>"
+				rows += "<tr><td>" + str(db) + "</td><td>" + resultlookup[db][0] + "</td><td>" + str(resultlookup[db][1]) + "</td><td>" + str(resultlookup[db][2]) + "</td><td>" + str(resultlookup[db][3]) + "</td><td>" + str(resultlookup[db][4]) + "</td><td>" + str(resultlookup[db][5]) + "</td><td>" + str(resultlookup[db][6]) + "</td><td>" + str(resultlookup[db][7]) + "</td><td>" + str(resultlookup[db][8]) + "</td><td class='part2'>" + str(resultlookup[db][9]) + "</td><td class='part2'>" + str(resultlookup[db][10]) + "</td><td class='part2'>" + str(resultlookup[db][11]) + "</td></tr>"
 			else:
-				outputtable += "<tr><td>" + str(db) + "</td><td>" + resultlookup[db][0] + "</td><td>" + str(resultlookup[db][1]) + "</td><td>" + str(resultlookup[db][2]) + "</td><td>" + str(resultlookup[db][3]) + "</td><td>" + str(resultlookup[db][4]) + "</td><td>" + str(resultlookup[db][5]) + "</td><td>" + str(resultlookup[db][6]) + "</td><td>" + str(resultlookup[db][7]) + "</td><td>" + str(resultlookup[db][8]) + "</td><td class='part2'>-</td><td class='part2'>-</td><td class='part2'>-</td></tr>"
-		
-		outputtable += "</table>"
-
+				rows += "<tr><td>" + str(db) + "</td><td>" + resultlookup[db][0] + "</td><td>" + str(resultlookup[db][1]) + "</td><td>" + str(resultlookup[db][2]) + "</td><td>" + str(resultlookup[db][3]) + "</td><td>" + str(resultlookup[db][4]) + "</td><td>" + str(resultlookup[db][5]) + "</td><td>" + str(resultlookup[db][6]) + "</td><td>" + str(resultlookup[db][7]) + "</td><td>" + str(resultlookup[db][8]) + "</td><td class='part2'>-</td><td class='part2'>-</td><td class='part2'>-</td></tr>"
+		if (len(rows)):
+			outputtable += rows + "</table>"
+		else: 
+			outputtable = ''
 
 
 		#delivery boy comments
-		thissql3 = text("select c.delivery_boy_id, d.name, b.date_add, a.order_id, a.delivery_rating, a.comment from feedbacks a left join orders b on a.order_id=b.order_id left join deliveries c on b.order_id=c.order_id left join delivery_boys d on c.delivery_boy_id=d.delivery_boy_id where b.order_status in (3,10,11,12,16) and a.delivery_rating in (1,2) and b.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add <'" +parsedenddate.strftime("%Y-%m-%d") + " 00:00:00';")
+		thissql3 = text("select c.delivery_boy_id, d.name, b.date_add, a.order_id, a.delivery_rating, a.comment from feedbacks a left join orders b on a.order_id=b.order_id left join deliveries c on b.order_id=c.order_id left join delivery_boys d on c.delivery_boy_id=d.delivery_boy_id where b.order_status in (3,10,11,12,16) and a.delivery_rating in (1,2) and b.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add <'" +parsedenddate.strftime("%Y-%m-%d") + " 00:00:00' and b.store_id in ("+store_list_str+");")
 
 		result3 = statsengine.execute(thissql3)
 		deliveryfeedback = {}
 		
 		outputtable2 = "<table class='table tablesorter table-striped table-hover'><thead><th>DB ID</th><th>Name</th><th>Order Date</th><th>Order ID</th><th>Delivery Rating</th><th>Comment</th></thead>"
 		
+		rows2=''
 		for item in result3:
-			outputtable2 += "<tr><td>" + str(item[0]) + "</td><td>" + str(item[1]) + "</td><td>" + str(item[2]) + "</td><td><a href='http://twigly.in/admin/orders?f="+str(item[3])+"'>" + str(item[3]) + "</a></td><td>" + str(item[4]) + "</td><td style='text-align:left;'>" + str(item[5]) + "</td><tr>"
+			rows2 += "<tr><td>" + str(item[0]) + "</td><td>" + str(item[1]) + "</td><td>" + str(item[2]) + "</td><td><a href='http://twigly.in/admin/orders?f="+str(item[3])+"'>" + str(item[3]) + "</a></td><td>" + str(item[4]) + "</td><td style='text-align:left;'>" + str(item[5]) + "</td><tr>"
 
-		outputtable2 += "</table>"
+		if (len(rows2)):
+			outputtable2 += rows2 + "</table>"
+		else: 
+			outputtable2 = ''
 
 
 		# All Free deliveries
-		thissql4 = text("select date(o.date_add), o.order_id, timediff(b.time_add,a.time_add), c.delivery_boy_id, d.name from orders o left join order_status_times as a on a.order_id=o.order_id left join order_status_times as b on b.order_id=o.order_id left join deliveries c on c.order_id=o.order_id left join delivery_boys d on d.delivery_boy_id=c.delivery_boy_id where o.order_status in (10) and a.order_status=0 and b.order_status=3 and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <'" +parsedenddate.strftime("%Y-%m-%d") + " 00:00:00';")
+		thissql4 = text("select date(o.date_add), o.order_id, timediff(b.time_add,a.time_add), c.delivery_boy_id, d.name from orders o left join order_status_times as a on a.order_id=o.order_id left join order_status_times as b on b.order_id=o.order_id left join deliveries c on c.order_id=o.order_id left join delivery_boys d on d.delivery_boy_id=c.delivery_boy_id where o.order_status in (10) and a.order_status=0 and b.order_status=3 and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <'" +parsedenddate.strftime("%Y-%m-%d") + " 00:00:00' and o.store_id in ("+store_list_str+");")
 
 		result4 = statsengine.execute(thissql4)
 		deliveryfeedback = {}
 		
 		outputtable3 = "<table class='table tablesorter table-striped table-hover'><thead><th>Order Date</th><th>Order ID</th><th>Received to Delivery Time</th><th>Delivery Boy ID</th><th>Delivery Boy Name</th></thead>"
 		
+		rows3=''
 		for item in result4:
-			outputtable3 += "<tr><td>" + str(item[0]) + "</td><td><a href='http://twigly.in/admin/orders?f="+str(item[1])+"'>" + str(item[1]) + "</a></td><td>" + str(item[2]) + "</td><td>" + str(item[3]) + "</td><td>" + str(item[4]) + "</td><tr>"
+			rows3 += "<tr><td>" + str(item[0]) + "</td><td><a href='http://twigly.in/admin/orders?f="+str(item[1])+"'>" + str(item[1]) + "</a></td><td>" + str(item[2]) + "</td><td>" + str(item[3]) + "</td><td>" + str(item[4]) + "</td><tr>"
 
-		outputtable3 += "</table>"
+		if (len(rows3)):
+			outputtable3 += rows3 + "</table>"
+		else: 
+			outputtable3 = ''
 
 
 
 		statssession.remove()
-		self.render("templates/deliveriestemplate.html", outputtable=outputtable, outputtable2=outputtable2, outputtable3=outputtable3, user=current_user)
+		self.render("templates/deliveriestemplate.html", outputtable=outputtable, outputtable2=outputtable2, outputtable3=outputtable3, user=current_user,active_stores=active_stores, current_store=current_store, current_store_name=current_store_name)
 
 
 class DeliveryStatsHandler(BaseHandler):

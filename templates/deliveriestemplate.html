@@ -64,6 +64,28 @@
 		{% include "navtemplate.html" %}
 	{% end %}
     <div class="row" style="margin-bottom: 40px; margin-top: 40px;">
+        <div class="col-xs-12 col-md-6" style="text-align: left; font-size: 17px;">
+            Delivery Boy Metrics in <span style="font-weight: bold;">{{ current_store_name }}</span>
+        </div>
+        <div class="col-xs-12 col-md-6" style="text-align: right;">
+            <select id="storeselect">
+                <option value="All" 
+                    {% if current_store == "All" %}
+                        selected="selected"
+                    {% end %}>
+                    All
+                </option>
+                {% for store in active_stores %}
+                    <option value="{{ store.store_id }}" 
+                    {% if [store.store_id] == current_store %}
+                        selected="selected"
+                    {% end %}>
+                    {{ store.name }}</option>
+                {% end %}
+            </select>
+        </div>
+    </div>
+    <div class="row" style="margin-bottom: 40px; margin-top: 40px;">
         <h4 class="text-center" style="font-family: &quot;Lucida Grande&quot;,&quot;Lucida Sans Unicode&quot;,Arial,Helvetica,sans-serif; font-size: 18px; color: rgb(68, 145, 123);">Delivery Boy Performance Numbers</h4>
         {% raw outputtable %}
     </div>
@@ -118,8 +140,12 @@
 	
 	$(document).ready(function() {
 		$('#horizonselect').on('change', function() {
-			window.location.href = "/deliveries?horizon=" + $(this).val();
-		});
+            var storeid = $('#storeselect').val();
+            if (storeid == "") {
+                storeid = "All";
+            }
+            window.location.href = "/deliveries?horizon=" + $(this).val() + "&store=" + storeid;
+        });
 		var thishorizon = getUrlParameter("horizon");
 		if (thishorizon) {
 			$('#horizonselect').val(thishorizon);
@@ -132,21 +158,36 @@
 		if (thisenddate) {
 			$('#enddate').val(thisenddate);
 		}
-		
+        var thisstore = getUrlParameter("store");
+        if (thisstore) {
+            $('#storeselect').val(thisstore);
+        }
 		$('.input-daterange').datepicker({
 		    todayBtn: "linked",
 		    autoclose: true,
 		    todayHighlight: true,
-		    format: "dd/mm/yy",
+		    format: "dd/mm/yy"
 		});
+
 		$('#setDates').on('click', function() {
-			window.location.href = "/deliveries?startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val();
+			var storeid = $('#storeselect').val();
+            if (storeid == "") {
+                storeid = 2;
+            }
+            window.location.href = "/deliveries?startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val() + "&store=" + storeid;
 		});
 		$('.showFilters').on('click', function() {
 			$('#horizon').fadeToggle();
 		});
-
         $('.tablesorter').tablesorter({sortList: [[0,0]]});
+        $(document).on('change', '#storeselect', function() {
+            if ($("#startdate").val() == "" || $("#enddate").val() == "") {
+                window.location = "/deliveries?store=" + $(this).val();
+            } else {
+                window.location = "/deliveries?store=" + $(this).val() + "&startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val();
+            }
+        });
+
 	});
 	
 </script>
