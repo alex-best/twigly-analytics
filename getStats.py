@@ -3117,7 +3117,7 @@ class DeliveryHandler(BaseHandler):
 		
 		else:
 			parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date()
-			parsedenddate = parsedenddate + datetime.timedelta(days=1)
+			#parsedenddate = parsedenddate + datetime.timedelta(days=1)
 			parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
 			daterange = []
 			for c in range((parsedenddate - parsedstartdate).days):
