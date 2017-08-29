@@ -3128,6 +3128,14 @@ class DeliveryHandler(BaseHandler):
 
 		current_store = self.get_argument("store", "All")
 
+		if current_user == "@testmail.com":
+			current_store="2"
+		elif current_user == "@testmail.com":
+			current_store="3"
+		elif current_user == "@testmail.com":
+			current_store="5"
+
+
 		active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
 		active_stores_list = [x.store_id for x in active_stores]
 
