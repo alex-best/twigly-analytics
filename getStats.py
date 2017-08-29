@@ -3096,7 +3096,7 @@ class DeliveryHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
 		current_user = self.get_current_user().decode()
-		if current_user not in ("admin"):
+		if current_user not in ["admin","@testmail.com","@testmail.com","@testmail.com"]:
 			self.redirect('/stats')
 
 		horizon = self.get_argument("horizon", None)
