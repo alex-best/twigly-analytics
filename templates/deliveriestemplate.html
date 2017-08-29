@@ -60,7 +60,7 @@
     </nav>
 </div>
 <div class="container">
-	{% if (user=="admin" or user=="headchef" or user=="chef") %}
+	{% if (user=="admin" or user=="headchef" or user=="chef" or user == "@testmail.com" or user =="@testmail.com" or user =="@testmail.com") %}
 		{% include "navtemplate.html" %}
 	{% end %}
     <div class="row" style="margin-bottom: 40px; margin-top: 40px;">
@@ -68,6 +68,7 @@
             Delivery Boy Metrics in <span style="font-weight: bold;">{{ current_store_name }}</span>
         </div>
         <div class="col-xs-12 col-md-6" style="text-align: right;">
+            {% if (user != "@testmail.com" and user !="@testmail.com" and user !="@testmail.com") %}
             <select id="storeselect">
                 <option value="All" 
                     {% if current_store == "All" %}
@@ -83,6 +84,7 @@
                     {{ store.name }}</option>
                 {% end %}
             </select>
+            {% end %}
         </div>
     </div>
     <div class="row" style="margin-bottom: 40px; margin-top: 40px;">
