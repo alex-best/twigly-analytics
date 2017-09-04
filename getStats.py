@@ -925,7 +925,10 @@ class CustomerStatsHandler(BaseHandler):
 				if grossdetail[0] in grosssaleslookup:  
 					 grosssaleslookup[grossdetail[0]]+=float(grossdetail[1]*grossdetail[2])
 				else:
-					 grosssaleslookup[grossdetail[0]]=float(grossdetail[1]*grossdetail[2])
+					if grossdetail[1]:
+						 grosssaleslookup[grossdetail[0]]=float(grossdetail[1]*grossdetail[2])
+					else:
+						 grosssaleslookup[grossdetail[0]]=float(0)
 				if grossdetail[3]:
 					grosssaleslookup[grossdetail[0]] += float(grossdetail[1]*grossdetail[3])
 				if grossdetail[4]:
