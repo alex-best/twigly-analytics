@@ -2888,7 +2888,6 @@ class WastageHandler(BaseHandler):
 
 		storeingredientinventoryquery = statssession.query(sqlalchemy.func.sum(store_order_details.price*store_order_details.received_quantity),store_orders.req_store_id,sqlalchemy.func.date(store_orders.expected_delivery)).join(store_orders).filter(store_orders.expected_delivery < parsedenddate,store_orders.expected_delivery >= parsedstartdate, store_orders.so_type == 3,store_orders.status == 3).group_by(store_orders.req_store_id,sqlalchemy.func.date(store_orders.expected_delivery)).all()
 
-
 		grosssales = []
 		predictedsales = []
 		wastage = []
@@ -2938,11 +2937,19 @@ class WastageHandler(BaseHandler):
 			midlookup = {smi.menu_item_id: smi for smi in storeitemsquery if smi.store_id == thisstore.store_id}
 			for dr in peritemwastage:
 				for menuitemid in peritemwastage[dr]:
+					if peritemwastage[dr][menuitemid] > 0:
+						wastagelookup[dr] += (peritemwastage[dr][menuitemid]*midlookup[menuitemid].cost_price)
+
 			storewastagelookup = {dr: 0 for dr in daterange}
 			storewastageitems = [(thiswastage,mystore,thisdate) for (thiswastage,mystore,thisdate) in storeingredientinventoryquery if mystore == thisstore.store_id]
 			for (thiswastage,mystore,thisdate) in storewastageitems:
 				storewastagelookup[thisdate.strftime("%a %b %d, %Y")] = thiswastage
 
+			thisgrosssales = []
+			thispredictedsales = []
+			thiswastage = []
+			thisstorewastage = []
+			thiswastagepc = []
 
 			for c in range(0, len(daterange)):
 				try:
