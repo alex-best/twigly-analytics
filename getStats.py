@@ -2822,6 +2822,22 @@ class ingredients(statsBase):
     cost = Column('cost', Float)
 
 
+class store_orders(statsBase):
+    __tablename__ = "store_orders"
+    store_order_id = Column('store_order_id', Integer, primary_key=True)
+    req_store_id = Column('req_store_id', Integer)
+    so_type = Column('type', Integer)
+    status = Column('status', Integer)
+    expected_delivery = Column('expected_delivery',DateTime)
+
+class store_order_details(statsBase):
+    __tablename__ = "store_order_details"
+    store_order_detail_id = Column('store_order_detail_id', Integer, primary_key=True)
+    store_order_id = Column('store_order_id', Integer, ForeignKey("store_orders.store_order_id"))
+    price = Column('price', Float)
+    received_quantity = Column('received_quantity', Float)
+
+
 class WastageHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
@@ -2870,7 +2886,9 @@ class WastageHandler(BaseHandler):
 
 		#dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
 
-		storeingredientinventoryquery = statssession.query(store_ingredient_inventory,ingredient_batches,ingredients).join(ingredient_batches).join(ingredients).filter(store_ingredient_inventory.date_effective < parsedenddate,store_ingredient_inventory.date_effective >= parsedstartdate, store_ingredient_inventory.role.in_([3,14]),store_ingredient_inventory.actual_units>0).all()
+		storeingredientinventoryquery = statssession.query(sqlalchemy.func.sum(store_order_details.price*store_order_details.received_quantity),store_orders.req_store_id,sqlalchemy.func.date(store_orders.expected_delivery)).join(store_orders).filter(store_orders.expected_delivery < parsedenddate,store_orders.expected_delivery >= parsedstartdate, store_orders.so_type == 3,store_orders.status == 3).group_by(store_orders.req_store_id,sqlalchemy.func.date(store_orders.expected_delivery)).all()
+
+
 		grosssales = []
 		predictedsales = []
 		wastage = []
@@ -2920,23 +2938,11 @@ class WastageHandler(BaseHandler):
 			midlookup = {smi.menu_item_id: smi for smi in storeitemsquery if smi.store_id == thisstore.store_id}
 			for dr in peritemwastage:
 				for menuitemid in peritemwastage[dr]:
-					if peritemwastage[dr][menuitemid] > 0:
-						wastagelookup[dr] += (peritemwastage[dr][menuitemid]*midlookup[menuitemid].cost_price)
-
 			storewastagelookup = {dr: 0 for dr in daterange}
-			storewastageitems = [(thisinventory,thisbatch,thisingredient) for (thisinventory,thisbatch,thisingredient) in storeingredientinventoryquery if thisinventory.store_id == thisstore.store_id]
-			
-			for (inv,bat,ing) in storewastageitems:
-				if inv.date_effective.strftime("%a %b %d, %Y") in storewastagelookup:
-					storewastagelookup[inv.date_effective.strftime("%a %b %d, %Y")] += (inv.actual_units*ing.cost/ing.pack_size)
-				else:
-					storewastagelookup[inv.date_effective.strftime("%a %b %d, %Y")] = inv.actual_units*ing.cost/ing.pack_size
+			storewastageitems = [(thiswastage,mystore,thisdate) for (thiswastage,mystore,thisdate) in storeingredientinventoryquery if mystore == thisstore.store_id]
+			for (thiswastage,mystore,thisdate) in storewastageitems:
+				storewastagelookup[thisdate.strftime("%a %b %d, %Y")] = thiswastage
 
-			thisgrosssales = []
-			thispredictedsales = []
-			thiswastage = []
-			thisstorewastage = []
-			thiswastagepc = []
 
 			for c in range(0, len(daterange)):
 				try:
