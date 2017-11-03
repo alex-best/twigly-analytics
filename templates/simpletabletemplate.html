@@ -151,7 +151,10 @@
 			$('#horizon').fadeToggle();
 		});
 
+{% if (tableSort!="") %}
         $('.tablesorter').tablesorter({sortList: {{tableSort}} });
+{% end %}
+
 	});
 	
 </script>

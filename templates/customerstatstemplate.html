@@ -275,7 +275,7 @@
             type: "column"
         },
         title: {
-            text: 'Totals by New/Repeat Customers by Month'
+            text: 'Gross by New/Repeat Customers by Month'
         },
         xAxis: {
             categories: {% raw months %},
@@ -283,10 +283,11 @@
         },
         yAxis: {
             title: {
-                text: 'Totals'
+                text: 'Gross'
             },
             stackLabels: {
             	enabled: true,
+                format: '{total:.2f}',
             	style: {
                     fontWeight: 'bold',
                     color: (Highcharts.theme && Highcharts.theme.textColor) || 'gray'

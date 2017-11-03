@@ -63,6 +63,9 @@
 	{% if (user=="admin" or user=="headchef" or user=="chef") %}
 		{% include "navtemplate.html" %}
 	{% end %}
+    <div class="row" style="margin-bottom: 40px;">
+        <div id="averagedeliveriesbystorechart" style="width:100%; height:400px;"></div>
+    </div>    
     {% for thisstore in avgdeliveryscorebystore %}
     <div class="row" style="margin-bottom: 40px;">
         <div id="avgdeliverscorebystore{{thisstore['store_id']}}" style="width:100%; height:400px;"></div>
@@ -348,6 +351,59 @@
     });
 {% end %}
 
+
+    $('#averagedeliveriesbystorechart').highcharts({
+        chart: {
+            zoomType: 'xy'
+        },
+        title: {
+            useHTML: true,
+            text: 'Average deliveries per delivery boy by store (excluding SW, FP, Uber) '
+        },
+        xAxis: {
+            categories: {% raw daterange %},
+            crosshair: true
+        },
+        yAxis: [{
+            title: {
+                text: 'Average'
+            }
+        }],
+        tooltip: {
+            shared: true
+        },
+        series: [{
+            name: "City Court",
+            type: "column",
+            yAxis: 0,
+            showInLegend: true,
+            data: {{ averagedeliveries[2] }},
+            dataLabels: {
+                enabled: true,
+                format: '{point.y:.2f}'
+            }
+        },{
+            name: "Sector 46",
+            type: "column",
+            yAxis: 0,
+            showInLegend: true,
+            data: {{ averagedeliveries[3] }},
+            dataLabels: {
+                enabled: true,
+                format: '{point.y:.2f}'
+            }
+        },{
+            name: "Kalkaji",
+            type: "column",
+            yAxis: 0,
+            showInLegend: true,
+            data: {{ averagedeliveries[5] }},
+            dataLabels: {
+                enabled: true,
+                format: '{point.y:.2f}'
+            }
+        }]
+    });
 
 	$(document).ready(function() {
 		$('#horizonselect').on('change', function() {

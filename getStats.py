@@ -213,6 +213,8 @@ class store(statsBase):
 	store_id = Column("store_id", Integer, primary_key=True)
 	name = Column("name", String)
 	is_active = Column("is_active", Boolean)
+	store_type = Column("store_type", Integer)
+	
 	
 
 def getRedirect(username):
@@ -300,7 +302,7 @@ def getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, 
 	freeordercounts = {thisdate: {"FoodTrial": 0, "FreeDelivery": 0, "Returned": 0} for thisdate in daterange}
 	freeordersums = {thisdate: {"FoodTrial": 0.0, "FreeDelivery": 0.0, "Returned": 0.0} for thisdate in daterange}
 
-	active_stores = statssession.query(store).filter(store.is_active == True).all()
+	active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
 	active_stores_list = [x.store_id for x in active_stores]
 
 	newusercountsbystore = {x.store_id: {thisdate:0 for thisdate in daterange} for x in active_stores}
@@ -519,7 +521,7 @@ class StatsHandler(BaseHandler):
 
 		current_store = self.get_argument("store", "All")
 
-		active_stores = statssession.query(store).filter(store.is_active == True).all()
+		active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
 		active_stores_list = [x.store_id for x in active_stores]
 
 		if current_store == "All":
@@ -583,7 +585,7 @@ class StatsHandler(BaseHandler):
 
 		#### Now looking at actual sales
 
-		grosssalesquery = statssession.query(orderdetail.date_add,orderdetail.quantity,orderdetail.price,orderdetailoption.price,orderdetail.discount).outerjoin(orderdetailoption).filter(orderdetail.order_id.in_(dailyorderids))
+		grosssalesquery = statssession.query(order.date_add,orderdetail.quantity,orderdetail.price,orderdetailoption.price,orderdetail.discount).outerjoin(orderdetail).outerjoin(orderdetailoption).filter(order.order_id.in_(dailyorderids))
 			
 		grosssaleslookup = {}
 		itemdisclookup = {}
@@ -788,7 +790,7 @@ class CustomerStatsHandler(BaseHandler):
 
 			current_store = self.get_argument("store", "All")
 
-			active_stores = statssession.query(store).filter(store.is_active == True).all()
+			active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
 			active_stores_list = [x.store_id for x in active_stores]
 			
 
@@ -916,16 +918,22 @@ class CustomerStatsHandler(BaseHandler):
 			#### Now looking at actual sales
 
 			thisstoreorders = [thisorder.order_id for thisorder in orders]
-			grosssalesquery = statssession.query(orderdetail.order_id,orderdetail.quantity,orderdetail.price,orderdetailoption.price).outerjoin(orderdetailoption).filter(orderdetail.order_id.in_(thisstoreorders))
+			#TODO
+			grosssalesquery = statssession.query(order.order_id,orderdetail.quantity,orderdetail.price,orderdetailoption.price, order.delivery_charges).outerjoin(orderdetail).outerjoin(orderdetailoption).filter(order.order_id.in_(thisstoreorders))
 			
 			grosssaleslookup = {}
 			for grossdetail in grosssalesquery:
 				if grossdetail[0] in grosssaleslookup:  
 					 grosssaleslookup[grossdetail[0]]+=float(grossdetail[1]*grossdetail[2])
 				else:
-					 grosssaleslookup[grossdetail[0]]=float(grossdetail[1]*grossdetail[2])
+					if grossdetail[1]:
+						 grosssaleslookup[grossdetail[0]]=float(grossdetail[1]*grossdetail[2])
+					else:
+						 grosssaleslookup[grossdetail[0]]=float(0)
 				if grossdetail[3]:
 					grosssaleslookup[grossdetail[0]] += float(grossdetail[1]*grossdetail[3])
+				if grossdetail[4]:
+					grosssaleslookup[grossdetail[0]] += float(grossdetail[4])
 			
 			alltotalsbymonth = [0.0 for m in range(len(months))]
 			newtotalsbymonth = [0.0 for m in range(len(months))]
@@ -1033,7 +1041,7 @@ class OrderStatsHandler(BaseHandler):
 
 		current_store = self.get_argument("store", "All")
 
-		active_stores = statssession.query(store).filter(store.is_active == True).all()
+		active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
 		active_stores_list = [x.store_id for x in active_stores]
 
 		if current_store == "All":
@@ -1129,7 +1137,7 @@ class ItemStatsHandler(BaseHandler):
 			elif current_user == "@testmail.com":
 				current_store="5"
 
-			active_stores = statssession.query(store).filter(store.is_active == True).all()
+			active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
 			active_stores_list = [x.store_id for x in active_stores]
 
 			if current_store == "All":
@@ -1166,7 +1174,7 @@ class ItemStatsHandler(BaseHandler):
 
 			for thiscs in cookingstations:
 				relevantmenuitems = statssession.query(menuitem.menu_item_id).filter(menuitem.cooking_station == thiscs['id'])
-				thiscountquery = statssession.query(orderdetail.date_add, sqlalchemy.func.sum(orderdetail.quantity), orderdetail.order_id).filter(orderdetail.order_id.in_(dailyorderids), orderdetail.menu_item_id.in_(relevantmenuitems)).group_by(sqlalchemy.func.year(orderdetail.date_add), sqlalchemy.func.month(orderdetail.date_add), sqlalchemy.func.day(orderdetail.date_add))
+				thiscountquery = statssession.query(order.date_add, sqlalchemy.func.sum(orderdetail.quantity), orderdetail.order_id).outerjoin(orderdetail).filter(order.order_id.in_(dailyorderids), orderdetail.menu_item_id.in_(relevantmenuitems)).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
 				thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): int(thisresult[1]) for thisresult in thiscountquery}
 				thiscslist = []
 				for thisdate in daterange:
@@ -1208,7 +1216,7 @@ class ItemStatsHandler(BaseHandler):
 				date_effective = item.date_effective
 				menuitems[menu_item_id]["soldout"][date_effective.strftime("%a %b %d, %Y")].append(store_id)
 				
-			active_stores = statssession.query(store).filter(store.is_active == True).all()
+			active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
 
 			today = datetime.date.today().strftime("%a %b %d, %Y")
 
@@ -1395,7 +1403,7 @@ def getStoreItems(current_store):
 	# for i in store_items:
 	# 	print (menu_item_mapping[i.menu_item_id].name, format(i.is_active, '08b'), bool(int(format(i.is_active, '08b')[-1])))
 	
-	active_stores = statssession.query(store).filter(store.is_active == True).all()
+	active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
 
 	current_store_name = ""
 	for thisstore in active_stores:
@@ -1438,6 +1446,299 @@ class TodayMenuHandler(BaseHandler):
 			current_store = 2
 			storeitems = getStoreItems(current_store)
 			self.render("templates/todaysmenu.html", activelist = storeitems[0], activeitems = len(storeitems[0]), user=current_user)
+
+class DiscountAnalysisHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		current_user = self.get_current_user().decode()
+		if current_user != "admin":
+			self.redirect('/stats')
+		else:
+			horizon = self.get_argument("horizon", None)
+			startdate = self.get_argument("startdate", None)
+			enddate = self.get_argument("enddate", None)
+			if startdate is None:
+				if horizon is None:
+					horizon = 7
+				else:
+					horizon = int(horizon)
+
+				parsedenddate = datetime.date.today() +  datetime.timedelta(days=1)
+				parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
+				daterange = [parsedstartdate.strftime("%a %b %d, %Y")]
+				for c in range(horizon-1):
+					daterange.append((parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%a %b %d, %Y"))
+
+			else:
+				parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date()
+				parsedenddate = parsedenddate + datetime.timedelta(days=1)
+				parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
+				daterange = []
+				for c in range((parsedenddate - parsedstartdate).days):
+					daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%a %b %d, %Y"))
+
+			statsengine = sqlalchemy.create_engine(statsengine_url)
+			statssession = scoped_session(sessionmaker(bind=statsengine))
+
+			current_store = self.get_argument("store", "All")
+
+			active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
+			active_stores_list = [x.store_id for x in active_stores]
+
+			if current_store == "All":
+				store_list = active_stores_list
+			else:
+				store_list = [int(current_store)]
+			
+			current_store_name = "All"
+			for thisstore in active_stores:
+				if [thisstore.store_id] == current_store:
+					current_store_name = thisstore.name
+					break
+
+			dailyordersquery = statssession.query(order).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress + returnedStates), order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.store_id.in_(store_list)).all()
+
+			dailyorderids = [thisorder.order_id for thisorder in dailyordersquery if (thisorder.order_status not in returnedStates)]
+
+			grosssalesquery = statssession.query(order.date_add,orderdetail.quantity,orderdetail.price,orderdetailoption.price).outerjoin(orderdetail).outerjoin(orderdetailoption).filter(order.order_id.in_(dailyorderids))
+			
+			grosssaleslookup = {}
+
+			for grossdetail in grosssalesquery:
+				if grossdetail[0].strftime("%a %b %d, %Y") in grosssaleslookup:
+					grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] += (grossdetail[1]*grossdetail[2])	 	
+				else:
+				 	grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] = (grossdetail[1]*grossdetail[2])
+				if grossdetail[3]:
+					grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] += (grossdetail[1]*grossdetail[3])
+				
+
+			totalsales = []
+
+			dailysalesquery = statssession.query(order.date_add, sqlalchemy.func.sum(order.wallet_amount), sqlalchemy.func.sum(order.coupon_discount), sqlalchemy.func.sum(order.delivery_charges)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.order_status.in_(deliveredStates + inProgress), order.store_id.in_(store_list)).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
+
+			wallettotal = []
+			coupontotal = []
+			deliverycharges = []
+
+			wallettransactionlookup = {thisresult[0].strftime("%a %b %d, %Y"): float(thisresult[1]) for thisresult in dailysalesquery}
+			couponlookup = {thisresult[0].strftime("%a %b %d, %Y"): float(thisresult[2]) for thisresult in dailysalesquery}
+			thisdeliverydetails = {thisresult[0].strftime("%a %b %d, %Y"): float(thisresult[3]) for thisresult in dailysalesquery}
+
+			for thisdate in daterange:
+				if thisdate in wallettransactionlookup:
+					wallettotal.append(float(wallettransactionlookup[thisdate])) 
+				else:
+					wallettotal.append(0)
+				
+				if thisdate in couponlookup:
+					coupontotal.append(float(couponlookup[thisdate])) 
+				else:
+					coupontotal.append(0)
+
+				if thisdate in thisdeliverydetails:
+					deliverycharges.append(thisdeliverydetails[thisdate])
+				else:
+					deliverycharges.append(0) 
+
+			for c in range(0, len(daterange)):
+				try:
+					# grosssales.append(float(grosssaleslookup[daterange[c]]))
+					totalsales.append(float(grosssaleslookup[daterange[c]])+float(deliverycharges[c]))
+				except KeyError:
+					totalsales.append(0.0)
+
+			resulthtml = "<table style='border-collapse: separate; border-spacing: 4px;'><thead><tr><th>&nbsp;</th>"
+			for thisdate in daterange:
+				resulthtml += ("<th>" + thisdate + "</th>")
+			resulthtml += "</tr></thead><tbody>"
+
+			resulthtml += "<tr><td style='font-weight: bold; text-align: left;'>Gross Sales</td>"
+			for x in totalsales:
+				resulthtml += ("<td style='text-align: right;'>" + str(x) + "</td>")
+			resulthtml += "</tr>"
+
+
+			itemdiscountsql = "select date(date_add), sum(quantity*discount) from order_details where discount > 0 and order_id in (select order_id from orders where order_status in (3,10,11,12,16) and date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and date_add<'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59') group by 1;"
+			itemdiscountresult = statsengine.execute(itemdiscountsql)
+			itemdiscountlookup = {fd[0].strftime("%a %b %d, %Y"): fd[1] for fd in itemdiscountresult}
+			itemdiscountlist = []
+			for thisdate in daterange:
+				if thisdate in itemdiscountlookup:
+					itemdiscountlist.append(float(itemdiscountlookup[thisdate]))
+				else:
+					itemdiscountlist.append(0)
+
+			totaldiscounts = []
+			for index, x in enumerate(itemdiscountlist):
+				totaldiscounts.append(x + wallettotal[index] + coupontotal[index])
+			resulthtml += "<tr><td style='font-weight: bold; text-align: left;'>Total Discounts</td>"
+			for index, x  in enumerate(totaldiscounts):
+				try:
+					resulthtml += ("<td style='text-align: right;'>" + str(round(x,2)) + " (" + str(round(x/totalsales[index]*100,2))+ "%)</td>")
+				except ZeroDivisionError:
+					resulthtml += "<td style='text-align: right;'>-</td>"
+			resulthtml += "</tr>"
+
+
+			resulthtml += "<tr style='border-top: 1px solid #000;'><td style='font-weight: bold; text-align: left;'>Item Discounts</td>"
+			for index, x  in enumerate(itemdiscountlist):
+				try:
+					resulthtml += ("<td style='text-align: right;'>" + str(round(x,2)) + " (" + str(round(x/totaldiscounts[index]*100,2))+ "%)</td>")
+				except ZeroDivisionError:
+					resulthtml += "<td  style='text-align: right;'>-</td>"
+			resulthtml += "</tr>"
+
+			freedessertssql = "select date(date_add), sum(a.quantity*a.discount) from order_details as a join menu_items as b on a.menu_item_id = b.menu_item_id where a.price-a.discount = 0 and a.order_id in (select order_id from orders where order_status = 3 and date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and date_add<'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59') and b.cooking_station =8 group by 1;"
+			freedessertresult = statsengine.execute(freedessertssql)
+			freedessertlookup = {fd[0].strftime("%a %b %d, %Y"): fd[1] for fd in freedessertresult}
+			freedessertlist = []
+			for thisdate in daterange:
+				if thisdate in freedessertlookup:
+					freedessertlist.append(float(freedessertlookup[thisdate]))
+				else:
+					freedessertlist.append(0)
+
+			resulthtml += "<tr style='background: #ccc; text-align: right;'><td>Free Desserts</td>"
+			for index, x  in enumerate(freedessertlist):
+				try:
+					resulthtml += ("<td>" + str(round(x,2)) + " (" + str(round(x/itemdiscountlist[index]*100,2))+ "%)</td>")
+				except ZeroDivisionError:
+					resulthtml += "<td>-</td>"
+			resulthtml += "</tr>"
+
+			sotdsql = "select date(date_add), sum(a.quantity*a.discount) from order_details as a join menu_items as b on a.menu_item_id = b.menu_item_id where ((a.price-a.discount = 140) or (a.price-a.discount = 160)) and a.order_id in (select order_id from orders where order_status = 3 and date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and date_add<'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59') and b.cooking_station = 1 group by 1;"
+			sotdresult = statsengine.execute(sotdsql)
+			sotdlookup = {fd[0].strftime("%a %b %d, %Y"): fd[1] for fd in sotdresult}
+			sotdlist = []
+			for thisdate in daterange:
+				if thisdate in sotdlookup:
+					sotdlist.append(float(sotdlookup[thisdate]))
+				else:
+					sotdlist.append(0)
+
+			resulthtml += "<tr style='background: #ccc; text-align: right;'><td>Sandwich of the Day</td>"
+			for index, x  in enumerate(sotdlist):
+				try:
+					resulthtml += ("<td>" + str(round(x,2)) + " (" + str(round(x/itemdiscountlist[index]*100,2))+ "%)</td>")
+				except ZeroDivisionError:
+					resulthtml += "<td>-</td>"
+			resulthtml += "</tr>"
+
+			potdsql = "select date(date_add), sum(a.quantity*a.discount) from order_details as a join menu_items as b on a.menu_item_id = b.menu_item_id where (a.discount = 50 or a.discount = 100) and a.order_id in (select order_id from orders where order_status = 3 and date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and date_add<'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59') and b.cooking_station = 16 group by 1;"
+			potdresult = statsengine.execute(potdsql)
+			potdlookup = {fd[0].strftime("%a %b %d, %Y"): fd[1] for fd in potdresult}
+			potdlist = []
+			for thisdate in daterange:
+				if thisdate in potdlookup:
+					potdlist.append(float(potdlookup[thisdate]))
+				else:
+					potdlist.append(0)
+
+			resulthtml += "<tr style='background: #ccc; text-align: right;'><td>Pizza of the Day</td>"
+			for index, x  in enumerate(potdlist):
+				try:
+					resulthtml += ("<td>" + str(round(x,2)) + " (" + str(round(x/itemdiscountlist[index]*100,2))+ "%)</td>")
+				except ZeroDivisionError:
+					resulthtml += "<td>-</td>"
+			resulthtml += "</tr>"
+
+			freepizzasql = "select date(date_add), sum(a.quantity*a.discount) from order_details as a join menu_items as b on a.menu_item_id = b.menu_item_id where a.price-a.discount = 0 and a.order_id in (select order_id from orders where order_status = 3 and date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and date_add<'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59') and b.cooking_station =16 group by 1;"
+			freepizzaresult = statsengine.execute(freepizzasql)
+			freepizzalookup = {fd[0].strftime("%a %b %d, %Y"): fd[1] for fd in freepizzaresult}
+			freepizzalist = []
+			for thisdate in daterange:
+				if thisdate in freepizzalookup:
+					freepizzalist.append(float(freepizzalookup[thisdate]))
+				else:
+					freepizzalist.append(0)
+
+			resulthtml += "<tr style='background: #ccc; text-align: right;'><td>Free Pizza</td>"
+			for index, x  in enumerate(freepizzalist):
+				try:
+					resulthtml += ("<td>" + str(round(x,2)) + " (" + str(round(x/itemdiscountlist[index]*100,2))+ "%)</td>")
+				except ZeroDivisionError:
+					resulthtml += "<td>-</td>"
+			resulthtml += "</tr>"
+
+			resulthtml += "<tr style='border-top: 1px solid #000;'><td style='font-weight: bold; text-align: left;'>Wallet Usage</td>"
+			for index, x  in enumerate(wallettotal):
+				try:
+					resulthtml += ("<td style='text-align: right;'>" + str(round(x,2)) + " (" + str(round(x/totaldiscounts[index]*100,2))+ "%)</td>")
+				except ZeroDivisionError:
+					resulthtml += "<td style='text-align: right;'>-</td>"
+			resulthtml += "</tr>"
+
+			firstordersql = "select date(date_add), sum(wallet_amount) from orders where wallet_amount=50 and order_id in (select order_id from orders where order_status in (3) and date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and date_add<'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and source in (0,1,2,7) and user_id not in (select user_id from orders where order_status in (3,10,11,12,16) and source in (0,1,2,7) and date_add < @startdate)) group by 1;"
+			firstorderresult = statsengine.execute(firstordersql)
+			firstorderlookup = {fd[0].strftime("%a %b %d, %Y"): fd[1] for fd in firstorderresult}
+			firstorderlist = []
+			for thisdate in daterange:
+				if thisdate in firstorderlookup:
+					firstorderlist.append(float(firstorderlookup[thisdate]))
+				else:
+					firstorderlist.append(0)
+
+			resulthtml += "<tr style='background: #ccc; text-align: right;'><td>First Order Discount</td>"
+			for index, x  in enumerate(firstorderlist):
+				try:
+					resulthtml += ("<td>" + str(round(x,2)) + " (" + str(round(x/wallettotal[index]*100,2))+ "%)</td>")
+				except ZeroDivisionError:
+					resulthtml += "<td>-</td>"
+			resulthtml += "</tr>"
+
+			resulthtml += "<tr style='border-top: 1px solid #000;'><td style='font-weight: bold;'>Coupons Usage</td>"
+			for index, x  in enumerate(coupontotal):
+				try:
+					resulthtml += ("<td style='text-align: right;'>" + str(round(x,2)) + " (" + str(round(x/totaldiscounts[index]*100,2))+ "%)</td>")
+				except ZeroDivisionError:
+					resulthtml += "<td style='text-align: right;'>-</td>"
+			resulthtml += "</tr>"
+
+			couponsql = "select date(o.date_add), c.coupon_code, sum(o.coupon_discount) from orders o left join coupons c on o.coupon_id=c.coupon_id where o.coupon_id is not null and o.order_status = 3 and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1,2 order by 3 desc;"
+			couponresult = statsengine.execute(couponsql)
+
+			couponlookup = {}
+			coupontotallookup = {}
+
+			for fd in couponresult:
+				if fd[0].strftime("%a %b %d, %Y") in couponlookup:
+					if fd[1] in couponlookup[fd[0].strftime("%a %b %d, %Y")]:
+						couponlookup[fd[0].strftime("%a %b %d, %Y")][fd[1]] += fd[2]
+					else:
+						couponlookup[fd[0].strftime("%a %b %d, %Y")][fd[1]] = fd[2]
+				else:
+					couponlookup[fd[0].strftime("%a %b %d, %Y")] = {}
+					couponlookup[fd[0].strftime("%a %b %d, %Y")][fd[1]] = fd[2]
+
+				if fd[1] in coupontotallookup:
+					coupontotallookup[fd[1]] += fd[2]
+				else:
+					coupontotallookup[fd[1]] = fd[2]
+
+			sortedcoupons = sorted(coupontotallookup.items(), key=lambda x: -x[1])
+			selectedcoupons = sortedcoupons[:10]
+			selectedcoupons = [x[0] for x in selectedcoupons]
+
+			for c in selectedcoupons:
+				resulthtml += "<tr style='background: #ccc; text-align: right;'><td>" + c + "</td>"
+				for index, thisdate in enumerate(daterange):
+					if thisdate in couponlookup:
+						if c in couponlookup[thisdate]:
+							try:
+								resulthtml += ("<td>" + str(round(couponlookup[thisdate][c])) + " (" + str(round(float(couponlookup[thisdate][c])/coupontotal[index]*100, 2)) + "%)</td>")
+							except ZeroDivisionError:
+								resulthtml += "<td>-</td>"
+						else:
+							resulthtml += ("<td>0 (0%)</td>")
+					else:
+						resulthtml += ("<td>0 (0%)</td>")
+				resulthtml += "</tr>"
+
+			resulthtml += "</tbody></table>"
+			statssession.remove()
+
+			self.render("templates/simpletabletemplate.html", page_url="/discountanalysis", page_title="Discounts Analysis",table_title="",tableSort="", daterange=daterange, outputtable=resulthtml, user=current_user)
 
 def flip(input, status):
 	inputb = format(input, "08b")
@@ -1687,7 +1988,7 @@ class AnalyticsHandler(BaseHandler):
 			statsengine = sqlalchemy.create_engine(statsengine_url)
 			statssession = scoped_session(sessionmaker(bind=statsengine))
 
-			active_stores = statssession.query(store).filter(store.is_active == True).all()
+			active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
 			active_stores_list = [x.store_id for x in active_stores]
 
 			if current_store == "All":
@@ -2294,18 +2595,24 @@ class MailchimpDormantUserHandler(BaseHandler):
 						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%2015%20points%20to%20get%20zero%20delivery%20charges%20on%20all%20orders%20for%20the%20next%207%20days.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
 					elif (reward_points>=20 and reward_points<30):
 						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%2020%20points%20for%20Rs%2040%20wallet%20money.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
-					elif (reward_points>=30 and reward_points<50):
-						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%2030%20points%20for%2015%25%20discount.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
-					elif (reward_points>=50 and reward_points<75):
+					elif (reward_points>=30 and reward_points<40):
+						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%2030%20points%20for%2010%25%20discount.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
+					elif (reward_points>=40 and reward_points<50):
+						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%2040%20points%20to%20get%20zero%20delivery%20charges%20on%20all%20orders%20for%20the%20next%2030%20days.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
+					elif (reward_points>=50 and reward_points<70):
 						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%2050%20points%20for%20Rs%20125%20wallet%20money.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
+					elif (reward_points>=70 and reward_points<75):
+						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%2070%20points%20for%2010%25%20discount.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
 					elif (reward_points>=75 and reward_points<100):
-						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%2075%20points%20for%2015%25%20discount.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
-					elif (reward_points>=100 and reward_points<150):
+						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%2075%20points%20to%20get%20a%20free%20dessert%20with%20every%20order%20for%20the%20next%2014%20days.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
+					elif (reward_points>=100 and reward_points<125):
 						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%20100%20points%20for%20Rs%20300%20wallet%20money.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
+					elif (reward_points>=125 and reward_points<150):
+						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%20100%20points%20to%20get%20zero%20delivery%20charges%20on%20all%20orders%20for%20the%20next%2090%20days.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
 					elif (reward_points>=150 and reward_points<300):
-						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%20150%20points%20for%2015%25%20discount.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
+						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%20150%20points%20for%2010%25%20discount.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
 					elif (reward_points>=300 and reward_points<500):
-						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%20300%20points%20for%2030%25%20discount.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
+						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%20300%20points%20for%2020%25%20discount.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
 					elif (reward_points>=500):
 						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%20500%20points%20for%2050%25%20discount.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
 					number = item['mobile']
@@ -2516,6 +2823,22 @@ class ingredients(statsBase):
     cost = Column('cost', Float)
 
 
+class store_orders(statsBase):
+    __tablename__ = "store_orders"
+    store_order_id = Column('store_order_id', Integer, primary_key=True)
+    req_store_id = Column('req_store_id', Integer)
+    so_type = Column('type', Integer)
+    status = Column('status', Integer)
+    expected_delivery = Column('expected_delivery',DateTime)
+
+class store_order_details(statsBase):
+    __tablename__ = "store_order_details"
+    store_order_detail_id = Column('store_order_detail_id', Integer, primary_key=True)
+    store_order_id = Column('store_order_id', Integer, ForeignKey("store_orders.store_order_id"))
+    price = Column('price', Float)
+    received_quantity = Column('received_quantity', Float)
+
+
 class WastageHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
@@ -2550,7 +2873,7 @@ class WastageHandler(BaseHandler):
 		statsengine = sqlalchemy.create_engine(statsengine_url)
 		statssession = scoped_session(sessionmaker(bind=statsengine))
 
-		active_stores = statssession.query(store).filter(store.is_active == True).all()
+		active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
 
 		dwactivestates = [1,3,5,7,9]
 		dwstoreitemsquery = statssession.query(datewise_store_menu_item).filter(datewise_store_menu_item.date_effective < parsedenddate, datewise_store_menu_item.date_effective >= parsedstartdate, datewise_store_menu_item.is_active.in_(dwactivestates))
@@ -2564,7 +2887,8 @@ class WastageHandler(BaseHandler):
 
 		#dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
 
-		storeingredientinventoryquery = statssession.query(store_ingredient_inventory,ingredient_batches,ingredients).join(ingredient_batches).join(ingredients).filter(store_ingredient_inventory.date_effective < parsedenddate,store_ingredient_inventory.date_effective >= parsedstartdate, store_ingredient_inventory.role.in_([3,14]),store_ingredient_inventory.actual_units>0).all()
+		storeingredientinventoryquery = statssession.query(sqlalchemy.func.sum(store_order_details.price*store_order_details.received_quantity),store_orders.req_store_id,sqlalchemy.func.date(store_orders.expected_delivery)).join(store_orders).filter(store_orders.expected_delivery < parsedenddate,store_orders.expected_delivery >= parsedstartdate, store_orders.so_type == 3,store_orders.status == 3).group_by(store_orders.req_store_id,sqlalchemy.func.date(store_orders.expected_delivery)).all()
+
 		grosssales = []
 		predictedsales = []
 		wastage = []
@@ -2592,7 +2916,7 @@ class WastageHandler(BaseHandler):
 
 			thisstoreorders = [thisorder.order_id for thisorder in dailyordersquery if thisorder.store_id == thisstore.store_id]
 			
-			grosssalesquery = statssession.query(orderdetail.date_add,orderdetail.quantity,orderdetail.price,orderdetailoption.price,orderdetail.menu_item_id).outerjoin(orderdetailoption).filter(orderdetail.order_id.in_(thisstoreorders))
+			grosssalesquery = statssession.query(order.date_add,orderdetail.quantity,orderdetail.price,orderdetailoption.price,orderdetail.menu_item_id).outerjoin(orderdetail).outerjoin(orderdetailoption).filter(order.order_id.in_(thisstoreorders))
 				
 			grosssaleslookup = {}
 			for grossdetail in grosssalesquery:
@@ -2618,13 +2942,9 @@ class WastageHandler(BaseHandler):
 						wastagelookup[dr] += (peritemwastage[dr][menuitemid]*midlookup[menuitemid].cost_price)
 
 			storewastagelookup = {dr: 0 for dr in daterange}
-			storewastageitems = [(thisinventory,thisbatch,thisingredient) for (thisinventory,thisbatch,thisingredient) in storeingredientinventoryquery if thisinventory.store_id == thisstore.store_id]
-			
-			for (inv,bat,ing) in storewastageitems:
-				if inv.date_effective.strftime("%a %b %d, %Y") in storewastagelookup:
-					storewastagelookup[inv.date_effective.strftime("%a %b %d, %Y")] += (inv.actual_units*ing.cost/ing.pack_size)
-				else:
-					storewastagelookup[inv.date_effective.strftime("%a %b %d, %Y")] = inv.actual_units*ing.cost/ing.pack_size
+			storewastageitems = [(thiswastage,mystore,thisdate) for (thiswastage,mystore,thisdate) in storeingredientinventoryquery if mystore == thisstore.store_id]
+			for (thiswastage,mystore,thisdate) in storewastageitems:
+				storewastagelookup[thisdate.strftime("%a %b %d, %Y")] = thiswastage
 
 			thisgrosssales = []
 			thispredictedsales = []
@@ -2718,7 +3038,7 @@ class GetStoreItemsHandler(BaseHandler):
 
 		response = {"storeitems": [x.getJson() for x in storeitems], "menuitems": [y.getJson() for y in menuitems]}
 
-		active_stores = statssession.query(store).filter(store.is_active == True).all()
+		active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
 		active_stores_list = [x.store_id for x in active_stores]
 
 		enddate = self.get_argument("date", None)
@@ -2793,7 +3113,7 @@ class DeliveryHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
 		current_user = self.get_current_user().decode()
-		if current_user not in ("admin"):
+		if current_user not in ["admin","@testmail.com","@testmail.com","@testmail.com"]:
 			self.redirect('/stats')
 
 		horizon = self.get_argument("horizon", None)
@@ -2814,7 +3134,7 @@ class DeliveryHandler(BaseHandler):
 		
 		else:
 			parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date()
-			parsedenddate = parsedenddate + datetime.timedelta(days=1)
+			#parsedenddate = parsedenddate + datetime.timedelta(days=1)
 			parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
 			daterange = []
 			for c in range((parsedenddate - parsedstartdate).days):
@@ -2823,17 +3143,44 @@ class DeliveryHandler(BaseHandler):
 		statsengine = sqlalchemy.create_engine(statsengine_url)
 		statssession = scoped_session(sessionmaker(bind=statsengine))
 
+		current_store = self.get_argument("store", "All")
+
+		if current_user == "@testmail.com":
+			current_store="2"
+		elif current_user == "@testmail.com":
+			current_store="3"
+		elif current_user == "@testmail.com":
+			current_store="5"
+
+
+		active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
+		active_stores_list = [x.store_id for x in active_stores]
+
+
+		if current_store == "All":
+			store_list = active_stores_list
+		else:
+			store_list = [int(current_store)]
+
+
+		current_store_name = "All"
+		for thisstore in active_stores:
+			if str(thisstore.store_id) == current_store:
+				current_store_name = thisstore.name
+				break
+
+		store_list_str = ",".join(map(str,store_list))
 
 		#delivery boy rating query 1
 		from sqlalchemy import text
-		thissql1 = text("select a.delivery_boy_id,d.name,count(*),sum(case when c.falls_under_gurantee = 1 then 1 else 0 end) as count_priority,sum(case when c.falls_under_gurantee = 0 then 1 else 0 end) as count_np,sum(case when g.delivery_rating>0 then 1 else 0 end) as total_rated,sum(case when g.delivery_rating>0 then delivery_rating else 0 end)/sum(case when g.delivery_rating>0 then 1 else 0 end) as avg_rated,sum(case when g.delivery_rating=1 then 1 else 0 end) as rated_1,sum(case when g.delivery_rating=2 then 1 else 0 end) as rated_2, sum(case when b.order_status = 10 then 1 else 0 end) as free_orders from orders b left join deliveries a on a.order_id=b.order_id left join delivery_zones c on b.delivery_zone_id=c.delivery_zone_id left join delivery_boys d on d.delivery_boy_id=a.delivery_boy_id left join feedbacks g on g.order_id = b.order_id where b.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and b.order_status in (3,10,11) group by 1,2;")
+		thissql1 = text("select a.delivery_boy_id,d.name,count(*),sum(case when c.falls_under_gurantee = 1 then 1 else 0 end) as count_priority,sum(case when c.falls_under_gurantee = 0 then 1 else 0 end) as count_np,sum(case when g.delivery_rating>0 then 1 else 0 end) as total_rated,sum(case when g.delivery_rating>0 then delivery_rating else 0 end)/sum(case when g.delivery_rating>0 then 1 else 0 end) as avg_rated,sum(case when g.delivery_rating=1 then 1 else 0 end) as rated_1,sum(case when g.delivery_rating=2 then 1 else 0 end) as rated_2, sum(case when b.order_status = 10 then 1 else 0 end) as free_orders from orders b left join deliveries a on a.order_id=b.order_id left join delivery_zones c on b.delivery_zone_id=c.delivery_zone_id left join delivery_boys d on d.delivery_boy_id=a.delivery_boy_id left join feedbacks g on g.order_id = b.order_id where b.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and b.order_status in (3,10,11) and b.store_id in ("+store_list_str+") group by 1,2;")
 
 		result1 = statsengine.execute(thissql1)
 
 		resultlookup = {x[0]: x[1:] for x in result1}
 
 		#delivery boy rating query 2
-		thissql2 = text("select a.delivery_boy_id, d.name, count(*), sum(case when c.falls_under_gurantee = 1 then timestampdiff(minute,e.time_add,f.time_add) else 0 end)/sum(case when c.falls_under_gurantee = 1 then 1 else 0 end) as time_p, sum(case when c.falls_under_gurantee = 0 then timestampdiff(minute,e.time_add,f.time_add) else 0 end)/sum(case when c.falls_under_gurantee = 0 then 1 else 0 end) as time_np from orders b left join deliveries a on a.order_id=b.order_id left join delivery_zones c on b.delivery_zone_id=c.delivery_zone_id left join delivery_boys d on d.delivery_boy_id=a.delivery_boy_id left join order_status_times e on b.order_id=e.order_id left join order_status_times f on b.order_id=f.order_id left join feedbacks g on g.order_id = a.order_id where b.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and b.order_status in (3,10,11) and e.order_status=2 and f.order_status =15 group by 1,2;")
+		thissql2 = text("select a.delivery_boy_id, d.name, count(*), sum(case when c.falls_under_gurantee = 1 then timestampdiff(minute,e.time_add,f.time_add) else 0 end)/sum(case when c.falls_under_gurantee = 1 then 1 else 0 end) as time_p, sum(case when c.falls_under_gurantee = 0 then timestampdiff(minute,e.time_add,f.time_add) else 0 end)/sum(case when c.falls_under_gurantee = 0 then 1 else 0 end) as time_np , sum(case when c.falls_under_gurantee = 1 then 1 else 0 end) count_p, sum(case when c.falls_under_gurantee = 0 then 1 else 0 end) count_np from orders b left join deliveries a on a.order_id=b.order_id left join delivery_zones c on b.delivery_zone_id=c.delivery_zone_id left join delivery_boys d on d.delivery_boy_id=a.delivery_boy_id left join order_status_times e on b.order_id=e.order_id left join order_status_times f on b.order_id=f.order_id left join feedbacks g on g.order_id = a.order_id where b.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and b.order_status in (3,10,11) and e.order_status=2 and f.order_status =15 and b.store_id in ("+store_list_str+") group by 1,2;")
 
 		result2 = statsengine.execute(thissql2)
 		# for row in result2:
@@ -2845,49 +3192,59 @@ class DeliveryHandler(BaseHandler):
 		for row in result2:
 			resultlookup[row[0]] += row[2:]
 
-		outputtable = "<table class='table tablesorter table-striped table-hover'><thead><th>DB ID</th><th>Name</th><th>Total Orders</th><th>Priority Orders</th><th>Non Priority Orders</th><th>Total Ratings</th><th>Average Rating</th><th>Orders Rated 1</th><th>Orders Rated 2</th><th>Free Orders</th><th class='part2'>Count with Rating</th><th class='part2'>Time for Priority Orders</th><th class='part2'>Time for Non-Priority Orders</th></thead>"
+		outputtable = "<table class='table tablesorter table-striped table-hover'><thead><th>DB ID</th><th>Name</th><th>Total Orders</th><th>Priority Orders</th><th>Non Priority Orders</th><th>Total Ratings</th><th>Average Rating</th><th>Orders Rated 1</th><th>Orders Rated 2</th><th>Free Orders</th><th class='part2'>Count with Rating</th><th class='part2'>Time for Priority Orders</th><th class='part2'>Time for Non-Priority Orders</th><th class='part2'>Reached Destination Marked -  Priority Orders</th><th class='part2'>Reached Destination Marked - Non-Priority Orders</th></thead>"
 		
+		rows = ''
 		for db in resultlookup:
-			if len(resultlookup[db]) == 12:
-				outputtable += "<tr><td>" + str(db) + "</td><td>" + resultlookup[db][0] + "</td><td>" + str(resultlookup[db][1]) + "</td><td>" + str(resultlookup[db][2]) + "</td><td>" + str(resultlookup[db][3]) + "</td><td>" + str(resultlookup[db][4]) + "</td><td>" + str(resultlookup[db][5]) + "</td><td>" + str(resultlookup[db][6]) + "</td><td>" + str(resultlookup[db][7]) + "</td><td>" + str(resultlookup[db][8]) + "</td><td class='part2'>" + str(resultlookup[db][9]) + "</td><td class='part2'>" + str(resultlookup[db][10]) + "</td><td class='part2'>" + str(resultlookup[db][11]) + "</td></tr>"
+			if len(resultlookup[db]) == 14:
+				rows += "<tr><td>" + str(db) + "</td><td>" + resultlookup[db][0] + "</td><td>" + str(resultlookup[db][1]) + "</td><td>" + str(resultlookup[db][2]) + "</td><td>" + str(resultlookup[db][3]) + "</td><td>" + str(resultlookup[db][4]) + "</td><td>" + str(resultlookup[db][5]) + "</td><td>" + str(resultlookup[db][6]) + "</td><td>" + str(resultlookup[db][7]) + "</td><td>" + str(resultlookup[db][8]) + "</td><td class='part2'>" + str(resultlookup[db][9]) + "</td><td class='part2'>" + str(resultlookup[db][10]) + "</td><td class='part2'>" + str(resultlookup[db][11]) + "</td><td class='part2'>" + str(resultlookup[db][12]) + "</td><td class='part2'>" + str(resultlookup[db][13]) + "</td></tr>"
 			else:
-				outputtable += "<tr><td>" + str(db) + "</td><td>" + resultlookup[db][0] + "</td><td>" + str(resultlookup[db][1]) + "</td><td>" + str(resultlookup[db][2]) + "</td><td>" + str(resultlookup[db][3]) + "</td><td>" + str(resultlookup[db][4]) + "</td><td>" + str(resultlookup[db][5]) + "</td><td>" + str(resultlookup[db][6]) + "</td><td>" + str(resultlookup[db][7]) + "</td><td>" + str(resultlookup[db][8]) + "</td><td class='part2'>-</td><td class='part2'>-</td><td class='part2'>-</td></tr>"
-		
-		outputtable += "</table>"
-
+				rows += "<tr><td>" + str(db) + "</td><td>" + resultlookup[db][0] + "</td><td>" + str(resultlookup[db][1]) + "</td><td>" + str(resultlookup[db][2]) + "</td><td>" + str(resultlookup[db][3]) + "</td><td>" + str(resultlookup[db][4]) + "</td><td>" + str(resultlookup[db][5]) + "</td><td>" + str(resultlookup[db][6]) + "</td><td>" + str(resultlookup[db][7]) + "</td><td>" + str(resultlookup[db][8]) + "</td><td class='part2'>-</td><td class='part2'>-</td><td class='part2'>-</td><td class='part2'>-</td><td class='part2'>-</td></tr>"
+		if (len(rows)):
+			outputtable += rows + "</table>"
+		else: 
+			outputtable = ''
 
 
 		#delivery boy comments
-		thissql3 = text("select c.delivery_boy_id, d.name, b.date_add, a.order_id, a.delivery_rating, a.comment from feedbacks a left join orders b on a.order_id=b.order_id left join deliveries c on b.order_id=c.order_id left join delivery_boys d on c.delivery_boy_id=d.delivery_boy_id where b.order_status in (3,10,11,12,16) and a.delivery_rating in (1,2) and b.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add <'" +parsedenddate.strftime("%Y-%m-%d") + " 00:00:00';")
+		thissql3 = text("select c.delivery_boy_id, d.name, b.date_add, a.order_id, a.delivery_rating, a.comment from feedbacks a left join orders b on a.order_id=b.order_id left join deliveries c on b.order_id=c.order_id left join delivery_boys d on c.delivery_boy_id=d.delivery_boy_id where b.order_status in (3,10,11,12,16) and a.delivery_rating in (1,2) and b.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add <'" +parsedenddate.strftime("%Y-%m-%d") + " 00:00:00' and b.store_id in ("+store_list_str+");")
 
 		result3 = statsengine.execute(thissql3)
 		deliveryfeedback = {}
 		
 		outputtable2 = "<table class='table tablesorter table-striped table-hover'><thead><th>DB ID</th><th>Name</th><th>Order Date</th><th>Order ID</th><th>Delivery Rating</th><th>Comment</th></thead>"
 		
+		rows2=''
 		for item in result3:
-			outputtable2 += "<tr><td>" + str(item[0]) + "</td><td>" + str(item[1]) + "</td><td>" + str(item[2]) + "</td><td><a href='http://twigly.in/admin/orders?f="+str(item[3])+"'>" + str(item[3]) + "</a></td><td>" + str(item[4]) + "</td><td style='text-align:left;'>" + str(item[5]) + "</td><tr>"
+			rows2 += "<tr><td>" + str(item[0]) + "</td><td>" + str(item[1]) + "</td><td>" + str(item[2]) + "</td><td><a href='http://twigly.in/admin/orders?f="+str(item[3])+"'>" + str(item[3]) + "</a></td><td>" + str(item[4]) + "</td><td style='text-align:left;'>" + str(item[5]) + "</td><tr>"
 
-		outputtable2 += "</table>"
+		if (len(rows2)):
+			outputtable2 += rows2 + "</table>"
+		else: 
+			outputtable2 = ''
 
 
 		# All Free deliveries
-		thissql4 = text("select date(o.date_add), o.order_id, timediff(b.time_add,a.time_add), c.delivery_boy_id, d.name from orders o left join order_status_times as a on a.order_id=o.order_id left join order_status_times as b on b.order_id=o.order_id left join deliveries c on c.order_id=o.order_id left join delivery_boys d on d.delivery_boy_id=c.delivery_boy_id where o.order_status in (10) and a.order_status=0 and b.order_status=3 and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <'" +parsedenddate.strftime("%Y-%m-%d") + " 00:00:00';")
+		thissql4 = text("select date(o.date_add), o.order_id, timediff(b.time_add,a.time_add), c.delivery_boy_id, d.name from orders o left join order_status_times as a on a.order_id=o.order_id left join order_status_times as b on b.order_id=o.order_id left join deliveries c on c.order_id=o.order_id left join delivery_boys d on d.delivery_boy_id=c.delivery_boy_id where o.order_status in (10) and a.order_status=0 and b.order_status=3 and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <'" +parsedenddate.strftime("%Y-%m-%d") + " 00:00:00' and o.store_id in ("+store_list_str+");")
 
 		result4 = statsengine.execute(thissql4)
 		deliveryfeedback = {}
 		
 		outputtable3 = "<table class='table tablesorter table-striped table-hover'><thead><th>Order Date</th><th>Order ID</th><th>Received to Delivery Time</th><th>Delivery Boy ID</th><th>Delivery Boy Name</th></thead>"
 		
+		rows3=''
 		for item in result4:
-			outputtable3 += "<tr><td>" + str(item[0]) + "</td><td><a href='http://twigly.in/admin/orders?f="+str(item[1])+"'>" + str(item[1]) + "</a></td><td>" + str(item[2]) + "</td><td>" + str(item[3]) + "</td><td>" + str(item[4]) + "</td><tr>"
+			rows3 += "<tr><td>" + str(item[0]) + "</td><td><a href='http://twigly.in/admin/orders?f="+str(item[1])+"'>" + str(item[1]) + "</a></td><td>" + str(item[2]) + "</td><td>" + str(item[3]) + "</td><td>" + str(item[4]) + "</td><tr>"
 
-		outputtable3 += "</table>"
+		if (len(rows3)):
+			outputtable3 += rows3 + "</table>"
+		else: 
+			outputtable3 = ''
 
 
 
 		statssession.remove()
-		self.render("templates/deliveriestemplate.html", outputtable=outputtable, outputtable2=outputtable2, outputtable3=outputtable3, user=current_user)
+		self.render("templates/deliveriestemplate.html", outputtable=outputtable, outputtable2=outputtable2, outputtable3=outputtable3, user=current_user,active_stores=active_stores, current_store=current_store, current_store_name=current_store_name)
 
 
 class DeliveryStatsHandler(BaseHandler):
@@ -2926,7 +3283,7 @@ class DeliveryStatsHandler(BaseHandler):
 
 
 		# average delivery rating by store
-		active_stores = statssession.query(store).filter(store.is_active == True).all()
+		active_stores = statssession.query(store).filter(store.is_active == True, store.store_type==0).all()
 		active_stores_list = [x.store_id for x in active_stores]
 
 		thissql3 = "select b.store_id, date(b.date_add), sum(case when g.delivery_rating>0 then delivery_rating else 0 end), sum(case when g.delivery_rating>0 then 1 else 0 end), sum(case when g.delivery_rating>0 then delivery_rating else 0 end)/sum(case when g.delivery_rating>0 then 1 else 0 end), sum(case when b.order_id>0 then 1 else 0 end) from orders b left join feedbacks g on g.order_id = b.order_id where b.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and b.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and b.order_status in (3,10,11,12,16) group by 1,2;" 
@@ -3044,8 +3401,26 @@ class DeliveryStatsHandler(BaseHandler):
 					list3.append(float(reachtodeliverlookup[thisstore.store_id][thisdate][1]/reachtodeliverlookup[thisstore.store_id][thisdate][0]/60)) # avg time in minutes
 			cookingtimes.append({"store_id": thisstore.store_id, "name": thisstore.name,"cookingtime":list1,"dispatchtime":list2,"deliverytime":list3})
 
+
+		# Average deliveries per delivery boy per day by store
+		thissql9 = "select o.store_id, date(o.date_add), count(d.delivery_id), count( distinct db.delivery_boy_id) from orders o left join deliveries d on o.order_id=d.order_id left join delivery_boys db on db.delivery_boy_id = d.delivery_boy_id where o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and o.order_status in (3,10,11,12,16) and o.source not in (7,9,10) and db.delivery_boy_id not in (3,4,5,42,39,57,55,38,64,31,28) group by 1,2;"
+		result9 = statsengine.execute(thissql9)
+		avgdeliveriesbystorelookup = {x.store_id: { thisdate:[] for thisdate in daterange} for x in active_stores}
+		for item in result9:
+			if item[0] in active_stores_list:
+				if item[1].strftime("%a %b %d, %Y") in daterange:
+					avgdeliveriesbystorelookup[item[0]][item[1].strftime("%a %b %d, %Y")] = item[2:]
+
+		averagedeliveries = {}
+		for thisstore in active_stores:
+			list1 = []
+			for thisdate in daterange:
+				if (len(avgdeliveriesbystorelookup[thisstore.store_id][thisdate])==2):
+					list1.append(float(avgdeliveriesbystorelookup[thisstore.store_id][thisdate][0]/avgdeliveriesbystorelookup[thisstore.store_id][thisdate][1]))  
+			averagedeliveries[thisstore.store_id]=list1
+
 		statssession.remove()
-		self.render("templates/deliverystatstemplate.html", daterange=daterange,avgdeliveryscorebystore=avgdeliveryscorebystore, deliverytimestack=deliverytimestack, priorityorderstack=priorityorderstack, cookingtimes=cookingtimes, user=current_user)
+		self.render("templates/deliverystatstemplate.html", daterange=daterange,avgdeliveryscorebystore=avgdeliveryscorebystore, deliverytimestack=deliverytimestack, priorityorderstack=priorityorderstack, cookingtimes=cookingtimes, user=current_user, averagedeliveries=averagedeliveries)
 
 class PaymentStatsHandler(BaseHandler):
 	@tornado.web.authenticated
@@ -3820,6 +4195,7 @@ application = tornado.web.Application([
 	#(r"/userstats", UserStatsHandler),
 	(r"/storeitems", StoreItemsHandler),
 	(r"/todaysmenu", TodayMenuHandler),
+	(r"/discountanalysis", DiscountAnalysisHandler),
 	(r"/updateActive", UpdateItemsActiveHandler),
 	(r"/moveActive", MoveItemsHandler),
 	(r"/updateQuantity", UpdateQuantityHandler),

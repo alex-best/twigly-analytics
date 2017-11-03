@@ -17,7 +17,7 @@
         {% if user=="admin" or user == "headchef" or user=="review" %}<li><a href="/stats" style="color: #FFFFFF;">Vital Stats</a></li>{% end %}
         <li><a href="/itemstats" style="color: #FFFFFF;">Item Stats</a></li>
         {% if user=="admin" or user=="review"%}<li><a href="/userstats" style="color: #FFFFFF;">User Stats</a></li>{% end %}
-        {% if user!="review" and user!="twiglyservice" %}<li><a href="/storeitems" style="color: #FFFFFF;">Update Menu</a></li>{% end %}
+        {% if user=="admin" %}<li><a href="/storeitems" style="color: #FFFFFF;">Update Menu</a></li>{% end %}
         {% if user=="admin" %}<li><a href="/sendmail" style="color: #FFFFFF;">Send Email</a></li>{% end %}
         {% if user=="admin" or user == "headchef" %}<li><a href="/feedbacks" style="color: #FFFFFF;">Feedbacks</a></li>{% end %}
         {% if user=="admin" or user == "headchef" %}<li><a href="/wastage" style="color: #FFFFFF;">Wastage Tracker</a></li>{% end %}
@@ -26,6 +26,9 @@
         {% if user=="admin" or user == "twiglyservice" %}<li><a href="/deadregulars" style="color: #FFFFFF;">Dead Regulars</a></li>{% end %}
         {% if user=="admin" %}<li><a href="/couponuse" style="color: #FFFFFF;">Coupon Use</a></li>{% end %}
         {% if user=="admin" %}<li><a href="/rewardstats" style="color: #FFFFFF;">Rewards</a></li>{% end %}
+        {% if user=="admin" %}<li><a href="/deliverystats" style="color: #FFFFFF;">Delivery Stats</a></li>{% end %}
+        {% if user=="admin" or user == "@testmail.com" or user =="@testmail.com" or user =="@testmail.com" %}<li><a href="/deliveries" style="color: #FFFFFF;">Delivery Boys</a></li>{% end %}
+        {% if user=="admin" %}<li><a href="/discountanalysis" style="color: #FFFFFF;">Discounts</a></li>{% end %}
       </ul>
     </div><!-- /.navbar-collapse -->
   </div><!-- /.container-fluid -->
