@@ -226,7 +226,7 @@ def getRedirect(username):
 		return "stats"
 
 def authenticate(thisusername, thispassword):
-	if (thisusername == "admin" and thispassword == "tw1gl7h1") or (thisusername == "review" and thispassword == "rvwdash") or (thisusername == "chef" and thispassword == "twigly123") or (thisusername == "chef03" and thispassword == "twiglychef03") or (thisusername == "headchef" and thispassword == "rahulonly") or (thisusername == "twiglyservice" and thispassword == "callcenter") or (thisusername == "@testmail.com" and thispassword == "dispatch02")  or (thisusername == "@testmail.com" and thispassword == "dispatch03")  or (thisusername == "@testmail.com" and thispassword == "dispatch05") :
+	if (thisusername == "admin" and thispassword == "twiglyr0x") or (thisusername == "review" and thispassword == "twiglyrvw") or (thisusername == "chef" and thispassword == "twigly123") or (thisusername == "chef03" and thispassword == "twiglychef03") or (thisusername == "headchef" and thispassword == "rahulonly") or (thisusername == "twiglyservice" and thispassword == "callcenter") or (thisusername == "@testmail.com" and thispassword == "dispatch02")  or (thisusername == "@testmail.com" and thispassword == "dispatch03")  or (thisusername == "@testmail.com" and thispassword == "dispatch05") :
 		return {"result": True}
 	else:
 		return {"result": False}
@@ -282,6 +282,7 @@ def getTotalCount(parsedstartdate, parsedenddate, daterange, statssession, store
 			totalcount.append(0)
 
 	return totalcount
+
 
 def getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, statssession):
 	firstorderquery = statssession.query(order).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress)).order_by(order.date_add).group_by(order.mobile_number)
