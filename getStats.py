@@ -41,7 +41,7 @@ from email.mime.multipart import MIMEMultipart
 # import redis
 
 settings = {
-    "cookie_secret": "twiglyr0x",
+    "cookie_secret": "***REMOVED***",
     "login_url": "/"
 }
 statsBase = declarative_base()
