@@ -3737,6 +3737,318 @@ class DeadRegularsHandler(BaseHandler):
 		statssession.remove()
 		self.render("templates/simpletabletemplate.html", page_url="/deadregulars", page_title="Twigly Dead Regulars",table_title="List of "+str(len(usersAlreadyAdded))+" Dead Regulars (Regular users who have not ordered in last 60 days)",tableSort="[[0,1],[3,1]]", daterange=daterange, outputtable=outputtable, user=current_user)
 
+class SectorsHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		current_user = self.get_current_user().decode()
+		if current_user not in ("admin"):
+			self.redirect('/stats')
+
+		horizon = self.get_argument("horizon", None)
+		startdate = self.get_argument("startdate", None)
+		enddate = self.get_argument("enddate", None)
+		if startdate is None:
+			if horizon is None:
+				horizon = 7
+			else:
+				horizon = int(horizon)
+
+			parsedenddate = datetime.date.today()
+
+			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
+			daterange = [parsedstartdate.strftime("%Y-%m-%d")]
+			for c in range(horizon-1):
+				daterange.append((parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%Y-%m-%d"))
+		
+		else:
+			parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date() 
+			parsedenddate = parsedenddate
+			parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
+			daterange = []
+			for c in range((parsedenddate - parsedstartdate).days):
+				daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%Y-%m-%d"))
+
+		# parsedstartdate = datetime.date.today() - datetime.timedelta(days=90)
+		# parsedenddate = datetime.date.today() - datetime.timedelta(days=30)
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
+
+		thissql1 = "select o.store_id, dz.delivery_zone_id, dz.name, c.city_name, count(o.order_id) from orders o left join delivery_zones dz on dz.delivery_zone_id=o.delivery_zone_id left join cities c on dz.city_id=c.city_id where o.order_status in (3,10,11,12,16) and o.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1,2;"
+
+		# print(thissql1)
+
+		result1 = statsengine.execute(thissql1)
+
+		outputtable = "<table class='table tablesorter table-striped table-hover'><thead><th>Store</th><th>Delivery Zone</th><th>Order Count</th></thead>"
+
+		storemap = {2:"City Court", 3:"Sector 46", 5:"Kalkaji"}
+		for row in result1:
+			# print(row)
+			if row[0] in storemap:
+				outputtable+="<tr><td>" + storemap[row[0]] + "</td><td>" + str(row[2])+", "+str(row[3]) + "</td><td>" + str(row[4])+"</td></tr>"
+
+		outputtable += "</table>"
+
+		statssession.remove()
+		self.render("templates/simpletabletemplate.html", page_url="/sectors", page_title="Twigly Sectors",table_title="Orders by Store by Sector - "+parsedstartdate.strftime("%Y-%m-%d")+" to "+parsedenddate.strftime("%Y-%m-%d") ,tableSort="[[0,1],[2,1]]", daterange=daterange, outputtable=outputtable, user=current_user)
+
+
+class FoodCostHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		current_user = self.get_current_user().decode()
+		if current_user not in ("admin"):
+			self.redirect('/stats')
+
+		horizon = self.get_argument("horizon", None)
+		startdate = self.get_argument("startdate", None)
+		enddate = self.get_argument("enddate", None)
+		if startdate is None:
+			if horizon is None:
+				horizon = 7
+			else:
+				horizon = int(horizon)
+
+			parsedenddate = datetime.date.today() - datetime.timedelta(days=1)
+
+			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
+			daterange = [parsedstartdate.strftime("%Y-%m-%d")]
+			for c in range(horizon-1):
+				daterange.append((parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%Y-%m-%d"))
+		
+		else:
+			parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date() 
+			# parsedenddate = parsedenddate - datetime.timedelta(days=0)
+			parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
+			daterange = []
+			for c in range((parsedenddate - parsedstartdate).days):
+				daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%Y-%m-%d"))
+
+		prevclosingdate = parsedstartdate - datetime.timedelta(days=1)
+		closingdate = parsedenddate
+		# parsedenddate = datetime.date.today() - datetime.timedelta(days=30)
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
+
+		stores=[2,3,5,7,8]
+		productions = [6,4,7,1,5,3,8]
+
+		prevclosinglookup = {s:{p:float(0.0) for p in productions} for s in stores}
+		closinglookup = {s:{p:float(0.0) for p in productions} for s in stores}
+		issuancelookup = {s:{p:float(0.0) for p in productions} for s in stores}
+		issuancelookup2 = {s:{p:float(0.0) for p in productions} for s in stores}
+		consumptionlookup = {s:float(0.0) for s in stores}
+		wastagelookup = {s:float(0.0) for s in stores}
+
+		prevclosingsql_1 = "select so.res_store_id, ing.production, sum(sod.price*sod.received_quantity) from ingredients ing left join store_order_details sod on ing.ingredient_id=sod.ingredient_id left join store_orders so on sod.store_order_id=so.store_order_id where so.type=5 and so.res_store_id in (2,3,5,7,8) and ing.production in (6,4,7,1,5,3,8) and so.status=3 and date(so.expected_delivery)='" + prevclosingdate.strftime("%Y-%m-%d") + "' group by 1,2;"
+		
+		result1 = statsengine.execute(prevclosingsql_1)
+		# print(prevclosingsql_1)		
+		for row in result1:
+			# print (row)
+			if row[0] in stores and row[1] in productions:
+				prevclosinglookup[row[0]][row[1]] = row[2]
+
+		# print(prevclosinglookup)
+
+		closingsql_1 = "select so.res_store_id, ing.production, sum(sod.price*sod.received_quantity) from ingredients ing left join store_order_details sod on ing.ingredient_id=sod.ingredient_id left join store_orders so on sod.store_order_id=so.store_order_id where so.type=5 and so.res_store_id in (2,3,5,7,8) and ing.production in (6,4,7,1,5,3,8) and so.status=3 and date(so.expected_delivery)='" + closingdate.strftime("%Y-%m-%d") + "' group by 1,2;"
+
+		result1 = statsengine.execute(closingsql_1)
+		# print(closingsql_1)
+		for row in result1:
+			# print (row)
+			if row[0] in stores and row[1] in productions:
+				closinglookup[row[0]][row[1]] = row[2]
+		
+		# print(closinglookup)
+
+		issuancesql_1 = "select so.req_store_id, ing.production, sum(sod.price*sod.received_quantity) from ingredients ing left join store_order_details sod on ing.ingredient_id=sod.ingredient_id left join store_orders so on sod.store_order_id=so.store_order_id where so.type in (0,1) and so.req_store_id in (2,3,5,7,8) and ing.production in (6,4,7,1,5,3,8) and so.status=3 and date(so.expected_delivery)>'" + prevclosingdate.strftime("%Y-%m-%d") + "' and date(so.expected_delivery)<='" + closingdate.strftime("%Y-%m-%d") + "' group by 1,2;"
+
+		result1 = statsengine.execute(issuancesql_1)
+		# print (issuancesql_1)
+		for row in result1:
+			# print (row)
+			if row[0] in stores and row[1] in productions:
+				issuancelookup[row[0]][row[1]] = row[2]
+
+		# print(issuancelookup)
+
+
+		issuancesql_2 = "select so.req_store_id, ing.production, sum(sod.price*sod.received_quantity) from ingredients ing left join store_order_details sod on ing.ingredient_id=sod.ingredient_id left join store_orders so on sod.store_order_id=so.store_order_id where so.type in (1)  and so.req_store_id in (2,3,5,7,8) and ing.production in (6,4,7,1,5,3,8) and so.status=3 and date(so.expected_delivery)>'" + prevclosingdate.strftime("%Y-%m-%d") + "' and date(so.expected_delivery)<='" + closingdate.strftime("%Y-%m-%d") + "' and so.vendor_id in (5,21) group by 1,2;"
+
+		result1 = statsengine.execute(issuancesql_2)
+		# print (issuancesql_2)
+		for row in result1:
+			# print (row)
+			if row[0] in stores and row[1] in productions:
+				issuancelookup2[row[0]][row[1]] = row[2]
+		# print(issuancelookup2)
+
+
+		consumptionsql_1 = "select so.res_store_id, sum(sod.price*sod.received_quantity) from ingredients ing left join store_order_details sod on ing.ingredient_id=sod.ingredient_id left join store_orders so on sod.store_order_id=so.store_order_id where so.type in (0,2) and so.res_store_id in (2,3,5,7,8) and ing.production in (6,4,7,1,5,3,8) and so.status=3 and date(so.expected_delivery)>'" + prevclosingdate.strftime("%Y-%m-%d") + "' and date(so.expected_delivery)<='" + closingdate.strftime("%Y-%m-%d") + "' group by 1;"
+
+		result1 = statsengine.execute(consumptionsql_1)
+		# print (consumptionsql_1)
+		for row in result1:
+			# print (row)
+			if row[0] in stores:
+				consumptionlookup[row[0]] = row[1]
+
+		# print(consumptionlookup)
+
+		wastage_1 = "select so.res_store_id, sum(sod.price*sod.received_quantity) from ingredients ing left join store_order_details sod on ing.ingredient_id=sod.ingredient_id left join store_orders so on sod.store_order_id=so.store_order_id where so.type in (3) and so.res_store_id in (2,3,5,7,8) and ing.production in (6,4,7,1,5,3,8) and so.status=3 and date(so.expected_delivery)>'" + prevclosingdate.strftime("%Y-%m-%d") + "' and date(so.expected_delivery)<='" + closingdate.strftime("%Y-%m-%d") + "' group by 1;"
+
+		result1 = statsengine.execute(wastage_1)
+		# print(wastage_1)
+		for row in result1:
+			# print (row)
+			if row[0] in stores:
+				wastagelookup[row[0]] = row[1]
+
+		# print(wastagelookup)
+
+		
+		#gross CC
+		store_list = [2]
+		gross_cc = getgross(statssession,store_list,parsedstartdate,parsedenddate+datetime.timedelta(days=(1)))
+		# print(gross_cc)
+
+		#gross 46
+		# store_list = [3]
+		# gross_46 = getgross(statssession,store_list,parsedstartdate,parsedenddate+datetime.timedelta(days=(1)))
+		# print(gross_46)
+
+		store_list = [5]
+		gross_kkj = getgross(statssession,store_list,parsedstartdate,parsedenddate+datetime.timedelta(days=(1)))
+		# print(gross_kkj)
+
+		outputtable = "<table style='border-collapse: separate; border-spacing: 6px;'>"
+		outputtable += "<thead><tr style='background: #ccc;'><th></th><th colspan='4' style='text-align: center;'>City Court</th><th colspan='4' style='text-align: center;'>Kalkaji</th><th colspan='4' style='text-align: center;'>CK</th><th colspan='4' style='text-align: center;'>Bakery</th><th style='text-align: center;'>Sum</th></tr></thead>"
+		outputtable += "<tbody><tr><td style='font-weight: bold;'>Gross Sale</td><td></td><td></td><td style='text-align: right;'>"+"{:10.2f}".format(gross_cc)+"</td><td></td><td></td><td></td><td style='text-align: right;'>"+"{:10.2f}".format(gross_kkj)+"</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td style='text-align: right;'>"+"{:10.2f}".format(gross_cc+gross_kkj)+"</td></tr>"
+		outputtable += "<tr style='font-weight: bold;'><td>Food Cost</td><td>Opening</td><td>Issuance</td><td>Consumption</td><td>Closing</td><td>Opening</td><td>Issuance</td><td>Consumption</td><td>Closing</td><td>Opening</td><td>Issuance</td><td>Consumption</td><td>Closing</td><td>Opening</td><td>Issuance</td><td>Consumption</td><td>Closing</td><td>Sum</td></tr>"
+
+		p=6
+		outputtable += "<tr><td style='font-weight: bold;'>Dairy</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[2][p]+issuancelookup[2][p]-closinglookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[5][p]+issuancelookup[5][p]-closinglookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[7][p]+issuancelookup[7][p]-closinglookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[8][p]+issuancelookup[8][p]-closinglookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format( prevclosinglookup[2][p]+issuancelookup[2][p]-closinglookup[2][p]+prevclosinglookup[5][p]+issuancelookup[5][p]-closinglookup[5][p] )+"</td></tr>"
+		sum1 = prevclosinglookup[2][p]+issuancelookup[2][p]-closinglookup[2][p]+prevclosinglookup[5][p]+issuancelookup[5][p]-closinglookup[5][p]
+		if issuancelookup2[2][p]>0 or issuancelookup2[5][p]>0 or issuancelookup2[7][p] or issuancelookup2[8][p]:
+			outputtable += "<tr><td style='background: #ccc;'><i>- Bought Out</i></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[2][p])+"</i></td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[5][p])+"</i></td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[7][p])+"</i></td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[8][p])+"</i></td><td></td><td></td><td></td></tr>"
+
+
+		p=4
+		outputtable += "<tr><td style='font-weight: bold;'>Vegetable</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[2][p]+issuancelookup[2][p]-closinglookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[5][p]+issuancelookup[5][p]-closinglookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[7][p]+issuancelookup[7][p]-closinglookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[8][p]+issuancelookup[8][p]-closinglookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format( prevclosinglookup[2][p]+issuancelookup[2][p]-closinglookup[2][p]+prevclosinglookup[5][p]+issuancelookup[5][p]-closinglookup[5][p] )+"</td></tr>"
+		sum1+=prevclosinglookup[2][p]+issuancelookup[2][p]-closinglookup[2][p]+prevclosinglookup[5][p]+issuancelookup[5][p]-closinglookup[5][p]
+		if issuancelookup2[2][p]>0 or issuancelookup2[5][p]>0 or issuancelookup2[7][p] or issuancelookup2[8][p]:
+			outputtable += "<tr><td style='background: #ccc;'><i>- Bought Out</i></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[2][p])+"</i></td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[5][p])+"</i></td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[7][p])+"</i></td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[8][p])+"</i></td><td></td><td></td><td></td></tr>"
+
+
+		p=7
+		outputtable += "<tr><td style='font-weight: bold;'>Cheese</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[2][p]+issuancelookup[2][p]-closinglookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[5][p]+issuancelookup[5][p]-closinglookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[7][p]+issuancelookup[7][p]-closinglookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[8][p]+issuancelookup[8][p]-closinglookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format( prevclosinglookup[2][p]+issuancelookup[2][p]-closinglookup[2][p]+prevclosinglookup[5][p]+issuancelookup[5][p]-closinglookup[5][p] )+"</td></tr>"
+		sum1+=prevclosinglookup[2][p]+issuancelookup[2][p]-closinglookup[2][p]+prevclosinglookup[5][p]+issuancelookup[5][p]-closinglookup[5][p]
+		if issuancelookup2[2][p]>0 or issuancelookup2[5][p]>0 or issuancelookup2[7][p] or issuancelookup2[8][p]:
+			outputtable += "<tr><td style='background: #ccc;'><i>- Bought Out</i></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[2][p])+"</i></td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[5][p])+"</i></td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[7][p])+"</i></td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[8][p])+"</i></td><td></td><td></td><td></td></tr>"
+
+
+		p=1
+		outputtable += "<tr><td style='font-weight: bold;'>From CPU</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[2][p]+issuancelookup[2][p]-closinglookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[5][p]+issuancelookup[5][p]-closinglookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[7][p]+issuancelookup[7][p]-closinglookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[8][p]+issuancelookup[8][p]-closinglookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format( max(prevclosinglookup[2][p]+issuancelookup[2][p]-closinglookup[2][p]+prevclosinglookup[5][p]+issuancelookup[5][p]-closinglookup[5][p], sum(prevclosinglookup[7].values())+sum(issuancelookup[7].values())-sum(closinglookup[7].values()) + sum(prevclosinglookup[8].values())+sum(issuancelookup[8].values())-sum(closinglookup[8].values()) ) )+"</td></tr>"
+		sum1+= max(prevclosinglookup[2][p]+issuancelookup[2][p]-closinglookup[2][p]+prevclosinglookup[5][p]+issuancelookup[5][p]-closinglookup[5][p], sum(prevclosinglookup[7].values())+sum(issuancelookup[7].values())-sum(closinglookup[7].values()) + sum(prevclosinglookup[8].values())+sum(issuancelookup[8].values())-sum(closinglookup[8].values()) )
+		if issuancelookup2[2][p]>0 or issuancelookup2[5][p]>0 or issuancelookup2[7][p] or issuancelookup2[8][p]:
+			outputtable += "<tr><td style='background: #ccc;'><i>- Bought Out</i></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[2][p])+"</i></td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[5][p])+"</i></td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[7][p])+"</i></td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[8][p])+"</i></td><td></td><td></td><td></td></tr>"
+
+
+		p=5
+		outputtable += "<tr><td style='font-weight: bold;'>Meat</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[2][p]+issuancelookup[2][p]-closinglookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[5][p]+issuancelookup[5][p]-closinglookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[7][p]+issuancelookup[7][p]-closinglookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[8][p]+issuancelookup[8][p]-closinglookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format( prevclosinglookup[2][p]+issuancelookup[2][p]-closinglookup[2][p]+prevclosinglookup[5][p]+issuancelookup[5][p]-closinglookup[5][p] )+"</td></tr>"
+		sum1+=prevclosinglookup[2][p]+issuancelookup[2][p]-closinglookup[2][p]+prevclosinglookup[5][p]+issuancelookup[5][p]-closinglookup[5][p]
+		if issuancelookup2[2][p]>0 or issuancelookup2[5][p]>0 or issuancelookup2[7][p] or issuancelookup2[8][p]:
+			outputtable += "<tr><td style='background: #ccc;'><i>- Bought Out</i></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[2][p])+"</i></td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[5][p])+"</i></td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[7][p])+"</i></td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[8][p])+"</i></td><td></td><td></td><td></td></tr>"
+
+
+		p=3
+		outputtable += "<tr><td style='font-weight: bold;'>Dry Store</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[2][p]+issuancelookup[2][p]-closinglookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[5][p]+issuancelookup[5][p]-closinglookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[7][p]+issuancelookup[7][p]-closinglookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[8][p]+issuancelookup[8][p]-closinglookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format( prevclosinglookup[2][p]+issuancelookup[2][p]-closinglookup[2][p]+prevclosinglookup[5][p]+issuancelookup[5][p]-closinglookup[5][p] )+"</td></tr>"
+		sum1+=prevclosinglookup[2][p]+issuancelookup[2][p]-closinglookup[2][p]+prevclosinglookup[5][p]+issuancelookup[5][p]-closinglookup[5][p] 
+		if issuancelookup2[2][p]>0 or issuancelookup2[5][p]>0 or issuancelookup2[7][p] or issuancelookup2[8][p]:
+			outputtable += "<tr><td style='background: #ccc;'><i>- Bought Out</i></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[2][p])+"</i></td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[5][p])+"</i></td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[7][p])+"</i></td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[8][p])+"</i></td><td></td><td></td><td></td></tr>"
+
+
+		p=8
+		outputtable += "<tr><td style='font-weight: bold;'>Ice Cream</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[2][p]+issuancelookup[2][p]-closinglookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[2][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[5][p]+issuancelookup[5][p]-closinglookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[5][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[7][p]+issuancelookup[7][p]-closinglookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[7][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(issuancelookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(prevclosinglookup[8][p]+issuancelookup[8][p]-closinglookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format(closinglookup[8][p])+"</td><td style='text-align: right;'>"+"{:10.2f}".format( prevclosinglookup[2][p]+issuancelookup[2][p]-closinglookup[2][p]+prevclosinglookup[5][p]+issuancelookup[5][p]-closinglookup[5][p] )+"</td></tr>"
+		if issuancelookup2[2][p]>0 or issuancelookup2[5][p]>0 or issuancelookup2[7][p] or issuancelookup2[8][p]:
+			outputtable += "<tr><td style='background: #ccc;'><i>- Bought Out</i></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[2][p])+"</i></td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[5][p])+"</i></td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[7][p])+"</i></td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'><i>"+"{:10.2f}".format(issuancelookup2[8][p])+"</i></td><td></td><td></td><td></td></tr>"
+
+
+		sum1 += prevclosinglookup[2][p]+issuancelookup[2][p]-closinglookup[2][p]+prevclosinglookup[5][p]+issuancelookup[5][p]-closinglookup[5][p] 
+		sumcc = sum(prevclosinglookup[2].values())+sum(issuancelookup[2].values())-sum(closinglookup[2].values())
+		sumkkj = sum(prevclosinglookup[5].values())+sum(issuancelookup[5].values())-sum(closinglookup[5].values())
+
+		outputtable += "<tr style='font-weight: bold;'><td>Gross Food Cost</td><td></td><td></td><td style='text-align: right;'>"+"{:10.2f}".format(sumcc)+"</td><td></td><td></td><td></td><td style='text-align: right;'>"+"{:10.2f}".format(sumkkj)+"</td><td></td><td></td><td></td><td style='text-align: right;'>"+"{:10.2f}".format(sum(prevclosinglookup[7].values())+sum(issuancelookup[7].values())-sum(closinglookup[7].values()))+"</td><td></td><td></td><td></td><td style='text-align: right;'>"+"{:10.2f}".format(sum(prevclosinglookup[8].values())+sum(issuancelookup[8].values())-sum(closinglookup[8].values()))+"</td><td></td><td style='text-align: right;'>"+"{:10.2f}".format(sum1)+"</td></tr>"
+
+		outputtable += "<tr><td style='background: #ccc;'>Gross Food Cost %</td><td></td><td></td><td style='text-align: right;background: #ccc;'>"+"{:10.2f}".format(sumcc/gross_cc*100)+"%</td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'>"+"{:10.2f}".format(sumkkj/gross_kkj*100)+"%</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'>"+"{:10.2f}".format(sum1/(gross_cc+gross_kkj)*100)+"%</td></tr>"
+
+		outputtable += "<tr><td style='font-weight: bold;'>Standard Food Cost</td><td></td><td></td><td style='text-align: right;'>"+"{:10.2f}".format(consumptionlookup[2])+"</td><td></td><td></td><td></td><td style='text-align: right;'>"+"{:10.2f}".format(consumptionlookup[5])+"</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td style='text-align: right;'>"+"{:10.2f}".format(consumptionlookup[2]+consumptionlookup[5])+"</td></tr>"
+		outputtable += "<tr><td style='background: #ccc;'>Standard Food Cost %</td><td></td><td></td><td style='text-align: right;background: #ccc;'>"+"{:10.2f}".format(consumptionlookup[2]/gross_cc*100)+"%</td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'>"+"{:10.2f}".format(consumptionlookup[5]/gross_kkj*100)+"%</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'>"+"{:10.2f}".format((consumptionlookup[2]+consumptionlookup[5])/(gross_cc+gross_kkj)*100)+"%</td></tr>"
+
+
+		outputtable += "<tr><td style='font-weight: bold;'>Wastage</td><td></td><td></td><td style='text-align: right;'>"+"{:10.2f}".format(wastagelookup[2])+"</td><td></td><td></td><td></td><td style='text-align: right;'>"+"{:10.2f}".format(wastagelookup[5])+"</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td style='text-align: right;'>"+"{:10.2f}".format(wastagelookup[2]+wastagelookup[5])+"</td></tr>"
+		outputtable += "<tr><td style='background: #ccc;'>Wastage %</td><td></td><td></td><td style='text-align: right;background: #ccc;'>"+"{:10.2f}".format(wastagelookup[2]/gross_cc*100)+"%</td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'>"+"{:10.2f}".format(wastagelookup[5]/gross_kkj*100)+"%</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'>"+"{:10.2f}".format((wastagelookup[2]+wastagelookup[5])/(gross_cc+gross_kkj)*100)+"%</td></tr>"
+		
+
+		outputtable += "<tr><td style='font-weight: bold;'>Unaccounted</td><td></td><td></td><td style='text-align: right;'>"+"{:10.2f}".format(sumcc - consumptionlookup[2]-wastagelookup[2])+"</td><td></td><td></td><td></td><td style='text-align: right;'>"+"{:10.2f}".format(sumkkj - consumptionlookup[5] - wastagelookup[5])+"</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td style='text-align: right;'>"+"{:10.2f}".format(sum1 - consumptionlookup[2]- consumptionlookup[5]- wastagelookup[2]-wastagelookup[5])+"</td></tr>"
+		outputtable += "<tr><td style='background: #ccc;'>Unaccounted %</td><td></td><td></td><td style='text-align: right;background: #ccc;'>"+"{:10.2f}".format((sumcc - consumptionlookup[2]-wastagelookup[2])/gross_cc*100)+"%</td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'>"+"{:10.2f}".format((sumkkj - consumptionlookup[5] - wastagelookup[5])/gross_kkj*100)+"%</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td style='text-align: right;background: #ccc;'>"+"{:10.2f}".format((sum1 - consumptionlookup[2]- consumptionlookup[5]- wastagelookup[2]-wastagelookup[5])/(gross_cc+gross_kkj)*100)+"%</td></tr>"
+
+		# - Bought Out 
+		# Cash Purchase 
+
+		outputtable += "</tbody></table>"
+
+		statssession.remove()
+		self.render("templates/simpletabletemplate.html", page_url="/foodcost", page_title="Twigly Food Cost",table_title="Food Cost "+parsedstartdate.strftime("%Y-%m-%d")+" to "+parsedenddate.strftime("%Y-%m-%d") ,tableSort="[]", daterange=daterange, outputtable=outputtable, user=current_user)
+
+def getgross(statssession,store_list,parsedstartdate,parsedenddate):
+
+	daterange = []
+	for c in range((parsedenddate - parsedstartdate).days):
+		daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%Y-%m-%d"))
+
+	dailyordersquery = statssession.query(order).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress + returnedStates), order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.store_id.in_(store_list)).all()
+
+	dailyorderids = [thisorder.order_id for thisorder in dailyordersquery if (thisorder.order_status not in returnedStates)]
+	grosssalesquery = statssession.query(order.date_add,orderdetail.quantity,orderdetail.price,orderdetailoption.price).outerjoin(orderdetail).outerjoin(orderdetailoption).filter(order.order_id.in_(dailyorderids))
+	
+	grosssaleslookup = {}
+
+	for grossdetail in grosssalesquery:
+		if grossdetail[0].strftime("%Y-%m-%d") in grosssaleslookup:
+			grosssaleslookup[grossdetail[0].strftime("%Y-%m-%d")] += (grossdetail[1]*grossdetail[2])	 	
+		else:
+		 	grosssaleslookup[grossdetail[0].strftime("%Y-%m-%d")] = (grossdetail[1]*grossdetail[2])
+		if grossdetail[3]:
+			grosssaleslookup[grossdetail[0].strftime("%Y-%m-%d")] += (grossdetail[1]*grossdetail[3])
+		
+
+	totalsales = []
+
+	dailysalesquery = statssession.query(order.date_add, sqlalchemy.func.sum(order.delivery_charges)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.order_status.in_(deliveredStates + inProgress), order.store_id.in_(store_list)).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
+
+	deliverycharges = []
+
+	thisdeliverydetails = {thisresult[0].strftime("%Y-%m-%d"): float(thisresult[1]) for thisresult in dailysalesquery}
+
+	for thisdate in daterange:
+		if thisdate in thisdeliverydetails:
+			deliverycharges.append(thisdeliverydetails[thisdate])
+		else:
+			deliverycharges.append(0) 
+
+	sum=0.0
+	for c in range(0, len(daterange)):
+		try:
+			totalsales.append(float(grosssaleslookup[daterange[c]])+float(deliverycharges[c]))
+			sum+=float(grosssaleslookup[daterange[c]])+float(deliverycharges[c])
+		except KeyError:
+			totalsales.append(0.0)
+
+	return sum
+
+
 class EsselTestHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
@@ -4220,6 +4532,8 @@ application = tornado.web.Application([
 	(r"/resetsegments", ResetSegmentHandler),
 	(r"/dormantregulars", DormantRegularsHandler),
 	(r"/deadregulars", DeadRegularsHandler),
+	(r"/foodcost", FoodCostHandler),
+	(r"/sectors", SectorsHandler),
 	(r"/esseltest", EsselTestHandler),
 	(r"/rewardstats", RewardStatsHandler),
 	(r"/rewardleaderboard", RewardLeaderHandler),
