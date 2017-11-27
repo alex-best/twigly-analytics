@@ -3249,6 +3249,61 @@ class DeliveryHandler(BaseHandler):
 		self.render("templates/deliveriestemplate.html", outputtable=outputtable, outputtable2=outputtable2, outputtable3=outputtable3, user=current_user,active_stores=active_stores, current_store=current_store, current_store_name=current_store_name)
 
 
+class LateDeliveryHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		current_user = self.get_current_user().decode()
+		if current_user not in ("admin"):
+			self.redirect('/stats')
+
+		horizon = self.get_argument("horizon", None)
+		startdate = self.get_argument("startdate", None)
+		enddate = self.get_argument("enddate", None)
+		if startdate is None:
+			if horizon is None:
+				horizon = 1
+			else:
+				horizon = int(horizon)
+
+			parsedenddate = datetime.date.today() +  datetime.timedelta(days=1)
+
+			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
+			daterange = [parsedstartdate.strftime("%Y-%m-%d")]
+			for c in range(horizon-1):
+				daterange.append((parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%Y-%m-%d"))
+		
+		else:
+			parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date()
+			parsedenddate = parsedenddate + datetime.timedelta(days=1)
+			parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
+			daterange = []
+			for c in range((parsedenddate - parsedstartdate).days):
+				daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%Y-%m-%d"))
+
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
+
+		thissql1 = "select date(o.date_add), dz.falls_under_gurantee, st.name, o.order_id, us.name, o.delivery_address, timediff(b.time_add,a.time_add),timediff(c.time_add,b.time_add),timediff(d.time_add,c.time_add),timediff(d.time_add,a.time_add), dbs.name from orders o left join delivery_zones dz on o.delivery_zone_id=dz.delivery_zone_id left join stores st on o.store_id = st.store_id left join users us on us.user_id=o.user_id left join deliveries dd on o.order_id=dd.order_id left join delivery_boys dbs on dd.delivery_boy_id=dbs.delivery_boy_id left join order_status_times as a on o.order_id = a.order_id left join order_status_times as b on o.order_id = b.order_id left join order_status_times as c on o.order_id = c.order_id left join order_status_times as d on o.order_id = d.order_id where a.order_status=1 and b.order_status=2 and c.order_status=15 and d.order_status=3 and ((dz.falls_under_gurantee = 1 and timediff(d.time_add,a.time_add)>'00:59:59') or (dz.falls_under_gurantee = 0 and timediff(d.time_add,a.time_add)>'01:29:59')) and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <'" + parsedenddate.strftime("%Y-%m-%d") + " 00:00:00' group by 4 order by 1,2 desc,10 desc;"
+		result1 = statsengine.execute(thissql1)
+
+		responselookup = {thisdate:[] for thisdate in daterange}
+
+		outputtable = "<table class='table tablesorter table-striped table-hover'><thead><th>Date</th><th>Priority</th><th>Store</th><th>Order ID</th><th>Customer</th><th>Address</th><th>Cooking to Dispatch</th><th>Dispatch to Reached</th><th>Reached to Delivered</th><th>Total Time</th><th>Delivery Boy</th></thead>"
+
+		prioritylookup = {0:"Non Priority", 1:"Priority"}
+
+		for item in result1:
+			outputtable += "<tr><td>" + str(item[0]) + "</td><td>" + prioritylookup[item[1]] + "</td><td>"+str(item[2])+"</td><td><a href='http://twigly.in/admin/orders?f="+str(item[3])+"'>"+str(item[3])+"</a></td><td>"+str(item[4])+"</td><td>"+str(item[5])+"</td><td>"+str(item[6])+"</td><td>"+str(item[7])+"</td><td>"+str(item[8])+"</td><td>"+str(item[9])+"</td><td>"+str(item[10])+"</td></tr>"
+
+		outputtable += "</table>"
+
+		displayenddate = parsedenddate +  datetime.timedelta(days=-1)
+
+		statssession.remove()
+		self.render("templates/simpletabletemplate.html", page_url="/latedeliveries", page_title="Twigly Late Orders Summary",table_title="Late Orders Summary - Prioirty orders over 60 mintues and Non Priority orders over 90 minutes - "+parsedstartdate.strftime("%Y-%m-%d")+" to "+displayenddate.strftime("%Y-%m-%d"),tableSort="[]", daterange=daterange, outputtable=outputtable, user=current_user)
+
+
+
 class DeliveryStatsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
@@ -4527,6 +4582,7 @@ application = tornado.web.Application([
 	(r"/getstoreitems", GetStoreItemsHandler),
 	(r"/setdatewisestoremenu", SetDateWiseMenuHandler),
 	(r"/deliveries", DeliveryHandler),
+	(r"/latedeliveries", LateDeliveryHandler),
 	(r"/deliverystats", DeliveryStatsHandler),
 	(r"/payments", PaymentStatsHandler),
 	(r"/orderstats", OrderStatsHandler),
