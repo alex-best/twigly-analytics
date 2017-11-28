@@ -495,6 +495,10 @@ class StatsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
 
+		current_user = self.get_current_user().decode()
+		if current_user not in ("admin","review","headchef"):
+			self.redirect('/')
+
 		horizon = self.get_argument("horizon", None)
 		startdate = self.get_argument("startdate", None)
 		enddate = self.get_argument("enddate", None)
@@ -3337,7 +3341,7 @@ class DeliveryStatsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
 		current_user = self.get_current_user().decode()
-		if current_user not in ("admin"):
+		if current_user not in ["admin","@testmail.com","@testmail.com","@testmail.com"]:
 			self.redirect('/stats')
 
 		horizon = self.get_argument("horizon", None)
@@ -3827,7 +3831,7 @@ class SectorsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
 		current_user = self.get_current_user().decode()
-		if current_user not in ("admin"):
+		if current_user not in ["admin","@testmail.com","@testmail.com","@testmail.com"]:
 			self.redirect('/stats')
 
 		horizon = self.get_argument("horizon", None)
