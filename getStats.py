@@ -50,7 +50,7 @@ statsengine_url = 'mysql+pymysql://twigly:***REMOVED***@***REMOVED***/twigly_pro
 #statsengine_url = 'mysql+pymysql://root@localhost:3306/twigly_dev?charset=utf8'
 mailchimpkey = "***REMOVED***"
 
-environment_production=False #True for prod, False for dev
+environment_production=True #True for prod, False for dev
 
 #relevantStates = [3,10,11,12,16]
 deliveredStates = [3]
@@ -2243,9 +2243,9 @@ class MailchimpHandler(BaseHandler):
 			content = self.render_string(template_name = mailtemplate[0], activeitems = finallist, header = header, length = length, sod=sod, dod=dod, color=mailtemplate[1], image=image).decode("utf-8") 
 
 			#Change this variable to change the list
-			# list_id = "ea0d1e3356"
+			list_id = "ea0d1e3356"
 			# ea0d1e3356 is the main Twigly list
-			list_id = "d2a7019f47"
+			# list_id = "d2a7019f47"
 			# d2a7019f47 is the test list
 
 			mailerror = False
