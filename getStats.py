@@ -2240,7 +2240,7 @@ class MailchimpHandler(BaseHandler):
 			image = self.get_argument("image", "none")
 			mailtemplate = getMailTemplate(template)
 			
-			content = self.render_string(template_name = mailtemplate[0], activeitems = finallist, header = header, length = length, sod=sod, dod=dod, color=mailtemplate[1], image=image)
+			content = self.render_string(template_name = mailtemplate[0], activeitems = finallist, header = header, length = length, sod=sod, dod=dod, color=mailtemplate[1], image=image).decode("utf-8") 
 
 			#Change this variable to change the list
 			# list_id = "ea0d1e3356"
