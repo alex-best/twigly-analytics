@@ -17,6 +17,7 @@ from json import dumps, loads
 from mailchimp import Mailchimp
 from re import sub
 from urllib.parse import unquote
+import sys
 
 from fb import *
 
@@ -2195,6 +2196,8 @@ def getMailTemplate(template):
 		return ("templates/mailtemplate4.html", "purple")
 	elif (template == 8):
 		return ("templates/mailtemplate5.html", "")
+	elif (template == 9):
+		return ("templates/mailtemplate6.html", "")
 	else:
 		return ("templates/mailtemplate.html", "")
 
@@ -2213,8 +2216,9 @@ class MailPreviewHandler(BaseHandler):
 			sod = int(self.get_argument("sod", "-1"))
 			dod = int(self.get_argument("dod", "-1"))
 			template = int(self.get_argument("template", "1"))
+			image = self.get_argument("image", "none")
 			mailtemplate = getMailTemplate(template)
-			self.render(template_name = mailtemplate[0], activeitems = finallist, header = header, length = length, sod=sod, dod=dod, color=mailtemplate[1])
+			self.render(template_name = mailtemplate[0], activeitems = finallist, header = header, length = length, sod=sod, dod=dod, color=mailtemplate[1], image=image)
 
 class MailchimpHandler(BaseHandler):
 	@tornado.web.authenticated
@@ -2233,9 +2237,10 @@ class MailchimpHandler(BaseHandler):
 			sod = int(self.get_argument("sod", "-1"))
 			dod = int(self.get_argument("dod", "-1"))
 			template = int(self.get_argument("template", "1"))
+			image = self.get_argument("image", "none")
 			mailtemplate = getMailTemplate(template)
 			
-			content = self.render_string(template_name = mailtemplate[0], activeitems = finallist, header = header, length = length, sod=sod, dod=dod, color=mailtemplate[1])
+			content = self.render_string(template_name = mailtemplate[0], activeitems = finallist, header = header, length = length, sod=sod, dod=dod, color=mailtemplate[1], image=image).decode("utf-8") 
 
 			#Change this variable to change the list
 			list_id = "ea0d1e3356"

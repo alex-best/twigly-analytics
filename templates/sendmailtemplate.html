@@ -88,10 +88,6 @@
 		<div class="col-sm-9"><textarea class="form-control" id="header" style="width: 100%; height: 6em;">Hi *|FNAME|*,<br>Check out what's cooking @ Twigly today!</textarea></div>
 	</div>
 	<div class="row" style="margin-top: 20px;margin-bottom: 20px;">
-		<div class="col-sm-3">#Items to include<br>Must be an even number</div>
-		<div class="col-sm-9"><input type="number" class="form-control" id="items" style="width: 100%;" value="4" /></div>
-	</div>
-	<div class="row" style="margin-top: 20px;margin-bottom: 20px;">
 		<div class="col-sm-3">Mail template</div>
 		<div class="col-sm-9">
 			<select id="mailtemplate">
@@ -103,8 +99,17 @@
 				<option value="6">Sparkle Green</option>
 				<option value="7">Sparkle Purple</option>
 				<option value="8">Today's Offers</option>
+				<option value="9">Christmas Offer</option>
 			</select>
 		</div>
+	</div>
+	<div class="row" id="itemsrow" style="margin-top: 20px;margin-bottom: 20px;">
+		<div class="col-sm-3">#Items to include<br>Must be an even number</div>
+		<div class="col-sm-9"><input type="number" class="form-control" id="items" style="width: 100%;" value="4" /></div>
+	</div>
+	<div class="row" id="imagerow" style="margin-top: 20px;margin-bottom: 20px; display: none;">
+		<div class="col-sm-3">Image URL: </div>
+		<div class="col-sm-9"><input type="text" class="form-control" id="image" style="width: 100%;" /></div>
 	</div>
 	<div class="row" style="margin-top: 20px;margin-bottom: 20px;">
 		<div class="col-sm-12" style="text-align: center;"><button id="preview" class="btn btn-primary">Preview</button></div>
@@ -282,6 +287,8 @@
 			sendurl += "&dod=" + dod;
 		}
 
+		sendurl += ("&image=" + $("#image").val()); 
+
 		return sendurl;
 	}
 
@@ -326,6 +333,15 @@
 				$('#items').val(5);
 			} else {
 				$('#items').val(4);
+			}
+			if ($(this).val()=="9") {
+				$('#itemsrow').hide();
+				$('#activelist').hide();
+				$('#imagerow').show();
+			} else {
+				$('#itemsrow').show();
+				$('#activelist').show();
+				$('#imagerow').hide();
 			}
 		});
 		$("#sendmail").on('click', function() {
