@@ -2629,7 +2629,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 
 
 	def getDormantTemplateId(self):
-		dormant_template_id = 139773 #139749 for missyou10 # int #139773 for summer10
+		dormant_template_id = 139777 #139749 for missyou10 # int #139773 for summer10 #139777 for winter10
 		return dormant_template_id
 
 	def getDormantSegmentId(self):
@@ -2665,7 +2665,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 				m = Mailchimp(mailchimpkey)
 				mcresponse = m.lists.static_segment_reset(list_id,dormant_static_segment_id)
 				mcresponse = m.lists.static_segment_members_add(list_id,dormant_static_segment_id,batch_list)
-				subject = "Summer update! Get 10% off on your next order" #"We miss you - Get 10% off on your next order"
+				subject = "Winter update! Get 10% off on your next order" #"We miss you - Get 10% off on your next order"
 				mcresponse = m.campaigns.create(type="regular", options={"list_id": list_id, "subject": subject, "from_email": "@testmail.com", "from_name": "Twigly", "to_name": "*|FNAME|*", "title": subject, "authenticate": True, "generate_text": True, "template_id":dormant_template_id}, content={"sections": {}}, segment_opts={"saved_segment_id":dormant_static_segment_id})
 				mre2 = m.campaigns.send(mcresponse["id"])
 			except Exception as e:
