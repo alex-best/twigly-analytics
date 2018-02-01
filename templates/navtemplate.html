@@ -33,7 +33,29 @@
         {% if user=="admin" or user == "@testmail.com" or user =="@testmail.com" or user =="@testmail.com" %}<li><a href="/sectors" style="color: #FFFFFF;">Sectors</a></li>{% end %}
         {% if user=="admin" or user == "@testmail.com" or user =="@testmail.com" or user =="@testmail.com" %}<li><a href="/latedeliveries" style="color: #FFFFFF;">Late Deliveries</a></li>{% end %}
         {% if user=="admin" %}<li><a href="/subscription" style="color: #FFFFFF;">Subscription</a></li>{% end %}
+        {% if user=="admin" %}<li><a href="/orderstats" style="color: #FFFFFF;">Hourly Orders</a></li>{% end %}
       </ul>
     </div><!-- /.navbar-collapse -->
   </div><!-- /.container-fluid -->
 </nav>
+<script src="/static/js/jquery.min.js"></script>
+<script src="/static/js/highcharts.js"></script>
+<script src="/static/js/bootstrap-datepicker.min.js"></script>
+<script src="/static/js/exporting.js"></script>
+<script src="/static/js/export-csv.js"></script>
+<script src="/static/js/jquery.tablesorter.min.js"></script>
+<script src="/static/js/jquery.metadata.js"></script>
+<script type="text/javascript">
+    $('.navbar-nav>li>a').on('click', function(ev) {
+        ev.preventDefault();
+        var storeid = $('#storeselect').val();
+        if (typeof storeid === 'undefined') {
+            storeid = 'All';
+        }
+        if (storeid == "") {
+            storeid = 'All';
+        }
+
+        window.location.href = $(this).attr('href') + "?startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val() + "&store=" + storeid;
+    });
+</script>

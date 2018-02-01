@@ -4406,7 +4406,7 @@ class SubscriptionHandler(BaseHandler):
 			else:
 				horizon = int(horizon)
 
-			parsedenddate = datetime.date.today() +  datetime.timedelta(days=1)
+			parsedenddate = datetime.date.today() + datetime.timedelta(days=1)
 
 			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
 			daterange = [parsedstartdate.strftime("%a %b %d, %Y")]
@@ -4421,6 +4421,9 @@ class SubscriptionHandler(BaseHandler):
 			for c in range((parsedenddate - parsedstartdate).days):
 				daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%a %b %d, %Y"))
 
+		print (parsedstartdate)
+		print (parsedenddate)
+		print (daterange)
 		statsengine = sqlalchemy.create_engine(statsengine_url)
 		statssession = scoped_session(sessionmaker(bind=statsengine))
 
@@ -4428,7 +4431,7 @@ class SubscriptionHandler(BaseHandler):
 		transaction_value_list = [x["value"] for x in transaction_type]
 
 		# 0 Recharge, 1 Payment, 2 Unknown, 3 revert, 4 payment failed, 5 manual, 6 cashback
-		thissql1 = "select o.type, o.category, date(o.date_add), o.amount from subscription_transactions o where o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59';"
+		thissql1 = "select o.type, o.category, date(o.date_add), o.amount from subscription_transactions o where o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 00:00:00';"
 		result1 = statsengine.execute(thissql1)
 
 		rechargedata = {}
