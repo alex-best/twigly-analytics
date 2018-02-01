@@ -2653,41 +2653,41 @@ class MailchimpDormantUserHandler(BaseHandler):
 			parsedstartdate = datetime.date.today() - datetime.timedelta(days=30)
 			bad_delivery_feedback_list = self.sendBadDeliveryFeedbackMail(parsedstartdate)
 			bad_food_feedback_list = self.sendBadFoodFeedbackMail(parsedstartdate)
-			batch_list_old = self.getDormantUsersBatch(parsedstartdate)
-			batch_list = []
-			for item in batch_list_old:
-				if item in bad_delivery_feedback_list:
-					continue
-				if item in bad_food_feedback_list:
-					continue
-				batch_list.append(item)
+			# batch_list_old = self.getDormantUsersBatch(parsedstartdate)
+			# batch_list = []
+			# for item in batch_list_old:
+			# 	if item in bad_delivery_feedback_list:
+			# 		continue
+			# 	if item in bad_food_feedback_list:
+			# 		continue
+			# 	batch_list.append(item)
 
-			list_id = getMailChimpListId()
-			dormant_template_id = self.getDormantTemplateId()
-			dormant_static_segment_id = self.getDormantSegmentId()		
-			mre2 = {}
-			try:
-				m = Mailchimp(mailchimpkey)
-				mcresponse = m.lists.static_segment_reset(list_id,dormant_static_segment_id)
-				mcresponse = m.lists.static_segment_members_add(list_id,dormant_static_segment_id,batch_list)
-				subject = "Winter update! Get 10% off on your next order" #"We miss you - Get 10% off on your next order"
-				mcresponse = m.campaigns.create(type="regular", options={"list_id": list_id, "subject": subject, "from_email": "@testmail.com", "from_name": "Twigly", "to_name": "*|FNAME|*", "title": subject, "authenticate": True, "generate_text": True, "template_id":dormant_template_id}, content={"sections": {}}, segment_opts={"saved_segment_id":dormant_static_segment_id})
-				mre2 = m.campaigns.send(mcresponse["id"])
-			except Exception as e:
-				print ("Unexpected error:",e)
+			# list_id = getMailChimpListId()
+			# dormant_template_id = self.getDormantTemplateId()
+			# dormant_static_segment_id = self.getDormantSegmentId()		
+			# mre2 = {}
+			# try:
+			# 	m = Mailchimp(mailchimpkey)
+			# 	mcresponse = m.lists.static_segment_reset(list_id,dormant_static_segment_id)
+			# 	mcresponse = m.lists.static_segment_members_add(list_id,dormant_static_segment_id,batch_list)
+			# 	subject = "Winter update! Get 10% off on your next order" #"We miss you - Get 10% off on your next order"
+			# 	mcresponse = m.campaigns.create(type="regular", options={"list_id": list_id, "subject": subject, "from_email": "@testmail.com", "from_name": "Twigly", "to_name": "*|FNAME|*", "title": subject, "authenticate": True, "generate_text": True, "template_id":dormant_template_id}, content={"sections": {}}, segment_opts={"saved_segment_id":dormant_static_segment_id})
+			# 	mre2 = m.campaigns.send(mcresponse["id"])
+			# except Exception as e:
+			# 	print ("Unexpected error:",e)
 
-			self.sendZomatoDormantUserSMS(parsedstartdate)
+			# self.sendZomatoDormantUserSMS(parsedstartdate)
 
 			parsedrewarddate = datetime.date.today() - datetime.timedelta(days=15)
 			self.sendRewardSMS(parsedrewarddate)
 
-			print (mre2)
-			if ('complete' in mre2 and mre2['complete']==True):
-				self.write({"result": True})
-				sendTwiglyMail('@testmail.com','***REMOVED***',str(len(batch_list))+" recepients of Dormant campaign for "+parsedstartdate.strftime("%Y-%m-%d"), "Email sent successfully to " + str(batch_list),'plain')
-			else:
-				self.write({"result": False})
-				sendTwiglyMail('@testmail.com','***REMOVED***',"Some error in the Dormant campaign for "+parsedstartdate.strftime("%Y-%m-%d"), str(mre2),'plain')
+			# print (mre2)
+			# if ('complete' in mre2 and mre2['complete']==True):
+			# 	self.write({"result": True})
+			# 	sendTwiglyMail('@testmail.com','***REMOVED***',str(len(batch_list))+" recepients of Dormant campaign for "+parsedstartdate.strftime("%Y-%m-%d"), "Email sent successfully to " + str(batch_list),'plain')
+			# else:
+			# 	self.write({"result": False})
+			# 	sendTwiglyMail('@testmail.com','***REMOVED***',"Some error in the Dormant campaign for "+parsedstartdate.strftime("%Y-%m-%d"), str(mre2),'plain')
 
 
 
