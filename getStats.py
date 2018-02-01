@@ -4340,7 +4340,6 @@ class RewardStatsHandler(BaseHandler):
 		statssession.remove()
 		self.render("templates/rewardstatstemplate.html", daterange=daterange, debittransactions=debittransactions, debitpoints=debitpoints, credittransactions=credittransactions, creditpoints=creditpoints, smlcredittransactions=smlcredittransactions,smlcreditpoints=smlcreditpoints,smlcreditavgpoints=smlcreditavgpoints,totalcredittransactions=totalcredittransactions,totalcreditpoints=totalcreditpoints,totalcreditavgpoints=totalcreditavgpoints,totaldebittransactions=totaldebittransactions, totaldebitpoints=totaldebitpoints,totaldebitavgpoints=totaldebitavgpoints,totalsmlcredittransactions=totalsmlcredittransactions,totalsmlcreditpoints=totalsmlcreditpoints,totalsmlavgpoints=totalsmlavgpoints,orderlessthan250pc=orderlessthan250pc,user=current_user)
 
-
 class RewardLeaderHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
@@ -4391,6 +4390,83 @@ class RewardLeaderHandler(BaseHandler):
 		statssession.remove()
 		self.render("templates/rewardleaderstemplate.html", outputtable=outputtable, user=current_user)
 
+class SubscriptionHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		current_user = self.get_current_user().decode()
+		if current_user not in ("admin"):
+			self.redirect('/stats')
+
+		horizon = self.get_argument("horizon", None)
+		startdate = self.get_argument("startdate", None)
+		enddate = self.get_argument("enddate", None)
+		if startdate is None:
+			if horizon is None:
+				horizon = 7
+			else:
+				horizon = int(horizon)
+
+			parsedenddate = datetime.date.today() +  datetime.timedelta(days=1)
+
+			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
+			daterange = [parsedstartdate.strftime("%a %b %d, %Y")]
+			for c in range(horizon-1):
+				daterange.append((parsedstartdate + datetime.timedelta(days=(c+1))).strftime("%a %b %d, %Y"))
+		
+		else:
+			parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date()
+			parsedenddate = parsedenddate + datetime.timedelta(days=1)
+			parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date()
+			daterange = []
+			for c in range((parsedenddate - parsedstartdate).days):
+				daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%a %b %d, %Y"))
+
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
+
+		transaction_type=[{"type":"CREDIT", "category": "Recharge", "value":0}, {"type":"DEBIT", "category": "Payment", "value":1}, {"type":"CREDIT", "category": "Revert", "value":3}, {"type":"CREDIT", "category": "Payment failed", "value":4}, {"type":"CREDIT", "category": "Cashback", "value":6}]
+		transaction_value_list = [x["value"] for x in transaction_type]
+
+		# 0 Recharge, 1 Payment, 2 Unknown, 3 revert, 4 payment failed, 5 manual, 6 cashback
+		thissql1 = "select o.type, o.category, date(o.date_add), o.amount from subscription_transactions o where o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59';"
+		result1 = statsengine.execute(thissql1)
+
+		rechargedata = {}
+		rechargevalue = 0
+		rechargecount = 0
+		cashbackvalue = 0
+		transactioncount = [0 for x in daterange]
+		transactionvalue = [0 for x in daterange]
+		for item in result1:
+			if item[1] in transaction_value_list:
+				if item[1] == 0: #recharge
+					if "Rs. " + str(int(item[3])) in rechargedata:
+						rechargedata["Rs. " + str(int(item[3]))][daterange.index(item[2].strftime("%a %b %d, %Y"))] += 1
+					else:
+						rechargedata["Rs. " + str(int(item[3]))] = [0 for x in daterange]
+						rechargedata["Rs. " + str(int(item[3]))][daterange.index(item[2].strftime("%a %b %d, %Y"))] = 1
+
+					rechargevalue += float(item[3])
+					rechargecount +=1
+				elif item[1] == 6:
+					cashbackvalue += float(item[3])
+				else:
+					if item[1] == 1:
+						transactioncount[daterange.index(item[2].strftime("%a %b %d, %Y"))] += 1
+						transactionvalue[daterange.index(item[2].strftime("%a %b %d, %Y"))] += float(item[3])
+					else:
+						transactioncount[daterange.index(item[2].strftime("%a %b %d, %Y"))] -= 1
+						transactionvalue[daterange.index(item[2].strftime("%a %b %d, %Y"))] -= float(item[3])
+
+		rechargeshowdata = []
+		for rd in rechargedata:
+			rechargeshowdata.append({"name": rd, "data": rechargedata[rd]})
+
+		totaltransactions = sum(transactioncount)
+		totaltransactionvalue = round(sum(transactionvalue),2)
+
+		statssession.remove()
+		self.render("templates/subscriptiontemplate.html", daterange=daterange, rechargecount=rechargecount, rechargedata=rechargeshowdata, rechargevalue=rechargevalue, transactioncount=transactioncount, transactionvalue=transactionvalue, totaltransactions=totaltransactions, totaltransactionvalue=totaltransactionvalue, cashbackvalue=cashbackvalue, user=current_user)
 
 class ResetSegmentHandler(BaseHandler):
 	@tornado.web.authenticated
@@ -4633,6 +4709,7 @@ application = tornado.web.Application([
 	(r"/esseltest", EsselTestHandler),
 	(r"/rewardstats", RewardStatsHandler),
 	(r"/rewardleaderboard", RewardLeaderHandler),
+	(r"/subscription", SubscriptionHandler),
 	(r"/vanvaas", VanvaasHandler),
 	(r"/vanvaas/update/", UpdateVanvaasHandler),
 	(r"/vanvaas/(.*)", VanvaasViewHandler),
