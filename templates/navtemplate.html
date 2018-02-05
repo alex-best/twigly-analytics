@@ -56,6 +56,11 @@
             storeid = 'All';
         }
 
-        window.location.href = $(this).attr('href') + "?startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val() + "&store=" + storeid;
+        if ($("#startdate").val()!="" && $("#enddate").val()!="") {
+            window.location.href = $(this).attr('href') + "?startdate=" + $("#startdate").val() + "&enddate=" + $("#enddate").val() + "&store=" + storeid;
+        } else {
+            window.location.href = $(this).attr('href') + "?store=" + storeid;
+        }
+
     });
 </script>
