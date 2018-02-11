@@ -56,14 +56,14 @@
     </nav>
 </div>
 <div class="container">
-	{% if (user=="admin" or user=="headchef" or user=="chef" or user=="review" or user == "@testmail.com" or user =="@testmail.com" or user =="@testmail.com") %}
+	{% if (user=="admin" or user=="headchef" or user=="chef" or user=="review" or user == "@testmail.com" or user =="@testmail.com" or user =="@testmail.com" or user =="@testmail.com") %}
 		{% include "navtemplate.html" %}
 	{% end %}
 	<div class="row" style="margin-bottom: 40px; margin-top: 40px;">
 		<div class="col-xs-12 col-md-6" style="text-align: left; font-size: 17px;">
 			Dishwise sales numbers in <span style="font-weight: bold;">{{ current_store_name }}</span>
 		</div>
-		{% if (user=="admin" or user=="headchef" or user=="review" or user == "@testmail.com" or user =="@testmail.com" or user =="@testmail.com" or user == "twiglyservice") %}
+		{% if (user=="admin" or user=="headchef" or user=="review" or user == "@testmail.com" or user =="@testmail.com" or user =="@testmail.com" or user == "twiglyservice" or user =="@testmail.com") %}
 		<div class="col-xs-12 col-md-6" style="text-align: right;">
 			{% if (user!="review") %}
 			<select id="dayofweekselect">
@@ -97,7 +97,7 @@
 				{% end %}
 			</select>
 			{% end %}
-			{% if (user != "@testmail.com" and user !="@testmail.com" and user !="@testmail.com") %}
+			{% if (user != "@testmail.com" and user !="@testmail.com" and user !="@testmail.com" and user !="@testmail.com") %}
 			<select id="storeselect">
 				<option value="All" 
 					{% if current_store == "All" %}
@@ -118,7 +118,7 @@
 		</div>
 		{% end %}
 	</div>
-	{% if (user != "@testmail.com" and user !="@testmail.com" and user !="@testmail.com") %}
+	{% if (user != "@testmail.com" and user !="@testmail.com" and user !="@testmail.com" and user !="@testmail.com") %}
     <div class="row" style="margin-bottom: 40px;" id="tagsheader">
     	<h2>Cooking Station Data</h2>
     </div>
@@ -166,7 +166,7 @@
 	    }
 	};
 
-	{% if (user != "@testmail.com" and user !="@testmail.com" and user !="@testmail.com") %}
+	{% if (user != "@testmail.com" and user !="@testmail.com" and user !="@testmail.com"  and user !="@testmail.com") %}
 
 	Highcharts.theme = {
     	colors: ['#44917b', '#ff6600', '#666666', '#FF0000', '#0000FF'],

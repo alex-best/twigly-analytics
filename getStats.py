@@ -225,13 +225,13 @@ def getRedirect(username):
 		return "storeitems"
 	elif (username in ["twiglyservice"]):
 		return "dormantregulars"
-	elif (username in ["@testmail.com","@testmail.com","@testmail.com"]):
+	elif (username in ["@testmail.com","@testmail.com","@testmail.com","@testmail.com"]):
 		return "itemstats"
 	else:
 		return "stats"
 
 def authenticate(thisusername, thispassword):
-	if (thisusername == "admin" and thispassword == "twiglyr0x") or (thisusername == "review" and thispassword == "twiglyrvw") or (thisusername == "chef" and thispassword == "twigly123") or (thisusername == "chef03" and thispassword == "twiglychef03") or (thisusername == "headchef" and thispassword == "rahulonly") or (thisusername == "twiglyservice" and thispassword == "callcenter") or (thisusername == "@testmail.com" and thispassword == "dispatch02")  or (thisusername == "@testmail.com" and thispassword == "dispatch03")  or (thisusername == "@testmail.com" and thispassword == "dispatch05") :
+	if (thisusername == "admin" and thispassword == "twiglyr0x") or (thisusername == "review" and thispassword == "twiglyrvw") or (thisusername == "chef" and thispassword == "twigly123") or (thisusername == "chef03" and thispassword == "twiglychef03") or (thisusername == "headchef" and thispassword == "rahulonly") or (thisusername == "twiglyservice" and thispassword == "callcenter") or (thisusername == "@testmail.com" and thispassword == "dispatch02")  or (thisusername == "@testmail.com" and thispassword == "dispatch03")  or (thisusername == "@testmail.com" and thispassword == "dispatch05") or (thisusername == "@testmail.com" and thispassword == "dispatch12") :
 		return {"result": True}
 	else:
 		return {"result": False}
@@ -1088,7 +1088,7 @@ class ItemStatsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
 		current_user = self.get_current_user().decode()
-		if current_user not in ["admin", "headchef", "chef", "chef03","review","@testmail.com","@testmail.com","@testmail.com", "twiglyservice"]:
+		if current_user not in ["admin", "headchef", "chef", "chef03","review","@testmail.com","@testmail.com","@testmail.com","@testmail.com", "twiglyservice"]:
 			self.redirect('/stats')
 		else:
 			horizon = self.get_argument("horizon", None)
@@ -1143,6 +1143,8 @@ class ItemStatsHandler(BaseHandler):
 				current_store="3"
 			elif current_user == "@testmail.com":
 				current_store="5"
+			elif current_user == "@testmail.com":
+				current_store="12"
 
 			active_stores = statssession.query(store).filter(store.is_active == True, store.store_type.in_(outlet_types)).all()
 			active_stores_list = [x.store_id for x in active_stores]
@@ -3124,7 +3126,7 @@ class DeliveryHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
 		current_user = self.get_current_user().decode()
-		if current_user not in ["admin","@testmail.com","@testmail.com","@testmail.com"]:
+		if current_user not in ["admin","@testmail.com","@testmail.com","@testmail.com","@testmail.com"]:
 			self.redirect('/stats')
 
 		horizon = self.get_argument("horizon", None)
@@ -3162,6 +3164,8 @@ class DeliveryHandler(BaseHandler):
 			current_store="3"
 		elif current_user == "@testmail.com":
 			current_store="5"
+		elif current_user == "@testmail.com":
+			current_store="12"
 
 
 		active_stores = statssession.query(store).filter(store.is_active == True, store.store_type.in_(outlet_types)).all()
@@ -3262,7 +3266,7 @@ class LateDeliveryHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
 		current_user = self.get_current_user().decode()
-		if current_user not in ["admin","@testmail.com","@testmail.com","@testmail.com"]:
+		if current_user not in ["admin","@testmail.com","@testmail.com","@testmail.com","@testmail.com"]:
 			self.redirect('/stats')
 
 		horizon = self.get_argument("horizon", None)
@@ -3346,7 +3350,7 @@ class DeliveryStatsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
 		current_user = self.get_current_user().decode()
-		if current_user not in ["admin","@testmail.com","@testmail.com","@testmail.com"]:
+		if current_user not in ["admin","@testmail.com","@testmail.com","@testmail.com","@testmail.com"]:
 			self.redirect('/stats')
 
 		horizon = self.get_argument("horizon", None)
@@ -3836,7 +3840,7 @@ class SectorsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
 		current_user = self.get_current_user().decode()
-		if current_user not in ["admin","@testmail.com","@testmail.com","@testmail.com"]:
+		if current_user not in ["admin","@testmail.com","@testmail.com","@testmail.com","@testmail.com"]:
 			self.redirect('/stats')
 
 		horizon = self.get_argument("horizon", None)
