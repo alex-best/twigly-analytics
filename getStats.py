@@ -2635,6 +2635,32 @@ class MailchimpDormantUserHandler(BaseHandler):
 			sendTwiglyMail('Reward SMS <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for Rewards on "+parsedstartdate.strftime("%Y-%m-%d"), "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
 
 
+	def sendAdhocSMS(self):
+		if environment_production:
+			statsengine = sqlalchemy.create_engine(statsengine_url)
+			statssession = scoped_session(sessionmaker(bind=statsengine))
+			thissql1=""
+			# thissql1 = "select u.mobile_number, u.name, u.wallet_money from users u where (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and u.wallet_money>=50 and u.user_id in (select o.user_id from orders o where o.order_status in (3,10,11,12,16) and o.date_add>'2017-09-06 00:00:00');"
+			result1 = statsengine.execute(thissql1)
+			userids = []
+			mobiles = []
+			for item in result1:
+				userids.append({"mobile":str(item[0]).lower(), "name":getFirstName(str(item[1])), 'points':int(item[2])})
+				mobiles.append(str(item[0]).lower())
+
+			statssession.remove()
+			if len(userids) > 0:
+				for item in userids:
+					msg=""
+					wallet = item['points']
+					msg = "Hi%20"+item['name'].replace(" ","%20")+"%21%20You%20have%20"+str(wallet)+"%20balance%20in%20your%20Twigly%20wallet.%20Try%20the%20New%20Chatora%20Falafel%20Sandwich%20launched%20today%21%20Order%20now%20https%3A%2F%2Fgoo.gl%2FbMNEr4"
+					number = item['mobile']
+					print(number,msg)
+					sendTwiglySMS(number,msg)
+
+			sendTwiglyMail('Adhoc SMS <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for Wallet", "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
+
+
 	def getDormantTemplateId(self):
 		dormant_template_id = 139777 #139749 for missyou10 # int #139773 for summer10 #139777 for winter10
 		return dormant_template_id
@@ -2682,6 +2708,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 
 			parsedrewarddate = datetime.date.today() - datetime.timedelta(days=15)
 			self.sendRewardSMS(parsedrewarddate)
+			# self.sendAdhocSMS()
 
 			# print (mre2)
 			# if ('complete' in mre2 and mre2['complete']==True):
@@ -3712,6 +3739,76 @@ class CouponHandler(BaseHandler):
 		self.render("templates/simpletabletemplate.html", page_url="/couponuse", page_title="Twigly Coupons Use",table_title="List of Coupon Users",tableSort="[[0,1],[2,1]]", daterange=daterange, outputtable=outputtable, user=current_user)
 
 
+class RetentionHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		current_user = self.get_current_user().decode()
+		if current_user not in ("admin"):
+			self.redirect('/stats')
+
+		horizon = self.get_argument("horizon", None)
+		startdate = self.get_argument("startdate", None)
+		enddate = self.get_argument("enddate", None)
+		if startdate is None:
+			if horizon is None:
+				horizon = 7
+			else:
+				horizon = int(horizon)
+
+			parsedenddate = datetime.date.today() - datetime.timedelta(days=30)
+			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
+		
+		else:
+			parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date() 
+			parsedenddate = parsedenddate - datetime.timedelta(days=30)
+			parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date() - datetime.timedelta(days=30)
+
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
+
+		thissql1 = "select date(o.date_add), count(o.order_id), count(u.user_id), sum(case when f.feedback_id is null then 1 else 0 end), sum(case when f.food_rating=1 then 1 else 0 end), sum(case when f.food_rating=2 then 1 else 0 end), sum(case when f.food_rating=3 then 1 else 0 end),sum(case when f.food_rating=4 then 1 else 0 end),sum(case when f.food_rating=5 then 1 else 0 end), sum(case when f.delivery_rating=1 then 1 else 0 end), sum(case when f.delivery_rating=2 then 1 else 0 end), sum(case when f.delivery_rating=3 then 1 else 0 end), sum(case when f.delivery_rating=4 then 1 else 0 end), sum(case when f.delivery_rating=5 then 1 else 0 end) from users u left join orders o on o.user_id=u.user_id left join feedbacks f on f.order_id=o.order_id where u.user_id in (select o.user_id from orders o where o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59') and u.user_id not in (select o.user_id from orders o where o.order_status in (3,10,11,12,16) and o.date_add>'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59') and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and o.order_status in (3,10,11,12,16) group by 1 order by 1;"
+		result1 = statsengine.execute(thissql1)
+
+		outputtable = "<table class='table tablesorter table-striped table-hover'><thead><th>Last Order Date</th><th>Last Orders</th><th>Feedbacks Received (%)</th><th>FR=1</th><th>FR=2</th><th>FR=3</th><th>FR=4</th><th>FR=5</th><th>DR=1</th><th>DR=2</th><th>DR=3</th><th>DR=4</th><th>DR=5</th></thead>"
+
+		outputtable+= "<tr><td>Dormant</td></tr>"
+
+		for item in result1:
+			outputtable+= "<tr><td>" + str(item[0]) + "</td><td>" + str(item[1]) + "</td><td>" + str(item[1] - item[3]) + " (" + "{:10.2f}".format((item[1]-item[3])*100/item[1])+"% )" + "</td><td>" + str(item[4]) + "</td><td>" + str(item[5]) + "</td><td>" + str(item[6]) + "</td><td>" + str(item[7]) + "</td><td>" + str(item[8]) + "</td><td>" + str(item[9]) + "</td><td>" + str(item[10]) + "</td><td>" + str(item[11]) + "</td><td>" + str(item[12]) + "</td><td>" + str(item[13]) + "</td></tr>"
+
+		outputtable+= "<tr><td>Dead</td></tr>"
+
+
+		horizon = self.get_argument("horizon", None)
+		startdate = self.get_argument("startdate", None)
+		enddate = self.get_argument("enddate", None)
+		if startdate is None:
+			if horizon is None:
+				horizon = 7
+			else:
+				horizon = int(horizon)
+
+			parsedenddate = datetime.date.today() - datetime.timedelta(days=60)
+			parsedstartdate = parsedenddate - datetime.timedelta(days=horizon)
+		
+		else:
+			parsedenddate = datetime.datetime.strptime(enddate, "%d/%m/%y").date() 
+			parsedenddate = parsedenddate - datetime.timedelta(days=60)
+			parsedstartdate = datetime.datetime.strptime(startdate, "%d/%m/%y").date() - datetime.timedelta(days=60)
+
+
+		thissql2 = "select date(o.date_add), count(o.order_id), count(u.user_id), sum(case when f.feedback_id is null then 1 else 0 end), sum(case when f.food_rating=1 then 1 else 0 end), sum(case when f.food_rating=2 then 1 else 0 end), sum(case when f.food_rating=3 then 1 else 0 end),sum(case when f.food_rating=4 then 1 else 0 end),sum(case when f.food_rating=5 then 1 else 0 end), sum(case when f.delivery_rating=1 then 1 else 0 end), sum(case when f.delivery_rating=2 then 1 else 0 end), sum(case when f.delivery_rating=3 then 1 else 0 end), sum(case when f.delivery_rating=4 then 1 else 0 end), sum(case when f.delivery_rating=5 then 1 else 0 end) from users u left join orders o on o.user_id=u.user_id left join feedbacks f on f.order_id=o.order_id where u.user_id in (select o.user_id from orders o where o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59') and u.user_id not in (select o.user_id from orders o where o.order_status in (3,10,11,12,16) and o.date_add>'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59') and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and o.order_status in (3,10,11,12,16) group by 1 order by 1;"
+		result2 = statsengine.execute(thissql2)
+
+		for item in result2:
+			outputtable+= "<tr><td>" + str(item[0]) + "</td><td>" + str(item[1]) + "</td><td>" + str(item[1] - item[3]) + " (" + "{:10.2f}".format((item[1]-item[3])*100/item[1])+"% )" + "</td><td>" + str(item[4]) + "</td><td>" + str(item[5]) + "</td><td>" + str(item[6]) + "</td><td>" + str(item[7]) + "</td><td>" + str(item[8]) + "</td><td>" + str(item[9]) + "</td><td>" + str(item[10]) + "</td><td>" + str(item[11]) + "</td><td>" + str(item[12]) + "</td><td>" + str(item[13]) + "</td></tr>"
+
+		outputtable += "</table>"
+
+		statssession.remove()
+		self.render("templates/simpletabletemplate.html", page_url="/retention", page_title="Twigly Retention",table_title="Last order analysis feedback (-30,-60 days)",tableSort="[]", outputtable=outputtable, user=current_user)
+
+
 class DormantRegularsHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
@@ -4709,6 +4806,7 @@ application = tornado.web.Application([
 	(r"/orderstats", OrderStatsHandler),
 	(r"/customerstats", CustomerStatsHandler),
 	(r"/resetsegments", ResetSegmentHandler),
+	(r"/retention", RetentionHandler),
 	(r"/dormantregulars", DormantRegularsHandler),
 	(r"/deadregulars", DeadRegularsHandler),
 	(r"/foodcost", FoodCostHandler),
