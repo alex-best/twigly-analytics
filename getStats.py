@@ -1676,7 +1676,7 @@ class DiscountAnalysisHandler(BaseHandler):
 					resulthtml += "<td style='text-align: right;'>-</td>"
 			resulthtml += "</tr>"
 
-			firstordersql = "select date(date_add), sum(wallet_amount) from orders where wallet_amount=50 and order_id in (select order_id from orders where order_status in (3) and date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and date_add<'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and source in (0,1,2,7) and user_id not in (select user_id from orders where order_status in (3,10,11,12,16) and source in (0,1,2,7) and date_add < @startdate)) group by 1;"
+			firstordersql = "select date(date_add), sum(wallet_amount) from orders where wallet_amount=50 and order_id in (select order_id from orders where order_status in (3) and date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and date_add<'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and source in (0,1,2,7) and user_id not in (select user_id from orders where order_status in (3,10,11,12,16) and source in (0,1,2,7) and date_add < '" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00')) group by 1;"
 			firstorderresult = statsengine.execute(firstordersql)
 			firstorderlookup = {fd[0].strftime("%a %b %d, %Y"): fd[1] for fd in firstorderresult}
 			firstorderlist = []
