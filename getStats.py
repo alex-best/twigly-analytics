@@ -1562,7 +1562,7 @@ class DiscountAnalysisHandler(BaseHandler):
 				resulthtml += ("<th>" + thisdate + "</th>")
 			resulthtml += "</tr></thead><tbody>"
 
-			resulthtml += "<tr><td style='font-weight: bold; text-align: left;'>Gross Sales</td>"
+			resulthtml += "<tr><td style='font-weight: bold; text-align: left;'>Gross Sales<br>" + str(round(sum(totalsales),2)) + "</td>"
 			for x in totalsales:
 				resulthtml += ("<td style='text-align: right;'>" + str(x) + "</td>")
 			resulthtml += "</tr>"
@@ -1581,19 +1581,19 @@ class DiscountAnalysisHandler(BaseHandler):
 			totaldiscounts = []
 			for index, x in enumerate(itemdiscountlist):
 				totaldiscounts.append(x + wallettotal[index] + coupontotal[index])
-			resulthtml += "<tr><td style='font-weight: bold; text-align: left;'>Total Discounts</td>"
+			resulthtml += "<tr><td style='font-weight: bold; text-align: left;'>Total Discounts<br>" + str(round(sum(totaldiscounts),2)) + "<br>" + str(round(sum(totaldiscounts)*100/sum(totalsales),2)) + "%</td>"
 			for index, x  in enumerate(totaldiscounts):
 				try:
-					resulthtml += ("<td style='text-align: right;'>" + str(round(x,2)) + " (" + str(round(x/totalsales[index]*100,2))+ "%)</td>")
+					resulthtml += ("<td style='text-align: right;'>" + str(round(x,2)) + "<br>" + str(round(x/totalsales[index]*100,2))+ "%</td>")
 				except ZeroDivisionError:
 					resulthtml += "<td style='text-align: right;'>-</td>"
 			resulthtml += "</tr>"
 
 
-			resulthtml += "<tr style='border-top: 1px solid #000;'><td style='font-weight: bold; text-align: left;'>Item Discounts</td>"
+			resulthtml += "<tr style='border-top: 1px solid #000;'><td style='font-weight: bold; text-align: left;'>Item Discounts<br>" + str(round(sum(itemdiscountlist),2)) + "<br>" + str(round(sum(itemdiscountlist)*100/sum(totalsales),2)) + "%</td>"
 			for index, x  in enumerate(itemdiscountlist):
 				try:
-					resulthtml += ("<td style='text-align: right;'>" + str(round(x,2)) + " (" + str(round(x/totaldiscounts[index]*100,2))+ "%)</td>")
+					resulthtml += ("<td style='text-align: right;'>" + str(round(x,2)) + "<br>" + str(round(x/totaldiscounts[index]*100,2))+ "%</td>")
 				except ZeroDivisionError:
 					resulthtml += "<td  style='text-align: right;'>-</td>"
 			resulthtml += "</tr>"
@@ -1608,10 +1608,10 @@ class DiscountAnalysisHandler(BaseHandler):
 				else:
 					freedessertlist.append(0)
 
-			resulthtml += "<tr style='background: #ccc; text-align: right;'><td>Free Desserts</td>"
+			resulthtml += "<tr style='background: #ccc; text-align: right;'><td>Free Desserts<br>" + str(round(sum(freedessertlist),2)) + "<br>" + str(round(sum(freedessertlist)*100/sum(itemdiscountlist),2)) + "%</td>"
 			for index, x  in enumerate(freedessertlist):
 				try:
-					resulthtml += ("<td>" + str(round(x,2)) + " (" + str(round(x/itemdiscountlist[index]*100,2))+ "%)</td>")
+					resulthtml += ("<td>" + str(round(x,2)) + "<br>" + str(round(x/itemdiscountlist[index]*100,2))+ "%</td>")
 				except ZeroDivisionError:
 					resulthtml += "<td>-</td>"
 			resulthtml += "</tr>"
@@ -1626,10 +1626,10 @@ class DiscountAnalysisHandler(BaseHandler):
 				else:
 					sotdlist.append(0)
 
-			resulthtml += "<tr style='background: #ccc; text-align: right;'><td>Sandwich of the Day</td>"
+			resulthtml += "<tr style='background: #ccc; text-align: right;'><td>Sandwich of the Day<br>" + str(round(sum(sotdlist),2)) + "<br>" + str(round(sum(sotdlist)*100/sum(itemdiscountlist),2)) + "%</td>"
 			for index, x  in enumerate(sotdlist):
 				try:
-					resulthtml += ("<td>" + str(round(x,2)) + " (" + str(round(x/itemdiscountlist[index]*100,2))+ "%)</td>")
+					resulthtml += ("<td>" + str(round(x,2)) + "<br>" + str(round(x/itemdiscountlist[index]*100,2))+ "%</td>")
 				except ZeroDivisionError:
 					resulthtml += "<td>-</td>"
 			resulthtml += "</tr>"
@@ -1644,10 +1644,10 @@ class DiscountAnalysisHandler(BaseHandler):
 				else:
 					potdlist.append(0)
 
-			resulthtml += "<tr style='background: #ccc; text-align: right;'><td>Pizza of the Day</td>"
+			resulthtml += "<tr style='background: #ccc; text-align: right;'><td>Pizza of the Day<br>" + str(round(sum(potdlist),2)) + "<br>" + str(round(sum(potdlist)*100/sum(itemdiscountlist),2)) + "%</td>"
 			for index, x  in enumerate(potdlist):
 				try:
-					resulthtml += ("<td>" + str(round(x,2)) + " (" + str(round(x/itemdiscountlist[index]*100,2))+ "%)</td>")
+					resulthtml += ("<td>" + str(round(x,2)) + "<br>" + str(round(x/itemdiscountlist[index]*100,2))+ "%</td>")
 				except ZeroDivisionError:
 					resulthtml += "<td>-</td>"
 			resulthtml += "</tr>"
@@ -1662,18 +1662,18 @@ class DiscountAnalysisHandler(BaseHandler):
 				else:
 					freepizzalist.append(0)
 
-			resulthtml += "<tr style='background: #ccc; text-align: right;'><td>Free Pizza</td>"
+			resulthtml += "<tr style='background: #ccc; text-align: right;'><td>Free Pizza<br>" + str(round(sum(freepizzalist),2)) + "<br>" + str(round(sum(freepizzalist)*100/sum(itemdiscountlist),2)) + "%</td>"
 			for index, x  in enumerate(freepizzalist):
 				try:
-					resulthtml += ("<td>" + str(round(x,2)) + " (" + str(round(x/itemdiscountlist[index]*100,2))+ "%)</td>")
+					resulthtml += ("<td>" + str(round(x,2)) + "<br>" + str(round(x/itemdiscountlist[index]*100,2))+ "%</td>")
 				except ZeroDivisionError:
 					resulthtml += "<td>-</td>"
 			resulthtml += "</tr>"
 
-			resulthtml += "<tr style='border-top: 1px solid #000;'><td style='font-weight: bold; text-align: left;'>Wallet Usage</td>"
+			resulthtml += "<tr style='border-top: 1px solid #000;'><td style='font-weight: bold; text-align: left;'>Wallet Usage<br>" + str(round(sum(wallettotal),2)) + "<br>" + str(round(sum(wallettotal)*100/sum(totalsales),2)) + "%</td>"
 			for index, x  in enumerate(wallettotal):
 				try:
-					resulthtml += ("<td style='text-align: right;'>" + str(round(x,2)) + " (" + str(round(x/totaldiscounts[index]*100,2))+ "%)</td>")
+					resulthtml += ("<td style='text-align: right;'>" + str(round(x,2)) + "<br>" + str(round(x/totaldiscounts[index]*100,2))+ "%</td>")
 				except ZeroDivisionError:
 					resulthtml += "<td style='text-align: right;'>-</td>"
 			resulthtml += "</tr>"
@@ -1688,18 +1688,18 @@ class DiscountAnalysisHandler(BaseHandler):
 				else:
 					firstorderlist.append(0)
 
-			resulthtml += "<tr style='background: #ccc; text-align: right;'><td>First Order Discount</td>"
+			resulthtml += "<tr style='background: #ccc; text-align: right;'><td>First Order Discount<br>" + str(round(sum(firstorderlist),2)) + "<br>" + str(round(sum(firstorderlist)*100/sum(wallettotal),2)) + "%</td>"
 			for index, x  in enumerate(firstorderlist):
 				try:
-					resulthtml += ("<td>" + str(round(x,2)) + " (" + str(round(x/wallettotal[index]*100,2))+ "%)</td>")
+					resulthtml += ("<td>" + str(round(x,2)) + "<br>" + str(round(x/wallettotal[index]*100,2))+ "%</td>")
 				except ZeroDivisionError:
 					resulthtml += "<td>-</td>"
 			resulthtml += "</tr>"
 
-			resulthtml += "<tr style='border-top: 1px solid #000;'><td style='font-weight: bold;'>Coupons Usage</td>"
+			resulthtml += "<tr style='border-top: 1px solid #000;'><td style='font-weight: bold;'>Coupons Usage<br>" + str(round(sum(coupontotal),2)) + "<br>" + str(round(sum(coupontotal)*100/sum(totalsales),2)) + "%</td>"
 			for index, x  in enumerate(coupontotal):
 				try:
-					resulthtml += ("<td style='text-align: right;'>" + str(round(x,2)) + " (" + str(round(x/totaldiscounts[index]*100,2))+ "%)</td>")
+					resulthtml += ("<td style='text-align: right;'>" + str(round(x,2)) + "<br>" + str(round(x/totaldiscounts[index]*100,2))+ "%</td>")
 				except ZeroDivisionError:
 					resulthtml += "<td style='text-align: right;'>-</td>"
 			resulthtml += "</tr>"
@@ -1735,13 +1735,13 @@ class DiscountAnalysisHandler(BaseHandler):
 					if thisdate in couponlookup:
 						if c in couponlookup[thisdate]:
 							try:
-								resulthtml += ("<td>" + str(round(couponlookup[thisdate][c])) + " (" + str(round(float(couponlookup[thisdate][c])/coupontotal[index]*100, 2)) + "%)</td>")
+								resulthtml += ("<td>" + str(round(couponlookup[thisdate][c])) + "<br>" + str(round(float(couponlookup[thisdate][c])/coupontotal[index]*100, 2)) + "%</td>")
 							except ZeroDivisionError:
 								resulthtml += "<td>-</td>"
 						else:
-							resulthtml += ("<td>0 (0%)</td>")
+							resulthtml += ("<td>0<br>0%</td>")
 					else:
-						resulthtml += ("<td>0 (0%)</td>")
+						resulthtml += ("<td>0<br>0%</td>")
 				resulthtml += "</tr>"
 
 			resulthtml += "</tbody></table>"
