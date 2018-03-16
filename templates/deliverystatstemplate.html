@@ -375,7 +375,10 @@
                 enabled: true,
                 format: '{point.y:.2f}'
             }
-        },{
+        }
+
+        {% if 3 in averagedeliveries %}
+        ,{
             name: "Sector 46",
             type: "column",
             yAxis: 0,
@@ -385,7 +388,24 @@
                 enabled: true,
                 format: '{point.y:.2f}'
             }
-        },{
+        }
+        {% end %}
+
+        {% if 12 in averagedeliveries %}
+        ,{
+            name: "Munirka",
+            type: "column",
+            yAxis: 0,
+            showInLegend: true,
+            data: {{ averagedeliveries[12] }},
+            dataLabels: {
+                enabled: true,
+                format: '{point.y:.2f}'
+            }
+        }
+        {% end %}
+
+        ,{
             name: "Kalkaji",
             type: "column",
             yAxis: 0,
