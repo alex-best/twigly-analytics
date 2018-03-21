@@ -3397,34 +3397,40 @@ class LateDeliveryHandler(BaseHandler):
 			orderids.append(str(item[3]))
 			totaltimelookup[str(item[3])] = item[6]
 
-		cookingtodispatchsql = "select o.order_id, timediff(b.time_add,a.time_add) from orders o left join order_status_times as a on o.order_id = a.order_id left join order_status_times as b on o.order_id = b.order_id where a.order_status=1 and b.order_status=2 and o.order_id in ("+",".join(orderids)+");"
-
-		result2 = statsengine.execute(cookingtodispatchsql)
-		c2dlookup = {oid:0 for oid in orderids}
-		for item in result2:
-			c2dlookup[str(item[0])] = item[1]
-
-		dispatchtoreachedsql = "select o.order_id, timediff(b.time_add,a.time_add) from orders o left join order_status_times as a on o.order_id = a.order_id left join order_status_times as b on o.order_id = b.order_id where a.order_status=2 and b.order_status=15 and o.order_id in ("+",".join(orderids)+");"
-
-		result3 = statsengine.execute(dispatchtoreachedsql)
-		d2rlookup = {oid:0 for oid in orderids}
-		for item in result3:
-			d2rlookup[str(item[0])] = item[1]
-
-		reachedtodeliveredsql = "select o.order_id, timediff(b.time_add,a.time_add) from orders o left join order_status_times as a on o.order_id = a.order_id left join order_status_times as b on o.order_id = b.order_id where a.order_status=15 and b.order_status=3 and o.order_id in ("+",".join(orderids)+");"
-
-		result4 = statsengine.execute(reachedtodeliveredsql)
-		r2dlookup = {oid:0 for oid in orderids}
-		for item in result4:
-			r2dlookup[str(item[0])] = item[1]
-
 		outputtable = "<table class='table tablesorter table-striped table-hover'><thead><th>Date</th><th>Store</th><th>Delivery Boy</th><th>Priority</th><th>Order ID</th><th>Total Time Taken</th><th>Customer Name</th><th>Delivery Address</th><th>Cooking to Dispatch</th><th>Dispatch to Reached</th><th>Reached to Delivered</th></thead>"
 
 		prioritylookup = {0:"Non Priority", 1:"Priority"}
 
-		for item in result1backup:
-			key1 = str(item[3])
-			outputtable += "<tr><td>" + str(item[0]) + "</td><td>"+str(item[2])+"</td><td>"+str(item[7])+"</td><td>" + prioritylookup[item[1]] +"</td><td><a href='http://twigly.in/admin/orders?f="+str(item[3])+"'>"+str(item[3])+"</a></td><td>"+str(totaltimelookup[key1])+"</td><td>"+str(item[4])+"</td><td>"+str(item[5])+"</td><td>"+str(c2dlookup[key1])+"</td><td>"+str(d2rlookup[key1])+"</td><td>"+str(r2dlookup[key1])+"</td></tr>"
+		if(len(orderids) > 0):
+
+			cookingtodispatchsql = "select o.order_id, timediff(b.time_add,a.time_add) from orders o left join order_status_times as a on o.order_id = a.order_id left join order_status_times as b on o.order_id = b.order_id where a.order_status=1 and b.order_status=2 and o.order_id in ("+",".join(orderids)+");"
+
+			result2 = statsengine.execute(cookingtodispatchsql)
+			c2dlookup = {oid:0 for oid in orderids}
+			for item in result2:
+				c2dlookup[str(item[0])] = item[1]
+
+			dispatchtoreachedsql = "select o.order_id, timediff(b.time_add,a.time_add) from orders o left join order_status_times as a on o.order_id = a.order_id left join order_status_times as b on o.order_id = b.order_id where a.order_status=2 and b.order_status=15 and o.order_id in ("+",".join(orderids)+");"
+
+			result3 = statsengine.execute(dispatchtoreachedsql)
+			d2rlookup = {oid:0 for oid in orderids}
+			for item in result3:
+				d2rlookup[str(item[0])] = item[1]
+
+			reachedtodeliveredsql = "select o.order_id, timediff(b.time_add,a.time_add) from orders o left join order_status_times as a on o.order_id = a.order_id left join order_status_times as b on o.order_id = b.order_id where a.order_status=15 and b.order_status=3 and o.order_id in ("+",".join(orderids)+");"
+
+			result4 = statsengine.execute(reachedtodeliveredsql)
+			r2dlookup = {oid:0 for oid in orderids}
+			for item in result4:
+				r2dlookup[str(item[0])] = item[1]
+
+
+			for item in result1backup:
+				key1 = str(item[3])
+				outputtable += "<tr><td>" + str(item[0]) + "</td><td>"+str(item[2])+"</td><td>"+str(item[7])+"</td><td>" + prioritylookup[item[1]] +"</td><td><a href='http://twigly.in/admin/orders?f="+str(item[3])+"'>"+str(item[3])+"</a></td><td>"+str(totaltimelookup[key1])+"</td><td>"+str(item[4])+"</td><td>"+str(item[5])+"</td><td>"+str(c2dlookup[key1])+"</td><td>"+str(d2rlookup[key1])+"</td><td>"+str(r2dlookup[key1])+"</td></tr>"
+
+		else:
+			outputtable += "<tr><td colspan=12 style='text-align: left !important;'>No delayed orders in this time frame. Adjust the date range to see order delays.</td></tr>"
 
 		outputtable += "</table>"
 
