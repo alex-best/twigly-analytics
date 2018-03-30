@@ -2568,7 +2568,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 		if environment_production:
 			statsengine = sqlalchemy.create_engine(statsengine_url)
 			statssession = scoped_session(sessionmaker(bind=statsengine))
-			thissql1 = "select u.mobile_number, u.name from users u left join orders o on o.user_id=u.user_id where (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.source=6 and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59');"
+			thissql1 = "select u.mobile_number, u.name from users u left join orders o on o.user_id=u.user_id where u.verified&2=0 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.source=6 and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59');"
 			result1 = statsengine.execute(thissql1)
 			userids = []
 			mobiles = []
@@ -2590,7 +2590,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 		if environment_production:
 			statsengine = sqlalchemy.create_engine(statsengine_url)
 			statssession = scoped_session(sessionmaker(bind=statsengine))
-			thissql1 = "select distinct u.mobile_number, u.name, u.wallet_money, u.user_id from users u left join orders o on o.user_id=u.user_id where (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.source in (6,9,10) and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59');"
+			thissql1 = "select distinct u.mobile_number, u.name, u.wallet_money, u.user_id from users u left join orders o on o.user_id=u.user_id where u.verified&2=0 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.source in (6,9,10) and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59');"
 			# print(thissql1)
 			result1 = statsengine.execute(thissql1)
 			userids = []
@@ -2652,7 +2652,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 		if environment_production:
 			statsengine = sqlalchemy.create_engine(statsengine_url)
 			statssession = scoped_session(sessionmaker(bind=statsengine))
-			thissql1 = "select u.mobile_number, u.name, u.reward_points from users u left join orders o on o.user_id=u.user_id where u.reward_points>=15 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59');"
+			thissql1 = "select u.mobile_number, u.name, u.reward_points from users u left join orders o on o.user_id=u.user_id where u.verified&2=0 and u.reward_points>=15 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59');"
 			result1 = statsengine.execute(thissql1)
 			userids = []
 			mobiles = []
@@ -2701,7 +2701,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 			statsengine = sqlalchemy.create_engine(statsengine_url)
 			statssession = scoped_session(sessionmaker(bind=statsengine))
 			thissql1=""
-			# thissql1 = "select u.mobile_number, u.name, u.wallet_money from users u where (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and u.wallet_money>=50 and u.user_id in (select o.user_id from orders o where o.order_status in (3,10,11,12,16) and o.date_add>'2017-09-06 00:00:00');"
+			# thissql1 = "select u.mobile_number, u.name, u.wallet_money from users u where u.verified&2=0 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and u.wallet_money>=50 and u.user_id in (select o.user_id from orders o where o.order_status in (3,10,11,12,16) and o.date_add>'2017-09-06 00:00:00');"
 			result1 = statsengine.execute(thissql1)
 			userids = []
 			mobiles = []
