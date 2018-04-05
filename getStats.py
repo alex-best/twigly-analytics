@@ -4045,7 +4045,7 @@ class SectorsHandler(BaseHandler):
 
 		outputtable = "<table class='table tablesorter table-striped table-hover'><thead><th>Store</th><th>Delivery Zone</th><th>Order Count</th></thead>"
 
-		storemap = {2:"City Court", 3:"Sector 46", 5:"Kalkaji"}
+		storemap = {2:"City Court", 3:"Sector 46", 5:"Kalkaji", 12:"Munirka"}
 		for row in result1:
 			# print(row)
 			if row[0] in storemap:
