@@ -2568,7 +2568,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 		if environment_production:
 			statsengine = sqlalchemy.create_engine(statsengine_url)
 			statssession = scoped_session(sessionmaker(bind=statsengine))
-			thissql1 = "select u.mobile_number, u.name from users u left join orders o on o.user_id=u.user_id where (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.source=6 and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59');"
+			thissql1 = "select u.mobile_number, u.name from users u left join orders o on o.user_id=u.user_id where u.verified&2=0 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.source=6 and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59');"
 			result1 = statsengine.execute(thissql1)
 			userids = []
 			mobiles = []
@@ -2586,12 +2586,73 @@ class MailchimpDormantUserHandler(BaseHandler):
 
 			sendTwiglyMail('Dormant Zomato Only <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for Dormant Zomato on "+parsedstartdate.strftime("%Y-%m-%d"), "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
 
+	def sendZomatoDormantUserSMSV2(self,parsedstartdate):
+		if environment_production:
+			statsengine = sqlalchemy.create_engine(statsengine_url)
+			statssession = scoped_session(sessionmaker(bind=statsengine))
+			thissql1 = "select distinct u.mobile_number, u.name, u.wallet_money, u.user_id from users u left join orders o on o.user_id=u.user_id where u.verified&2=0 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.source in (6,9,10) and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59');"
+			# print(thissql1)
+			result1 = statsengine.execute(thissql1)
+			userids = []
+			mobiles = []
+			for item in result1:
+				userids.append({"mobile":str(item[0]).lower(), "name":getFirstName(str(item[1])), "wallet":str(item[2]),"id":str(item[3])})
+				mobiles.append(str(item[0]).lower())
+
+			thissql2 = "insert into wallet_transactions (type,amount,user_id,category,related_id,description) values"
+			thissql3 = "update users set wallet_money=100 where user_id in ("
+			separator = " "
+			separator3 = " "
+			updatewallets = 0
+			for item in userids:
+				w = float(item['wallet']) 
+				change = 100-w
+				# print(w,change,item['wallet'])
+				if change<=0:
+					change=0
+					# print ("ignoring",item['id'])
+				else:
+					thissql2 += separator+ "('1'"+","+str(int(change))+","+item['id']+",13,0,'34 day cron')"
+					separator=", " 
+					thissql3 += separator3+ item['id']
+					separator3=", "
+					item['wallet'] = '100'
+					updatewallets=1 
+
+			thissql2+=";"
+			thissql3+=");"
+			if(updatewallets==1):
+				result2 = statsengine.execute(thissql2)
+				statssession.commit()
+				result3 = statsengine.execute(thissql3)
+				statssession.commit()
+
+			if (len(userids)>0):
+				thissql4 = "update users set wallet_cap=100 where mobile_number in ('"+"','".join(mobiles)+"');"
+				result4 = statsengine.execute(thissql4)
+				statssession.commit()
+
+			# print(thissql2)
+			# print(thissql3)
+			# print(thissql4)
+
+			statssession.remove()
+			if len(userids) > 0:
+				for item in userids:
+					msg = "Hi%20"+item['name'].replace(" ","%20")+"%21%20You%20have%20Rs%20"+item['wallet']+"%20in%20your%20Twigly%20wallet.%20Order%20on%20the%20Twigly%20app%20for%20Rs%20"+"100"+"%20off%20on%20your%20next%20order.%20https%3A%2F%2Fgoo.gl%2FbMNEr4"
+					number = item['mobile']
+					# print(number,msg)
+					sendTwiglySMS(number,msg)
+
+
+			sendTwiglyMail('Dormant Third Party SMS <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for Dormant Third Party on "+parsedstartdate.strftime("%Y-%m-%d"), "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
+
 
 	def sendRewardSMS(self,parsedstartdate):
 		if environment_production:
 			statsengine = sqlalchemy.create_engine(statsengine_url)
 			statssession = scoped_session(sessionmaker(bind=statsengine))
-			thissql1 = "select u.mobile_number, u.name, u.reward_points from users u left join orders o on o.user_id=u.user_id where u.reward_points>=15 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59');"
+			thissql1 = "select u.mobile_number, u.name, u.reward_points from users u left join orders o on o.user_id=u.user_id where u.verified&2=0 and u.reward_points>=15 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59');"
 			result1 = statsengine.execute(thissql1)
 			userids = []
 			mobiles = []
@@ -2640,7 +2701,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 			statsengine = sqlalchemy.create_engine(statsengine_url)
 			statssession = scoped_session(sessionmaker(bind=statsengine))
 			thissql1=""
-			# thissql1 = "select u.mobile_number, u.name, u.wallet_money from users u where (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and u.wallet_money>=50 and u.user_id in (select o.user_id from orders o where o.order_status in (3,10,11,12,16) and o.date_add>'2017-09-06 00:00:00');"
+			# thissql1 = "select u.mobile_number, u.name, u.wallet_money from users u where u.verified&2=0 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and u.wallet_money>=50 and u.user_id in (select o.user_id from orders o where o.order_status in (3,10,11,12,16) and o.date_add>'2017-09-06 00:00:00');"
 			result1 = statsengine.execute(thissql1)
 			userids = []
 			mobiles = []
@@ -2705,6 +2766,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 			# 	print ("Unexpected error:",e)
 
 			# self.sendZomatoDormantUserSMS(parsedstartdate)
+			self.sendZomatoDormantUserSMSV2(datetime.date.today() - datetime.timedelta(days=34))
 
 			parsedrewarddate = datetime.date.today() - datetime.timedelta(days=15)
 			self.sendRewardSMS(parsedrewarddate)
@@ -3983,7 +4045,7 @@ class SectorsHandler(BaseHandler):
 
 		outputtable = "<table class='table tablesorter table-striped table-hover'><thead><th>Store</th><th>Delivery Zone</th><th>Order Count</th></thead>"
 
-		storemap = {2:"City Court", 3:"Sector 46", 5:"Kalkaji"}
+		storemap = {2:"City Court", 3:"Sector 46", 5:"Kalkaji", 12:"Munirka"}
 		for row in result1:
 			# print(row)
 			if row[0] in storemap:
