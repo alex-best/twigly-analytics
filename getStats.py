@@ -4131,7 +4131,7 @@ class FoodCostHandler(BaseHandler):
 		consumptionlookup = {s:float(0.0) for s in stores}
 		wastagelookup = {s:float(0.0) for s in stores}
 
-		prevclosingsql_1 = "select so.res_store_id, ing.production, sum(sod.price*sod.received_quantity) from ingredients ing left join store_order_details sod on ing.ingredient_id=sod.ingredient_id left join store_orders so on sod.store_order_id=so.store_order_id where so.type=5 and so.res_store_id in (2,3,5,7,8) and ing.production in (6,4,7,1,5,3,8) and so.status=3 and date(so.expected_delivery)='" + prevclosingdate.strftime("%Y-%m-%d") + "' group by 1,2;"
+		prevclosingsql_1 = "select so.res_store_id, ing.production, sum(sod.price) from ingredients ing left join store_order_details sod on ing.ingredient_id=sod.ingredient_id left join store_orders so on sod.store_order_id=so.store_order_id where so.type=5 and so.res_store_id in (2,3,5,7,8) and ing.production in (6,4,7,1,5,3,8) and so.status=3 and date(so.expected_delivery)='" + prevclosingdate.strftime("%Y-%m-%d") + "' group by 1,2;"
 		
 		result1 = statsengine.execute(prevclosingsql_1)
 		# print(prevclosingsql_1)		
@@ -4142,7 +4142,7 @@ class FoodCostHandler(BaseHandler):
 
 		# print(prevclosinglookup)
 
-		closingsql_1 = "select so.res_store_id, ing.production, sum(sod.price*sod.received_quantity) from ingredients ing left join store_order_details sod on ing.ingredient_id=sod.ingredient_id left join store_orders so on sod.store_order_id=so.store_order_id where so.type=5 and so.res_store_id in (2,3,5,7,8) and ing.production in (6,4,7,1,5,3,8) and so.status=3 and date(so.expected_delivery)='" + closingdate.strftime("%Y-%m-%d") + "' group by 1,2;"
+		closingsql_1 = "select so.res_store_id, ing.production, sum(sod.price) from ingredients ing left join store_order_details sod on ing.ingredient_id=sod.ingredient_id left join store_orders so on sod.store_order_id=so.store_order_id where so.type=5 and so.res_store_id in (2,3,5,7,8) and ing.production in (6,4,7,1,5,3,8) and so.status=3 and date(so.expected_delivery)='" + closingdate.strftime("%Y-%m-%d") + "' group by 1,2;"
 
 		result1 = statsengine.execute(closingsql_1)
 		# print(closingsql_1)
@@ -4153,7 +4153,7 @@ class FoodCostHandler(BaseHandler):
 		
 		# print(closinglookup)
 
-		issuancesql_1 = "select so.req_store_id, ing.production, sum(sod.price*sod.received_quantity) from ingredients ing left join store_order_details sod on ing.ingredient_id=sod.ingredient_id left join store_orders so on sod.store_order_id=so.store_order_id where so.type in (0,1) and so.req_store_id in (2,3,5,7,8) and ing.production in (6,4,7,1,5,3,8) and so.status=3 and date(so.expected_delivery)>'" + prevclosingdate.strftime("%Y-%m-%d") + "' and date(so.expected_delivery)<='" + closingdate.strftime("%Y-%m-%d") + "' group by 1,2;"
+		issuancesql_1 = "select so.req_store_id, ing.production, sum(sod.price) from ingredients ing left join store_order_details sod on ing.ingredient_id=sod.ingredient_id left join store_orders so on sod.store_order_id=so.store_order_id where so.type in (0,1) and so.req_store_id in (2,3,5,7,8) and ing.production in (6,4,7,1,5,3,8) and so.status=3 and date(so.expected_delivery)>'" + prevclosingdate.strftime("%Y-%m-%d") + "' and date(so.expected_delivery)<='" + closingdate.strftime("%Y-%m-%d") + "' group by 1,2;"
 
 		result1 = statsengine.execute(issuancesql_1)
 		# print (issuancesql_1)
@@ -4165,7 +4165,7 @@ class FoodCostHandler(BaseHandler):
 		# print(issuancelookup)
 
 
-		issuancesql_2 = "select so.req_store_id, ing.production, sum(sod.price*sod.received_quantity) from ingredients ing left join store_order_details sod on ing.ingredient_id=sod.ingredient_id left join store_orders so on sod.store_order_id=so.store_order_id where so.type in (1)  and so.req_store_id in (2,3,5,7,8) and ing.production in (6,4,7,1,5,3,8) and so.status=3 and date(so.expected_delivery)>'" + prevclosingdate.strftime("%Y-%m-%d") + "' and date(so.expected_delivery)<='" + closingdate.strftime("%Y-%m-%d") + "' and so.vendor_id in (5,21) group by 1,2;"
+		issuancesql_2 = "select so.req_store_id, ing.production, sum(sod.price) from ingredients ing left join store_order_details sod on ing.ingredient_id=sod.ingredient_id left join store_orders so on sod.store_order_id=so.store_order_id where so.type in (1)  and so.req_store_id in (2,3,5,7,8) and ing.production in (6,4,7,1,5,3,8) and so.status=3 and date(so.expected_delivery)>'" + prevclosingdate.strftime("%Y-%m-%d") + "' and date(so.expected_delivery)<='" + closingdate.strftime("%Y-%m-%d") + "' and so.vendor_id in (5,21) group by 1,2;"
 
 		result1 = statsengine.execute(issuancesql_2)
 		# print (issuancesql_2)
@@ -4176,7 +4176,7 @@ class FoodCostHandler(BaseHandler):
 		# print(issuancelookup2)
 
 
-		consumptionsql_1 = "select so.res_store_id, sum(sod.price*sod.received_quantity) from ingredients ing left join store_order_details sod on ing.ingredient_id=sod.ingredient_id left join store_orders so on sod.store_order_id=so.store_order_id where so.type in (0,2) and so.res_store_id in (2,3,5,7,8) and ing.production in (6,4,7,1,5,3,8) and so.status=3 and date(so.expected_delivery)>'" + prevclosingdate.strftime("%Y-%m-%d") + "' and date(so.expected_delivery)<='" + closingdate.strftime("%Y-%m-%d") + "' group by 1;"
+		consumptionsql_1 = "select so.res_store_id, sum(sod.price) from ingredients ing left join store_order_details sod on ing.ingredient_id=sod.ingredient_id left join store_orders so on sod.store_order_id=so.store_order_id where so.type in (0,2) and so.res_store_id in (2,3,5,7,8) and ing.production in (6,4,7,1,5,3,8) and so.status=3 and date(so.expected_delivery)>'" + prevclosingdate.strftime("%Y-%m-%d") + "' and date(so.expected_delivery)<='" + closingdate.strftime("%Y-%m-%d") + "' group by 1;"
 
 		result1 = statsengine.execute(consumptionsql_1)
 		# print (consumptionsql_1)
@@ -4187,7 +4187,7 @@ class FoodCostHandler(BaseHandler):
 
 		# print(consumptionlookup)
 
-		wastage_1 = "select so.res_store_id, sum(sod.price*sod.received_quantity) from ingredients ing left join store_order_details sod on ing.ingredient_id=sod.ingredient_id left join store_orders so on sod.store_order_id=so.store_order_id where so.type in (3) and so.res_store_id in (2,3,5,7,8) and ing.production in (6,4,7,1,5,3,8) and so.status=3 and date(so.expected_delivery)>'" + prevclosingdate.strftime("%Y-%m-%d") + "' and date(so.expected_delivery)<='" + closingdate.strftime("%Y-%m-%d") + "' group by 1;"
+		wastage_1 = "select so.res_store_id, sum(sod.price) from ingredients ing left join store_order_details sod on ing.ingredient_id=sod.ingredient_id left join store_orders so on sod.store_order_id=so.store_order_id where so.type in (3) and so.res_store_id in (2,3,5,7,8) and ing.production in (6,4,7,1,5,3,8) and so.status=3 and date(so.expected_delivery)>'" + prevclosingdate.strftime("%Y-%m-%d") + "' and date(so.expected_delivery)<='" + closingdate.strftime("%Y-%m-%d") + "' group by 1;"
 
 		result1 = statsengine.execute(wastage_1)
 		# print(wastage_1)
