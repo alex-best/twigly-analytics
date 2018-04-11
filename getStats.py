@@ -733,6 +733,33 @@ class StatsHandler(BaseHandler):
 			deliverychargesumbystore.append({"store_id": thisstore.store_id, "name": thisstore.name, "deliverychargesum":detailedordercounts["deliverychargesumbystore"][thisstore.store_id]})
 
 
+		store_list_str = ",".join(map(str,store_list))
+
+		consumptionsql_1 = "select date(so.expected_delivery), sum(sod.received_quantity*ing.cost/ing.pack_size) from ingredients ing left join store_order_details sod on ing.ingredient_id=sod.ingredient_id left join store_orders so on sod.store_order_id=so.store_order_id where so.type in (2) and so.res_store_id in ("+store_list_str+") and ing.production in (6,4,7,1,5,3,8) and so.status=3 and date(so.expected_delivery)>='" + parsedstartdate.strftime("%Y-%m-%d") + "' and date(so.expected_delivery)<='" + parsedenddate.strftime("%Y-%m-%d") + "' group by 1;"
+		result1 = statsengine.execute(consumptionsql_1)
+		# print (consumptionsql_1)
+		consumptionlookup={}
+		# print(daterange)
+		for row in result1:
+			# print(row)
+			if row[0].strftime("%a %b %d, %Y") in daterange:
+				consumptionlookup[row[0].strftime("%a %b %d, %Y")] = row[1]
+
+		# print(consumptionlookup)
+		foodcost = []
+		foodcostpc = []
+		for c in range(0, len(daterange)):
+			try:
+				foodcost.append(float(consumptionlookup[daterange[c]]))
+				foodcostpc.append(float(consumptionlookup[daterange[c]])/grosssales[c]*100)
+			except KeyError:
+				foodcost.append(0.0)
+				foodcostpc.append(0.0)
+
+		# print(foodcost)
+		# print(foodcostpc)
+
+
 		# diff = []
 		# diff2 = []
 		# for c in range(0, len(daterange)):
@@ -764,7 +791,7 @@ class StatsHandler(BaseHandler):
 		current_user = self.get_current_user().decode()
 
 		statssession.remove()
-		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=detailedordercounts["neworders"], repeatorders=detailedordercounts["repeatorders"], newsums=detailedordercounts["newsums"], repeatsums=detailedordercounts["repeatsums"], dailyapc=dailyapc, feedback_chart_data=feedback_chart_data, food_rating_counts=food_rating_counts, delivery_rating_counts=delivery_rating_counts, totalsalesvalue=totalsalesvalue, totalorders=totalorders, totalneworders=detailedordercounts["totalneworders"], totalrepeatorders=detailedordercounts["totalrepeatorders"], averageapc=averageapc, androidorders=detailedordercounts["androidorders"], weborders=detailedordercounts["weborders"], iosorders=detailedordercounts["iosorders"], zomatoorders=detailedordercounts["zomatoorders"], swiggyorders=detailedordercounts["swiggyorders"], oncallorders=detailedordercounts["oncallorders"],fporders=detailedordercounts["fporders"],uberorders=detailedordercounts["uberorders"], newandroidorders=detailedordercounts["newandroidorders"], newweborders=detailedordercounts["newweborders"], newiosorders=detailedordercounts["newiosorders"], newzomatoorders=detailedordercounts["newzomatoorders"], newswiggyorders=detailedordercounts["newswiggyorders"], newoncallorders=detailedordercounts["newoncallorders"],newfporders=detailedordercounts["newfporders"],newuberorders=detailedordercounts["newuberorders"], foodtrialstotal=ftgross, freedeliverytotal=freegross, returntotal=retgross, foodtrialscount=detailedordercounts["foodtrialscount"], freedeliverycount=detailedordercounts["freedeliverycount"], returncount=detailedordercounts["returncount"], grosssales = grosssales, totalgrosssales = totalgrosssales, netsalespretax = netsalespretax, totalnetsalespretax = totalnetsalespretax, user=current_user, active_stores=active_stores, current_store=current_store, current_store_name=current_store_name, newusersbystore=newusersbystore, itemdiscounttotal=itemdiscounttotal,wallettotal=wallettotal,coupontotal=coupontotal,orderlaterbystore=orderlaterbystore,deliverychargesumbystore=deliverychargesumbystore)
+		self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount, neworders=detailedordercounts["neworders"], repeatorders=detailedordercounts["repeatorders"], newsums=detailedordercounts["newsums"], repeatsums=detailedordercounts["repeatsums"], dailyapc=dailyapc, feedback_chart_data=feedback_chart_data, food_rating_counts=food_rating_counts, delivery_rating_counts=delivery_rating_counts, totalsalesvalue=totalsalesvalue, totalorders=totalorders, totalneworders=detailedordercounts["totalneworders"], totalrepeatorders=detailedordercounts["totalrepeatorders"], averageapc=averageapc, androidorders=detailedordercounts["androidorders"], weborders=detailedordercounts["weborders"], iosorders=detailedordercounts["iosorders"], zomatoorders=detailedordercounts["zomatoorders"], swiggyorders=detailedordercounts["swiggyorders"], oncallorders=detailedordercounts["oncallorders"],fporders=detailedordercounts["fporders"],uberorders=detailedordercounts["uberorders"], newandroidorders=detailedordercounts["newandroidorders"], newweborders=detailedordercounts["newweborders"], newiosorders=detailedordercounts["newiosorders"], newzomatoorders=detailedordercounts["newzomatoorders"], newswiggyorders=detailedordercounts["newswiggyorders"], newoncallorders=detailedordercounts["newoncallorders"],newfporders=detailedordercounts["newfporders"],newuberorders=detailedordercounts["newuberorders"], foodtrialstotal=ftgross, freedeliverytotal=freegross, returntotal=retgross, foodtrialscount=detailedordercounts["foodtrialscount"], freedeliverycount=detailedordercounts["freedeliverycount"], returncount=detailedordercounts["returncount"], grosssales = grosssales, totalgrosssales = totalgrosssales, netsalespretax = netsalespretax, totalnetsalespretax = totalnetsalespretax, user=current_user, active_stores=active_stores, current_store=current_store, current_store_name=current_store_name, newusersbystore=newusersbystore, itemdiscounttotal=itemdiscounttotal,wallettotal=wallettotal,coupontotal=coupontotal,orderlaterbystore=orderlaterbystore,deliverychargesumbystore=deliverychargesumbystore,foodcost=foodcost, foodcostpc=foodcostpc)
 
 class CustomerStatsHandler(BaseHandler):
 	@tornado.web.authenticated

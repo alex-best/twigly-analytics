@@ -115,6 +115,9 @@
         <div id="newusertotalschart" style="width:100%; height:400px;"></div>
     </div>
     <div class="row" style="margin-bottom: 40px;">
+        <div id="foodcostchart" style="width:100%; height:400px;"></div>
+    </div>
+    <div class="row" style="margin-bottom: 40px;">
         <div id="deliverychargeschart" style="width:100%; height:400px;"></div>
     </div>
     <div class="row" style="margin-bottom: 40px;">
@@ -863,6 +866,56 @@
         },{
             name: "Customer Returns",
             data: {{ returncount }}
+        }]
+    });
+
+    $('#foodcostchart').highcharts({
+        chart: {
+            zoomType: 'xy'
+        },
+        title: {
+            useHTML: true,
+            text: 'Standard Food Cost'
+        },
+        xAxis: {
+            categories: {% raw daterange %},
+            crosshair: true
+        },
+        yAxis: [{
+            title: {
+                text: 'Food Cost in INR'
+            }
+        },{
+            title: {
+                text: '% Gross'
+            },
+            style: Highcharts.getOptions().colors[1],
+            opposite: true,
+            min: 0
+        }],
+        tooltip: {
+            shared: true
+        },
+        series: [{
+            name: "Food cost",
+            type: "column",
+            yAxis: 0,
+            showInLegend: false,
+            data: {{ foodcost }},
+            dataLabels: {
+                enabled: true,
+                format: '{point.y:.2f}'
+            }
+        },{
+            name: "% Gross",
+            type: "line",
+            yAxis: 1,
+            showInLegend: false,
+            data: {{ foodcostpc }},
+            dataLabels: {
+                enabled: true,
+                format: '{point.y:.2f}'
+            }
         }]
     });
 
