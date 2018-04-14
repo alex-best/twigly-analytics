@@ -231,10 +231,13 @@ def getRedirect(username):
 		return "stats"
 
 def authenticate(thisusername, thispassword):
-	if (thisusername == "admin" and thispassword == "twiglyr0x") or (thisusername == "review" and thispassword == "twiglyrvw") or (thisusername == "chef" and thispassword == "twigly123") or (thisusername == "chef03" and thispassword == "twiglychef03") or (thisusername == "headchef" and thispassword == "rahulonly") or (thisusername == "twiglyservice" and thispassword == "callcenter") or (thisusername == "@testmail.com" and thispassword == "dispatch02")  or (thisusername == "@testmail.com" and thispassword == "dispatch03")  or (thisusername == "@testmail.com" and thispassword == "dispatch05") or (thisusername == "@testmail.com" and thispassword == "dispatch12") :
-		return {"result": True}
-	else:
-		return {"result": False}
+	allusers={***REMOVED***}
+
+	if thisusername in allusers:
+		if allusers[thisusername] == thispassword:
+			return {"result": True}
+
+	return {"result": False}
 
 def getFirstName(name):
 	if(name==None):
@@ -276,7 +279,7 @@ class LoginHandler(BaseHandler):
 		self.write(authresult)
 
 def getTotalCount(parsedstartdate, parsedenddate, daterange, statssession, store_list):
-	dailyorderscountquery = statssession.query(order.date_add, sqlalchemy.func.count(order.order_id)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress)).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add), order.store_id.in_(store_list))
+	dailyorderscountquery = statssession.query(order.date_add, sqlalchemy.func.count(order.order_id)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.store_id.in_(store_list)).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
 
 	thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): int(thisresult[1]) for thisresult in dailyorderscountquery}
 	totalcount = []
@@ -285,7 +288,6 @@ def getTotalCount(parsedstartdate, parsedenddate, daterange, statssession, store
 			totalcount.append(thiscountdetails[thisdate])
 		else:
 			totalcount.append(0)
-
 	return totalcount
 
 
@@ -497,7 +499,7 @@ class StatsHandler(BaseHandler):
 	def get(self):
 
 		current_user = self.get_current_user().decode()
-		if current_user not in ("admin","review","headchef"):
+		if current_user not in ("admin","review","headchef","teahaltge"):
 			self.redirect('/')
 
 		horizon = self.get_argument("horizon", None)
@@ -527,9 +529,12 @@ class StatsHandler(BaseHandler):
 		statssession = scoped_session(sessionmaker(bind=statsengine))
 
 		current_store = self.get_argument("store", "All")
+		if current_user in ("teahaltge"):
+			current_store="3"
 
 		active_stores = statssession.query(store).filter(store.is_active == True, store.store_type.in_(outlet_types)).all()
 		active_stores_list = [x.store_id for x in active_stores]
+
 
 		if current_store == "All":
 			store_list = active_stores_list
@@ -648,6 +653,12 @@ class StatsHandler(BaseHandler):
 		feedbackonorders = statssession.query(feedback).filter(feedback.order_id.in_(dailyorderids), sqlalchemy.or_(feedback.food_rating > 0, feedback.delivery_rating > 0)).all()
 
 		totalorders = len(dailyorderids)
+
+		if current_user in ("teahaltge"):
+			statssession.remove()
+			self.render("templates/statstemplate.html", daterange=daterange, totalsales=totalsales, totalcount=totalcount,totalsalesvalue=totalsalesvalue, totalorders=totalorders,grosssales = grosssales, totalgrosssales = totalgrosssales, netsalespretax = netsalespretax, totalnetsalespretax = totalnetsalespretax, user=current_user, active_stores=active_stores, current_store=current_store, current_store_name=current_store_name)
+			return
+
 
 		try:
 			averageapc = totalgrosssales/totalorders

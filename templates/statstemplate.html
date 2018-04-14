@@ -57,7 +57,7 @@
     </nav>
 </div>
 <div class="container">
-    {% if (user=="admin" or user=="headchef" or user=="review") %}
+    {% if (user=="admin" or user=="headchef" or user=="review" or user=="teahaltge") %}
         {% include "navtemplate.html" %}
     {% end %}
     <div class="row" style="margin-bottom: 40px; margin-top: 40px;">
@@ -90,6 +90,7 @@
     <div class="row" style="margin-bottom: 40px;">
         <div id="totalsaleschart" style="width:100%; height:400px;"></div>
     </div>
+    {% if (user=="admin" or user=="headchef" or user=="review") %}
     <div class="row" style="margin-bottom: 40px;">
         <div id="dailyapc" style="width:100%; height:400px;"></div>
     </div>
@@ -134,6 +135,7 @@
         <div id="food_feedback" style="height:400px;" class="col-xs-12 col-md-4"></div>
         <div id="delivery_feedback" style="height:400px;" class="col-xs-12 col-md-4"></div>
     </div>
+    {% end %}
 </div>
 <button class="showFilters hidden-xs btn btn-success" style="position: fixed; top: 25px; right: 15px;">Show/Hide Filters</button>
 <button class="showFilters visible-xs btn btn-success" style="position: fixed; top: 25px; right: 15px;">V</button>
@@ -274,6 +276,8 @@
             }
         }]
 	});
+
+    {% if (user=="admin" or user=="headchef" or user=="review") %}
 
 	$('#dailyapc').highcharts({
 		chart: {
@@ -1070,6 +1074,8 @@
         }]
 	});
 
+    {% end %}
+
 	$(document).ready(function() {
 		$('#horizonselect').on('change', function() {
             var storeid = $('#storeselect').val();
@@ -1113,7 +1119,7 @@
         {% end %}
 		$('#setDates').on('click', function() {
 			var storeid = $('#storeselect').val();
-            {% if user=="review" %}
+            {% if user=="review" or user=="teahaltge" %}
             if (typeof storeid === 'undefined') {
                 storeid = 'All';
             }
