@@ -746,7 +746,7 @@ class StatsHandler(BaseHandler):
 
 		store_list_str = ",".join(map(str,store_list))
 
-		consumptionsql_1 = "select date(so.expected_delivery), sum(sod.received_quantity*ing.cost/ing.pack_size) from ingredients ing left join store_order_details sod on ing.ingredient_id=sod.ingredient_id left join store_orders so on sod.store_order_id=so.store_order_id where so.type in (2) and so.res_store_id in ("+store_list_str+") and ing.production in (6,4,7,1,5,3,8) and so.status=3 and date(so.expected_delivery)>='" + parsedstartdate.strftime("%Y-%m-%d") + "' and date(so.expected_delivery)<='" + parsedenddate.strftime("%Y-%m-%d") + "' group by 1;"
+		consumptionsql_1 = "select date(so.expected_delivery), sum(sod.received_quantity*ing.cost/ing.pack_size) from ingredients ing left join store_order_details sod on ing.ingredient_id=sod.ingredient_id left join store_orders so on sod.store_order_id=so.store_order_id where so.type in (2) and so.res_store_id in ("+store_list_str+") and ing.production in (1,2,3,4,5,6,7,8,10) and so.status=3 and date(so.expected_delivery)>='" + parsedstartdate.strftime("%Y-%m-%d") + "' and date(so.expected_delivery)<='" + parsedenddate.strftime("%Y-%m-%d") + "' group by 1;"
 		result1 = statsengine.execute(consumptionsql_1)
 		# print (consumptionsql_1)
 		consumptionlookup={}
