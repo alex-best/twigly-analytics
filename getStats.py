@@ -762,7 +762,7 @@ class StatsHandler(BaseHandler):
 		for c in range(0, len(daterange)):
 			try:
 				foodcost.append(float(consumptionlookup[daterange[c]]))
-				foodcostpc.append(float(consumptionlookup[daterange[c]])/grosssales[c]*100)
+				foodcostpc.append(float(consumptionlookup[daterange[c]])/(grosssales[c]-deliverycharges[c])*100)
 			except KeyError:
 				foodcost.append(0.0)
 				foodcostpc.append(0.0)
