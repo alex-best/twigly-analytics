@@ -2734,6 +2734,78 @@ class MailchimpDormantUserHandler(BaseHandler):
 			sendTwiglyMail('Reward SMS <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for Rewards on "+parsedstartdate.strftime("%Y-%m-%d"), "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
 
 
+
+	def sendwalletsms(self,lastorderdate, walletexpirydate,statsengine):
+		thissql1 = "select u.mobile_number, u.name, u.wallet_money, u.wallet_cap from users u  left join orders o on o.user_id=u.user_id where u.verified&2=0 and u.wallet_money>=1 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.order_status in (3,10,11,12,16) and o.date_add>='" + lastorderdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<='" + lastorderdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + lastorderdate.strftime("%Y-%m-%d") + " 23:59:59');"
+		print(thissql1)
+		result1 = statsengine.execute(thissql1)
+		userids = []
+		mobiles = []
+		for item in result1:
+			userids.append({"mobile":str(item[0]).lower(), "name":getFirstName(str(item[1])), 'wallet':int(item[2]), 'wallet_cap':int(item[3])})
+			mobiles.append(str(item[0]).lower())
+
+		if len(userids) > 0:
+			for item in userids:
+				msg=""
+				wallet = item['wallet']
+				wallet_cap = item['wallet_cap']
+				if wallet_cap>wallet:
+					wallet_cap=wallet
+				lastdate = walletexpirydate.strftime("%b %d").replace(" ","%20")
+				msg="Hi%20"+item['name'].replace(" ","%20")+"%21%20Your%20Rs%20"+str(wallet)+"%20Twigly%20Wallet%20balance%20will%20expire%20on%20"+lastdate+".%20Order%20from%20the%20Twigly%20app%20to%20get%20Rs%20"+str(wallet_cap)+"%20off%20on%20your%20next%20order.%20goo.gl%2FbMNEr4"
+				number = item['mobile']
+				# print(number,msg)
+				sendTwiglySMS(number,msg)
+		sendTwiglyMail('Wallet SMS <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for Wallet Expiry on "+lastdate, "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
+
+	def sendrewardexsms(self,lastorderdate, rewardexpirydate,statsengine):
+		thissql1 = "select u.mobile_number, u.name, u.reward_points from users u  left join orders o on o.user_id=u.user_id where u.verified&2=0 and u.reward_points>=1 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.order_status in (3,10,11,12,16) and o.date_add>='" + lastorderdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<='" + lastorderdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + lastorderdate.strftime("%Y-%m-%d") + " 23:59:59');"
+		print(thissql1)
+		result1 = statsengine.execute(thissql1)
+		userids = []
+		mobiles = []
+		for item in result1:
+			userids.append({"mobile":str(item[0]).lower(), "name":getFirstName(str(item[1])), 'points':int(item[2])})
+			mobiles.append(str(item[0]).lower())
+
+		if len(userids) > 0:
+			for item in userids:
+				msg=""
+				rewardpoints = item['points']
+				lastdate = rewardexpirydate.strftime("%b %d").replace(" ","%20")
+				msg="Hi%20"+item['name'].replace(" ","%20")+"%21%20Your%20"+str(rewardpoints)+"%20points%20Twigly%20Rewards%20balance%20will%20expire%20on%20"+lastdate+".%20Open%20up%20the%20Twigly%20app%20to%20redeem.%20goo.gl%2FbMNEr4"
+				number = item['mobile']
+				# print(number,msg)
+				sendTwiglySMS(number,msg)
+		sendTwiglyMail('Reward SMS <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for Reward Expiry on "+lastdate, "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
+
+
+	def sendExpiryMessages(self):
+		if environment_production:
+			statsengine = sqlalchemy.create_engine(statsengine_url)
+			statssession = scoped_session(sessionmaker(bind=statsengine))
+
+			lastorderdate=datetime.date.today() - datetime.timedelta(days=69)
+			walletexpirydate=datetime.date.today() + datetime.timedelta(days=21)
+			self.sendwalletsms(lastorderdate,walletexpirydate,statsengine)
+
+			lastorderdate=datetime.date.today() - datetime.timedelta(days=83)
+			walletexpirydate=datetime.date.today() + datetime.timedelta(days=7)
+			self.sendwalletsms(lastorderdate,walletexpirydate,statsengine)
+
+			lastorderdate=datetime.date.today() - datetime.timedelta(days=99)
+			rewardexpirydate=datetime.date.today() + datetime.timedelta(days=21)
+			self.sendrewardexsms(lastorderdate,rewardexpirydate,statsengine)
+
+			lastorderdate=datetime.date.today() - datetime.timedelta(days=113)
+			rewardexpirydate=datetime.date.today() + datetime.timedelta(days=7)
+			self.sendrewardexsms(lastorderdate,rewardexpirydate,statsengine)
+
+			statssession.remove()
+
+
+
 	def sendAdhocSMS(self):
 		if environment_production:
 			statsengine = sqlalchemy.create_engine(statsengine_url)
@@ -2780,43 +2852,12 @@ class MailchimpDormantUserHandler(BaseHandler):
 			parsedstartdate = datetime.date.today() - datetime.timedelta(days=30)
 			bad_delivery_feedback_list = self.sendBadDeliveryFeedbackMail(parsedstartdate)
 			bad_food_feedback_list = self.sendBadFoodFeedbackMail(parsedstartdate)
-			# batch_list_old = self.getDormantUsersBatch(parsedstartdate)
-			# batch_list = []
-			# for item in batch_list_old:
-			# 	if item in bad_delivery_feedback_list:
-			# 		continue
-			# 	if item in bad_food_feedback_list:
-			# 		continue
-			# 	batch_list.append(item)
 
-			# list_id = getMailChimpListId()
-			# dormant_template_id = self.getDormantTemplateId()
-			# dormant_static_segment_id = self.getDormantSegmentId()		
-			# mre2 = {}
-			# try:
-			# 	m = Mailchimp(mailchimpkey)
-			# 	mcresponse = m.lists.static_segment_reset(list_id,dormant_static_segment_id)
-			# 	mcresponse = m.lists.static_segment_members_add(list_id,dormant_static_segment_id,batch_list)
-			# 	subject = "Winter update! Get 10% off on your next order" #"We miss you - Get 10% off on your next order"
-			# 	mcresponse = m.campaigns.create(type="regular", options={"list_id": list_id, "subject": subject, "from_email": "@testmail.com", "from_name": "Twigly", "to_name": "*|FNAME|*", "title": subject, "authenticate": True, "generate_text": True, "template_id":dormant_template_id}, content={"sections": {}}, segment_opts={"saved_segment_id":dormant_static_segment_id})
-			# 	mre2 = m.campaigns.send(mcresponse["id"])
-			# except Exception as e:
-			# 	print ("Unexpected error:",e)
-
-			# self.sendZomatoDormantUserSMS(parsedstartdate)
 			self.sendZomatoDormantUserSMSV2(datetime.date.today() - datetime.timedelta(days=34))
-
 			parsedrewarddate = datetime.date.today() - datetime.timedelta(days=15)
 			self.sendRewardSMS(parsedrewarddate)
-			# self.sendAdhocSMS()
 
-			# print (mre2)
-			# if ('complete' in mre2 and mre2['complete']==True):
-			# 	self.write({"result": True})
-			# 	sendTwiglyMail('@testmail.com','***REMOVED***',str(len(batch_list))+" recepients of Dormant campaign for "+parsedstartdate.strftime("%Y-%m-%d"), "Email sent successfully to " + str(batch_list),'plain')
-			# else:
-			# 	self.write({"result": False})
-			# 	sendTwiglyMail('@testmail.com','***REMOVED***',"Some error in the Dormant campaign for "+parsedstartdate.strftime("%Y-%m-%d"), str(mre2),'plain')
+			self.sendExpiryMessages()
 
 
 
