@@ -97,6 +97,7 @@ class order(statsBase):
 	sub_total = Column("sub_total", Float)
 	delivery_charges = Column("delivery_charges", Float)
 	wallet_amount = Column("wallet_amount", Float)
+	subscription_amount = Column("subscription_amount", Float)
 	coupon_discount = Column("coupon_discount", Float)
 	total = Column("total", Float)
 	wallet_transaction_id = Column("wallet_transaction_id", Integer)
@@ -133,8 +134,8 @@ class orderdetail(statsBase):
 
 class orderdetailoption(statsBase):
 	__tablename__ = "order_detail_options"
-	order_detail_id = Column("order_detail_option_id", Integer, primary_key=True)
-	order_id = Column("order_detail_id", Integer, ForeignKey("order_details.order_detail_id"))
+	order_detail_option_id = Column("order_detail_option_id", Integer, primary_key=True)
+	order_detail_id = Column("order_detail_id", Integer, ForeignKey("order_details.order_detail_id"))
 	menu_item_id = Column("ingredient_option_id", Integer)
 	price = Column("price", Float)
 
@@ -279,7 +280,7 @@ class LoginHandler(BaseHandler):
 		self.write(authresult)
 
 def getTotalCount(parsedstartdate, parsedenddate, daterange, statssession, store_list):
-	dailyorderscountquery = statssession.query(order.date_add, sqlalchemy.func.count(order.order_id)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.store_id.in_(store_list)).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
+	dailyorderscountquery = statssession.query(order.date_add, sqlalchemy.func.count(order.order_id)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.store_id.in_(store_list), order.is_for_later.op('&')(256)!=256).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
 
 	thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): int(thisresult[1]) for thisresult in dailyorderscountquery}
 	totalcount = []
@@ -317,74 +318,75 @@ def getOrderCounts(parsedstartdate, parsedenddate, dailyordersquery, daterange, 
 
 
 	for thisorder in dailyordersquery:
-		if thisorder.order_status not in returnedStates:
-			if thisorder.mobile_number in firstordersmap:
-				if (thisorder.date_add.strftime("%c") == firstordersmap[thisorder.mobile_number]):
-					ordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["new"] += 1
-					ordertotals[thisorder.date_add.strftime("%a %b %d, %Y")]["new"] += float(thisorder.total)
-					if (thisorder.store_id in active_stores_list):
-						newusercountsbystore[thisorder.store_id][thisorder.date_add.strftime("%a %b %d, %Y")] += 1
-						newusertotalsbystore[thisorder.store_id][thisorder.date_add.strftime("%a %b %d, %Y")] += float(thisorder.total)
-					if (thisorder.source == 0):
-						newusercountsbysource[thisorder.date_add.strftime("%a %b %d, %Y")]["Android"] += 1
-					elif (thisorder.source == 1):
-						newusercountsbysource[thisorder.date_add.strftime("%a %b %d, %Y")]["Web"] += 1
-					elif (thisorder.source ==2):
-						newusercountsbysource[thisorder.date_add.strftime("%a %b %d, %Y")]["iOS"] += 1
-					elif (thisorder.source ==6):
-						newusercountsbysource[thisorder.date_add.strftime("%a %b %d, %Y")]["Zomato"] += 1
-					elif (thisorder.source ==7):
-						newusercountsbysource[thisorder.date_add.strftime("%a %b %d, %Y")]["Swiggy"] += 1
-					elif (thisorder.source ==8):
-						newusercountsbysource[thisorder.date_add.strftime("%a %b %d, %Y")]["Call"] += 1
-					elif (thisorder.source ==9):
-						newusercountsbysource[thisorder.date_add.strftime("%a %b %d, %Y")]["FP"] += 1
-					elif (thisorder.source ==10):
-						newusercountsbysource[thisorder.date_add.strftime("%a %b %d, %Y")]["UberEats"] += 1
-				else:
-					ordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["old"] += 1
-					ordertotals[thisorder.date_add.strftime("%a %b %d, %Y")]["old"] += float(thisorder.total)
+		if thisorder.is_for_later&256!=256:
+			if thisorder.order_status not in returnedStates:
+				if thisorder.mobile_number in firstordersmap:
+					if (thisorder.date_add.strftime("%c") == firstordersmap[thisorder.mobile_number]):
+						ordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["new"] += 1
+						ordertotals[thisorder.date_add.strftime("%a %b %d, %Y")]["new"] += float(thisorder.total + thisorder.subscription_amount)
+						if (thisorder.store_id in active_stores_list):
+							newusercountsbystore[thisorder.store_id][thisorder.date_add.strftime("%a %b %d, %Y")] += 1
+							newusertotalsbystore[thisorder.store_id][thisorder.date_add.strftime("%a %b %d, %Y")] += float(thisorder.total)
+						if (thisorder.source == 0):
+							newusercountsbysource[thisorder.date_add.strftime("%a %b %d, %Y")]["Android"] += 1
+						elif (thisorder.source == 1):
+							newusercountsbysource[thisorder.date_add.strftime("%a %b %d, %Y")]["Web"] += 1
+						elif (thisorder.source ==2):
+							newusercountsbysource[thisorder.date_add.strftime("%a %b %d, %Y")]["iOS"] += 1
+						elif (thisorder.source ==6):
+							newusercountsbysource[thisorder.date_add.strftime("%a %b %d, %Y")]["Zomato"] += 1
+						elif (thisorder.source ==7):
+							newusercountsbysource[thisorder.date_add.strftime("%a %b %d, %Y")]["Swiggy"] += 1
+						elif (thisorder.source ==8):
+							newusercountsbysource[thisorder.date_add.strftime("%a %b %d, %Y")]["Call"] += 1
+						elif (thisorder.source ==9):
+							newusercountsbysource[thisorder.date_add.strftime("%a %b %d, %Y")]["FP"] += 1
+						elif (thisorder.source ==10):
+							newusercountsbysource[thisorder.date_add.strftime("%a %b %d, %Y")]["UberEats"] += 1
+					else:
+						ordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["old"] += 1
+						ordertotals[thisorder.date_add.strftime("%a %b %d, %Y")]["old"] += float(thisorder.total + thisorder.subscription_amount)
 
-			if thisorder.order_status == 12: #food trials
-				freeordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["FoodTrial"] += 1
-				# freeordersums[thisorder.date_add.strftime("%a %b %d, %Y")]["FoodTrial"] += float(thisorder.total)
-			elif thisorder.order_status in [10,11]: #free on delivery
-				freeordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["FreeDelivery"] += 1
-				# freeordersums[thisorder.date_add.strftime("%a %b %d, %Y")]["FreeDelivery"] += float(thisorder.total)
+				if thisorder.order_status == 12: #food trials
+					freeordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["FoodTrial"] += 1
+					# freeordersums[thisorder.date_add.strftime("%a %b %d, %Y")]["FoodTrial"] += float(thisorder.total)
+				elif thisorder.order_status in [10,11]: #free on delivery
+					freeordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["FreeDelivery"] += 1
+					# freeordersums[thisorder.date_add.strftime("%a %b %d, %Y")]["FreeDelivery"] += float(thisorder.total)
 
-			if thisorder.coupon_id == 58 and thisorder.order_status != 12: #coupon RKK
-				freeordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["FoodTrial"] += 1
-				freeordersums[thisorder.date_add.strftime("%a %b %d, %Y")]["FoodTrial"] += float(thisorder.sub_total)
-			elif thisorder.coupon_id == 29 and thisorder.order_status not in [10,11]: #free on delivery and coupon matata
-				freeordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["FreeDelivery"] += 1
-				freeordersums[thisorder.date_add.strftime("%a %b %d, %Y")]["FreeDelivery"] += float(thisorder.sub_total)
+				if thisorder.coupon_id == 58 and thisorder.order_status != 12: #coupon RKK
+					freeordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["FoodTrial"] += 1
+					freeordersums[thisorder.date_add.strftime("%a %b %d, %Y")]["FoodTrial"] += float(thisorder.sub_total)
+				elif thisorder.coupon_id == 29 and thisorder.order_status not in [10,11]: #free on delivery and coupon matata
+					freeordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["FreeDelivery"] += 1
+					freeordersums[thisorder.date_add.strftime("%a %b %d, %Y")]["FreeDelivery"] += float(thisorder.sub_total)
 
-			
-			if (thisorder.source == 0):
-				platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Android"] += 1
-			elif (thisorder.source == 1):
-				platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Web"] += 1
-			elif (thisorder.source ==2):
-				platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["iOS"] += 1
-			elif (thisorder.source ==6):
-				platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Zomato"] += 1
-			elif (thisorder.source ==7):
-				platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Swiggy"] += 1
-			elif (thisorder.source ==8):
-				platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Call"] += 1
-			elif (thisorder.source ==9):
-				platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["FP"] += 1
-			elif (thisorder.source ==10):
-				platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["UberEats"] += 1
+				
+				if (thisorder.source == 0):
+					platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Android"] += 1
+				elif (thisorder.source == 1):
+					platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Web"] += 1
+				elif (thisorder.source ==2):
+					platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["iOS"] += 1
+				elif (thisorder.source ==6):
+					platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Zomato"] += 1
+				elif (thisorder.source ==7):
+					platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Swiggy"] += 1
+				elif (thisorder.source ==8):
+					platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Call"] += 1
+				elif (thisorder.source ==9):
+					platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["FP"] += 1
+				elif (thisorder.source ==10):
+					platformcounts[thisorder.date_add.strftime("%a %b %d, %Y")]["UberEats"] += 1
 
-			if (thisorder.is_for_later&0x1 == 0x1):
-				orderforlaterbystoredata[thisorder.store_id][thisorder.date_add.strftime("%a %b %d, %Y")] += 1
+				if (thisorder.is_for_later&0x1 == 0x1):
+					orderforlaterbystoredata[thisorder.store_id][thisorder.date_add.strftime("%a %b %d, %Y")] += 1
 
-			deliverychargesumbystoredata[thisorder.store_id][thisorder.date_add.strftime("%a %b %d, %Y")] += float(thisorder.delivery_charges)
+				deliverychargesumbystoredata[thisorder.store_id][thisorder.date_add.strftime("%a %b %d, %Y")] += float(thisorder.delivery_charges)
 
-		elif thisorder.order_status in returnedStates: #refunds
-			freeordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Returned"] += 1
-			# freeordersums[thisorder.date_add.strftime("%a %b %d, %Y")]["Returned"] += float(thisorder.total)
+			elif thisorder.order_status in returnedStates: #refunds
+				freeordercounts[thisorder.date_add.strftime("%a %b %d, %Y")]["Returned"] += 1
+				# freeordersums[thisorder.date_add.strftime("%a %b %d, %Y")]["Returned"] += float(thisorder.total)
 		
 
 	neworders = []
@@ -547,18 +549,21 @@ class StatsHandler(BaseHandler):
 				current_store_name = thisstore.name
 				break
 
-		dailysalesquery = statssession.query(order.date_add, sqlalchemy.func.sum(order.total), sqlalchemy.func.sum(order.vat), sqlalchemy.func.sum(order.delivery_charges), sqlalchemy.func.sum(order.wallet_amount), sqlalchemy.func.sum(order.coupon_discount),sqlalchemy.func.sum(order.service_tax) ).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.order_status.in_(deliveredStates + inProgress), order.store_id.in_(store_list)).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
+		dailysalesquery = statssession.query(order.date_add, sqlalchemy.func.sum(order.total), sqlalchemy.func.sum(order.vat), sqlalchemy.func.sum(order.delivery_charges), sqlalchemy.func.sum(order.wallet_amount), sqlalchemy.func.sum(order.coupon_discount),sqlalchemy.func.sum(order.service_tax),sqlalchemy.func.sum(order.subscription_amount) ).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.order_status.in_(deliveredStates + inProgress), order.store_id.in_(store_list), order.is_for_later.op('&')(256)!=256).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
 
 		totalsales = []
 		deliverycharges=[]
 		wallettotal = []
 		coupontotal = []
+		subscriptiontotal = []
 
 
 		thiscountdetails = {thisresult[0].strftime("%a %b %d, %Y"): float(thisresult[1]) for thisresult in dailysalesquery}
 		thisdeliverydetails = {thisresult[0].strftime("%a %b %d, %Y"): float(thisresult[3]) for thisresult in dailysalesquery}
 		wallettransactionlookup = {thisresult[0].strftime("%a %b %d, %Y"): float(thisresult[4]) for thisresult in dailysalesquery}
 		couponlookup = {thisresult[0].strftime("%a %b %d, %Y"): float(thisresult[5]) for thisresult in dailysalesquery}
+		subscriptionsalelookup =  {thisresult[0].strftime("%a %b %d, %Y"): float(thisresult[7]) for thisresult in dailysalesquery}
+
 		for thisdate in daterange:
 			if thisdate in thiscountdetails:
 				totalsales.append(thiscountdetails[thisdate])
@@ -580,6 +585,17 @@ class StatsHandler(BaseHandler):
 			else:
 				coupontotal.append(0) 
 
+			if thisdate in subscriptionsalelookup:
+				subscriptiontotal.append(float(subscriptionsalelookup[thisdate])) 
+			else:
+				subscriptiontotal.append(0) 
+
+		totalsalesadj=[]
+		for i in range(0, len(daterange)):
+			totalsalesadj.append(totalsales[i]+subscriptiontotal[i])
+
+		totalsales = totalsalesadj
+
 		totalsalesvalue = sum(totalsales)
 
 		totalcount = getTotalCount(parsedstartdate, parsedenddate, daterange, statssession,store_list)
@@ -593,30 +609,34 @@ class StatsHandler(BaseHandler):
 		freeorderids = [thisorder.order_id for thisorder in dailyordersquery if (thisorder.order_status in [10,11])]
 		foodtrialids = [thisorder.order_id for thisorder in dailyordersquery if (thisorder.order_status in [12])]
 		returnedorderids = [thisorder.order_id for thisorder in dailyordersquery if (thisorder.order_status in returnedStates)]
-
+		subscriptionorderids = [thisorder.order_id for thisorder in dailyordersquery if (thisorder.is_for_later&256==256)]
 
 		#### Now looking at actual sales
-
-		grosssalesquery = statssession.query(order.date_add,orderdetail.quantity,orderdetail.price,orderdetailoption.price,orderdetail.discount).outerjoin(orderdetail).outerjoin(orderdetailoption).filter(order.order_id.in_(dailyorderids))
+		grosssalesquery = statssession.query(sqlalchemy.func.date(order.date_add),sqlalchemy.func.sum(orderdetail.quantity*orderdetail.price),sqlalchemy.func.sum(orderdetail.quantity*orderdetail.discount)).outerjoin(orderdetail).filter(order.order_id.in_(dailyorderids), order.order_id.notin_(subscriptionorderids)).group_by(sqlalchemy.func.date(order.date_add))
 			
 		grosssaleslookup = {}
 		itemdisclookup = {}
 
 		for grossdetail in grosssalesquery:
 			if grossdetail[0].strftime("%a %b %d, %Y") in grosssaleslookup:
-				grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] += (grossdetail[1]*grossdetail[2])
+				grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] += (grossdetail[1])
 			else:
-			 	grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] = (grossdetail[1]*grossdetail[2])
-			if grossdetail[3]:
-				grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] += (grossdetail[1]*grossdetail[3])
+			 	grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] = (grossdetail[1])
 
 			if grossdetail[0].strftime("%a %b %d, %Y") in itemdisclookup:
-				itemdisclookup[grossdetail[0].strftime("%a %b %d, %Y")] += grossdetail[1]*grossdetail[4]
+				itemdisclookup[grossdetail[0].strftime("%a %b %d, %Y")] += grossdetail[2]
 			else:
-				itemdisclookup[grossdetail[0].strftime("%a %b %d, %Y")] = grossdetail[1]*grossdetail[4]
+				itemdisclookup[grossdetail[0].strftime("%a %b %d, %Y")] = grossdetail[2]
+
+		grosssalesodoquery = statssession.query(sqlalchemy.func.date(order.date_add),sqlalchemy.func.sum(orderdetail.quantity*orderdetailoption.price)).outerjoin(orderdetail).outerjoin(orderdetailoption).filter(order.order_id.in_(dailyorderids)).group_by(sqlalchemy.func.date(order.date_add))
+
+		for grossdetail in grosssalesodoquery:
+			if grossdetail[0].strftime("%a %b %d, %Y") in grosssaleslookup:
+				grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] += (grossdetail[1])
+			else:
+			 	grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] = (grossdetail[1])
 
 		vatlookup = {thisresult[0].strftime("%a %b %d, %Y"): (float(thisresult[2])+float(thisresult[6])) for thisresult in dailysalesquery}
-
 
 		grosssales = []
 		netsalespretax = []
@@ -637,7 +657,6 @@ class StatsHandler(BaseHandler):
 				itemdiscounttotal.append(float(itemdisclookup[daterange[c]])) 
 			else:
 				itemdiscounttotal.append(0) 
-
 
 		dailyapc = []
 
@@ -964,21 +983,26 @@ class CustomerStatsHandler(BaseHandler):
 
 			thisstoreorders = [thisorder.order_id for thisorder in orders]
 			#TODO
-			grosssalesquery = statssession.query(order.order_id,orderdetail.quantity,orderdetail.price,orderdetailoption.price, order.delivery_charges).outerjoin(orderdetail).outerjoin(orderdetailoption).filter(order.order_id.in_(thisstoreorders))
-			
+
+			grosssalesquery = statssession.query(order.order_id,sqlalchemy.func.sum(orderdetail.quantity*orderdetail.price),order.delivery_charges).outerjoin(orderdetail).filter(order.order_id.in_(thisstoreorders),order.is_for_later.op('&')(256)!=256).group_by(order.order_id)
+				
 			grosssaleslookup = {}
+
 			for grossdetail in grosssalesquery:
-				if grossdetail[0] in grosssaleslookup:  
-					 grosssaleslookup[grossdetail[0]]+=float(grossdetail[1]*grossdetail[2])
+				if grossdetail[0] in grosssaleslookup:
+					grosssaleslookup[grossdetail[0]] += (grossdetail[1])
 				else:
-					if grossdetail[1]:
-						 grosssaleslookup[grossdetail[0]]=float(grossdetail[1]*grossdetail[2])
+				 	grosssaleslookup[grossdetail[0]] = (grossdetail[1])
+				grosssaleslookup[grossdetail[0]]+=grossdetail[2]
+
+			grosssalesodoquery = statssession.query(order.order_id,sqlalchemy.func.sum(orderdetail.quantity*orderdetailoption.price)).outerjoin(orderdetail).outerjoin(orderdetailoption).filter(order.order_id.in_(thisstoreorders),order.is_for_later.op('&')(256)!=256).group_by(order.order_id)
+			
+			for grossdetail in grosssalesodoquery:
+				if grossdetail[1]:
+					if grossdetail[0] in grosssaleslookup:
+						grosssaleslookup[grossdetail[0]] += (grossdetail[1])
 					else:
-						 grosssaleslookup[grossdetail[0]]=float(0)
-				if grossdetail[3]:
-					grosssaleslookup[grossdetail[0]] += float(grossdetail[1]*grossdetail[3])
-				if grossdetail[4]:
-					grosssaleslookup[grossdetail[0]] += float(grossdetail[4])
+					 	grosssaleslookup[grossdetail[0]] = (grossdetail[1])
 			
 			alltotalsbymonth = [0.0 for m in range(len(months))]
 			newtotalsbymonth = [0.0 for m in range(len(months))]
@@ -1543,22 +1567,27 @@ class DiscountAnalysisHandler(BaseHandler):
 					current_store_name = thisstore.name
 					break
 
-			dailyordersquery = statssession.query(order).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress + returnedStates), order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.store_id.in_(store_list)).all()
+			dailyordersquery = statssession.query(order).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress + returnedStates), order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.store_id.in_(store_list),order.is_for_later.op('&')(256)!=256).all()
 
 			dailyorderids = [thisorder.order_id for thisorder in dailyordersquery if (thisorder.order_status not in returnedStates)]
 
-			grosssalesquery = statssession.query(order.date_add,orderdetail.quantity,orderdetail.price,orderdetailoption.price).outerjoin(orderdetail).outerjoin(orderdetailoption).filter(order.order_id.in_(dailyorderids))
-			
+			grosssalesquery = statssession.query(sqlalchemy.func.date(order.date_add),sqlalchemy.func.sum(orderdetail.quantity*orderdetail.price)).outerjoin(orderdetail).filter(order.order_id.in_(dailyorderids)).group_by(sqlalchemy.func.date(order.date_add))
+				
 			grosssaleslookup = {}
 
 			for grossdetail in grosssalesquery:
 				if grossdetail[0].strftime("%a %b %d, %Y") in grosssaleslookup:
-					grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] += (grossdetail[1]*grossdetail[2])	 	
+					grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] += (grossdetail[1])
 				else:
-				 	grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] = (grossdetail[1]*grossdetail[2])
-				if grossdetail[3]:
-					grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] += (grossdetail[1]*grossdetail[3])
-				
+				 	grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] = (grossdetail[1])
+
+			grosssalesodoquery = statssession.query(sqlalchemy.func.date(order.date_add),sqlalchemy.func.sum(orderdetail.quantity*orderdetailoption.price)).outerjoin(orderdetail).outerjoin(orderdetailoption).filter(order.order_id.in_(dailyorderids)).group_by(sqlalchemy.func.date(order.date_add))
+			
+			for grossdetail in grosssalesodoquery:
+				if grossdetail[0].strftime("%a %b %d, %Y") in grosssaleslookup:
+					grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] += (grossdetail[1])
+				else:
+				 	grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] = (grossdetail[1])				
 
 			totalsales = []
 
@@ -1606,7 +1635,7 @@ class DiscountAnalysisHandler(BaseHandler):
 			resulthtml += "</tr>"
 
 
-			itemdiscountsql = "select date(date_add), sum(quantity*discount) from order_details where discount > 0 and order_id in (select order_id from orders where order_status in (3,10,11,12,16) and date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and date_add<'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59') group by 1;"
+			itemdiscountsql = "select date(date_add), sum(quantity*discount) from order_details where discount > 0 and order_id in (select order_id from orders where order_status in (3,10,11,12,16) and date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and date_add<'" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' and is_for_later&256!=256) group by 1;"
 			itemdiscountresult = statsengine.execute(itemdiscountsql)
 			itemdiscountlookup = {fd[0].strftime("%a %b %d, %Y"): fd[1] for fd in itemdiscountresult}
 			itemdiscountlist = []
@@ -3064,11 +3093,11 @@ class WastageHandler(BaseHandler):
 		menuitemsquery = statssession.query(menuitem).all()
 		menuitemlookup = {x.menu_item_id: x for x in menuitemsquery}
 
-		dailyordersquery = statssession.query(order).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate).all()
+		dailyordersquery = statssession.query(order).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress), order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.is_for_later.op('&')(256)!=256).all()
 
 		#dailyorderids = [thisorder.order_id for thisorder in dailyordersquery]
 
-		storeingredientinventoryquery = statssession.query(sqlalchemy.func.sum(store_order_details.price*store_order_details.received_quantity),store_orders.req_store_id,sqlalchemy.func.date(store_orders.expected_delivery)).join(store_orders).filter(store_orders.expected_delivery < parsedenddate,store_orders.expected_delivery >= parsedstartdate, store_orders.so_type == 3,store_orders.status == 3).group_by(store_orders.req_store_id,sqlalchemy.func.date(store_orders.expected_delivery)).all()
+		storeingredientinventoryquery = statssession.query(sqlalchemy.func.sum(store_order_details.price),store_orders.req_store_id,sqlalchemy.func.date(store_orders.expected_delivery)).join(store_orders).filter(store_orders.expected_delivery < parsedenddate,store_orders.expected_delivery >= parsedstartdate, store_orders.so_type == 3,store_orders.status == 3).group_by(store_orders.req_store_id,sqlalchemy.func.date(store_orders.expected_delivery)).all()
 
 		grosssales = []
 		predictedsales = []
@@ -3097,23 +3126,34 @@ class WastageHandler(BaseHandler):
 
 			thisstoreorders = [thisorder.order_id for thisorder in dailyordersquery if thisorder.store_id == thisstore.store_id]
 			
-			grosssalesquery = statssession.query(order.date_add,orderdetail.quantity,orderdetail.price,orderdetailoption.price,orderdetail.menu_item_id).outerjoin(orderdetail).outerjoin(orderdetailoption).filter(order.order_id.in_(thisstoreorders))
+
+			grosssalesquery = statssession.query(sqlalchemy.func.date(order.date_add),sqlalchemy.func.sum(orderdetail.quantity*orderdetail.price)).outerjoin(orderdetail).filter(order.order_id.in_(thisstoreorders)).group_by(sqlalchemy.func.date(order.date_add))
 				
 			grosssaleslookup = {}
+
 			for grossdetail in grosssalesquery:
 				if grossdetail[0].strftime("%a %b %d, %Y") in grosssaleslookup:
-					grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] += (grossdetail[1]*grossdetail[2])	 	
+					grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] += (grossdetail[1])
 				else:
-				 	grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] = (grossdetail[1]*grossdetail[2])
-				if grossdetail[3]:
-					grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] += (grossdetail[1]*grossdetail[3])
+				 	grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] = (grossdetail[1])
 
+			grosssalesodoquery = statssession.query(sqlalchemy.func.date(order.date_add),sqlalchemy.func.sum(orderdetail.quantity*orderdetailoption.price)).outerjoin(orderdetail).outerjoin(orderdetailoption).filter(order.order_id.in_(thisstoreorders)).group_by(sqlalchemy.func.date(order.date_add))
+			
+			for grossdetail in grosssalesodoquery:
+				if grossdetail[0].strftime("%a %b %d, %Y") in grosssaleslookup:
+					grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] += (grossdetail[1])
+				else:
+				 	grosssaleslookup[grossdetail[0].strftime("%a %b %d, %Y")] = (grossdetail[1])
+
+			peritemwastagequery = statssession.query(order.date_add,orderdetail.quantity,orderdetail.menu_item_id).outerjoin(orderdetail).outerjoin(orderdetailoption).filter(order.order_id.in_(thisstoreorders))
+				
+			for grossdetail in peritemwastagequery:
 				if grossdetail[0].strftime("%a %b %d, %Y") in peritemwastage:
-					if grossdetail[4] in peritemwastage[grossdetail[0].strftime("%a %b %d, %Y")]:
-						peritemwastage[grossdetail[0].strftime("%a %b %d, %Y")][grossdetail[4]] -= grossdetail[1]
+					if grossdetail[2] in peritemwastage[grossdetail[0].strftime("%a %b %d, %Y")]:
+						peritemwastage[grossdetail[0].strftime("%a %b %d, %Y")][grossdetail[2]] -= grossdetail[1]
 				else:
 					peritemwastage[grossdetail[0].strftime("%a %b %d, %Y")] = {}
-					peritemwastage[grossdetail[0].strftime("%a %b %d, %Y")][grossdetail[4]] = -grossdetail[1]
+					peritemwastage[grossdetail[0].strftime("%a %b %d, %Y")][grossdetail[2]] = -grossdetail[1]
 
 			wastagelookup = {dr: 0 for dr in daterange}
 			midlookup = {smi.menu_item_id: smi for smi in storeitemsquery if smi.store_id == thisstore.store_id}
@@ -3152,7 +3192,7 @@ class WastageHandler(BaseHandler):
 				try:
 					thisstorewastage.append(float(storewastagelookup[daterange[c]]))
 				except KeyError:
-					thiswastage.append(0.0)	
+					thisstorewastage.append(0.0)	
 
 				try:
 					thiswastagepc.append(float(storewastagelookup[daterange[c]])/float(grosssaleslookup[daterange[c]])*100.0)
@@ -4351,25 +4391,31 @@ def getgross(statssession,store_list,parsedstartdate,parsedenddate):
 	for c in range((parsedenddate - parsedstartdate).days):
 		daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%Y-%m-%d"))
 
-	dailyordersquery = statssession.query(order).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress + returnedStates), order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.store_id.in_(store_list)).all()
+	dailyordersquery = statssession.query(order).filter(order.order_status.in_(deliveredStates + deliveredFreeStates + inProgress + returnedStates), order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.store_id.in_(store_list), order.is_for_later.op('&')(256)!=256).all()
 
 	dailyorderids = [thisorder.order_id for thisorder in dailyordersquery if (thisorder.order_status not in returnedStates)]
-	grosssalesquery = statssession.query(order.date_add,orderdetail.quantity,orderdetail.price,orderdetailoption.price).outerjoin(orderdetail).outerjoin(orderdetailoption).filter(order.order_id.in_(dailyorderids))
-	
+
+	grosssalesquery = statssession.query(sqlalchemy.func.date(order.date_add),sqlalchemy.func.sum(orderdetail.quantity*orderdetail.price)).outerjoin(orderdetail).filter(order.order_id.in_(dailyorderids)).group_by(sqlalchemy.func.date(order.date_add))
+		
 	grosssaleslookup = {}
 
 	for grossdetail in grosssalesquery:
 		if grossdetail[0].strftime("%Y-%m-%d") in grosssaleslookup:
-			grosssaleslookup[grossdetail[0].strftime("%Y-%m-%d")] += (grossdetail[1]*grossdetail[2])	 	
+			grosssaleslookup[grossdetail[0].strftime("%Y-%m-%d")] += (grossdetail[1])
 		else:
-		 	grosssaleslookup[grossdetail[0].strftime("%Y-%m-%d")] = (grossdetail[1]*grossdetail[2])
-		if grossdetail[3]:
-			grosssaleslookup[grossdetail[0].strftime("%Y-%m-%d")] += (grossdetail[1]*grossdetail[3])
-		
+		 	grosssaleslookup[grossdetail[0].strftime("%Y-%m-%d")] = (grossdetail[1])
+
+	grosssalesodoquery = statssession.query(sqlalchemy.func.date(order.date_add),sqlalchemy.func.sum(orderdetail.quantity*orderdetailoption.price)).outerjoin(orderdetail).outerjoin(orderdetailoption).filter(order.order_id.in_(dailyorderids)).group_by(sqlalchemy.func.date(order.date_add))
+	
+	for grossdetail in grosssalesodoquery:
+		if grossdetail[0].strftime("%Y-%m-%d") in grosssaleslookup:
+			grosssaleslookup[grossdetail[0].strftime("%Y-%m-%d")] += (grossdetail[1])
+		else:
+		 	grosssaleslookup[grossdetail[0].strftime("%Y-%m-%d")] = (grossdetail[1])
 
 	totalsales = []
 
-	dailysalesquery = statssession.query(order.date_add, sqlalchemy.func.sum(order.delivery_charges)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.order_status.in_(deliveredStates + inProgress), order.store_id.in_(store_list)).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
+	dailysalesquery = statssession.query(order.date_add, sqlalchemy.func.sum(order.delivery_charges)).filter(order.date_add <= parsedenddate, order.date_add >= parsedstartdate, order.order_status.in_(deliveredStates + inProgress), order.store_id.in_(store_list), order.is_for_later.op('&')(256)!=256).group_by(sqlalchemy.func.year(order.date_add), sqlalchemy.func.month(order.date_add), sqlalchemy.func.day(order.date_add))
 
 	deliverycharges = []
 
@@ -4669,9 +4715,6 @@ class SubscriptionHandler(BaseHandler):
 			for c in range((parsedenddate - parsedstartdate).days):
 				daterange.append((parsedstartdate + datetime.timedelta(days=c)).strftime("%a %b %d, %Y"))
 
-		print (parsedstartdate)
-		print (parsedenddate)
-		print (daterange)
 		statsengine = sqlalchemy.create_engine(statsengine_url)
 		statssession = scoped_session(sessionmaker(bind=statsengine))
 
