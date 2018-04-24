@@ -2397,6 +2397,9 @@ class MailchimpUpdateHandler(BaseHandler):
 		if current_user != "admin":
 			self.redirect('/stats')
 		else:
+			self.expireWalletForLastOrderOn(datetime.date.today()-datetime.timedelta(days=90))
+			self.expireRewardsForLastOrderOn(datetime.date.today()-datetime.timedelta(days=120))
+
 			startdate = self.get_argument("startdate", None)
 			if startdate is None:
 				parsedstartdate = datetime.date.today()
@@ -2416,6 +2419,78 @@ class MailchimpUpdateHandler(BaseHandler):
 				sendTwiglyMail('@testmail.com','***REMOVED***',str(mailchimpresponse['error_count'])+" error(s) in mailchimp List for "+parsedstartdate.strftime("%Y-%m-%d"), str(mailchimpresponse),'plain')
 			else:
 				self.write({"result": True})
+
+	def expireWalletForLastOrderOn(self, lastorderdate):
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
+		thissql1 = "select distinct u.mobile_number, u.name, u.wallet_money, u.user_id from users u left join orders o on o.user_id=u.user_id where u.wallet_money>0 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.order_status in (3,10,11,12,16) and o.date_add>='" + lastorderdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + lastorderdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + lastorderdate.strftime("%Y-%m-%d") + " 23:59:59');"
+		result1 = statsengine.execute(thissql1)
+		userids = []
+		mobiles = []
+		for item in result1:
+			userids.append({"mobile":str(item[0]).lower(), "name":getFirstName(str(item[1])), "wallet":str(item[2]),"id":str(item[3])})
+			mobiles.append(str(item[0]).lower())
+
+		thissql2 = "insert into wallet_transactions (type,amount,user_id,category,related_id,description) values"
+		thissql3 = "update users set wallet_money=0 where user_id in ("
+		separator = " "
+		separator3 = " "
+		updatewallets = 0
+		for item in userids:
+			w = float(item['wallet']) 
+			if w<=0:
+				w=0
+			else:
+				thissql2 += separator+ "('0'"+","+str(int(w))+","+item['id']+",13,0,'wallet clearance cron')"
+				separator=", " 
+				thissql3 += separator3+ item['id']
+				separator3=", "
+				updatewallets=1 
+		thissql2+=";"
+		thissql3+=");"
+		if(updatewallets==1):
+			result2 = statsengine.execute(thissql2)
+			statssession.commit()
+			result3 = statsengine.execute(thissql3)
+			statssession.commit()
+		statssession.remove()
+		sendTwiglyMail('Wallet Clearance Cron <@testmail.com>','Raghav <***REMOVED***>',"Wallet cleared for "+str(len(userids))+" users with last order on "+lastorderdate.strftime("%Y-%m-%d"), "Wallet cleared for '"+"','".join(mobiles)+"'", 'plain')
+
+	def expireRewardsForLastOrderOn(self, lastorderdate):
+		statsengine = sqlalchemy.create_engine(statsengine_url)
+		statssession = scoped_session(sessionmaker(bind=statsengine))
+		thissql1 = "select distinct u.mobile_number, u.name, u.reward_points, u.user_id from users u left join orders o on o.user_id=u.user_id where u.reward_points>0 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.order_status in (3,10,11,12,16) and o.date_add>='" + lastorderdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + lastorderdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + lastorderdate.strftime("%Y-%m-%d") + " 23:59:59');"
+		result1 = statsengine.execute(thissql1)
+		userids = []
+		mobiles = []
+		for item in result1:
+			userids.append({"mobile":str(item[0]).lower(), "name":getFirstName(str(item[1])), "points":str(item[2]),"id":str(item[3])})
+			mobiles.append(str(item[0]).lower())
+		thissql2 = "insert into reward_transactions (type,points,user_id,reward_type,related_id,reward_id,description) values"
+		thissql3 = "update users set reward_points=0 where user_id in ("
+		separator = " "
+		separator3 = " "
+		updaterewards = 0
+		for item in userids:
+			w = float(item['points']) 
+			if w<=0:
+				w=0
+			else:
+				thissql2 += separator+ "('0'"+","+str(int(w))+","+item['id']+",1,0,1,'reward clearance cron')"
+				separator=", " 
+				thissql3 += separator3+ item['id']
+				separator3=", "
+				updaterewards=1 
+		thissql2+=";"
+		thissql3+=");"
+		if(updaterewards==1):
+			result2 = statsengine.execute(thissql2)
+			statssession.commit()
+			result3 = statsengine.execute(thissql3)
+			statssession.commit()
+		statssession.remove()
+		sendTwiglyMail('Reward Clearance Cron <@testmail.com>','Raghav <***REMOVED***>',"Rewards cleared for "+str(len(userids))+" users with last order on "+lastorderdate.strftime("%Y-%m-%d"), "Rewards cleared for '"+"','".join(mobiles)+"'", 'plain')
+
 
 	def getUpdateBatch(self,parsedstartdate):
 		if environment_production:
@@ -2471,6 +2546,7 @@ class MailchimpLazySignupHandler(BaseHandler):
 			lazy_static_segment_id = 60389
 		return lazy_static_segment_id
 
+
 	@tornado.web.authenticated
 	def get(self):
 		current_user = self.get_current_user().decode()
@@ -2503,7 +2579,6 @@ class MailchimpLazySignupHandler(BaseHandler):
 			else:
 				self.write({"result": False})
 				sendTwiglyMail('@testmail.com','***REMOVED***',"Some error in the Lazy campaign for "+parsedstartdate.strftime("%Y-%m-%d"), str(mre2),'plain')
-
 
 class MailchimpDormantUserHandler(BaseHandler):
 	def getDormantUsersBatch(self,parsedstartdate):
@@ -2765,7 +2840,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 
 
 	def sendwalletsms(self,lastorderdate, walletexpirydate,statsengine):
-		thissql1 = "select u.mobile_number, u.name, u.wallet_money, u.wallet_cap from users u  left join orders o on o.user_id=u.user_id where u.verified&2=0 and u.wallet_money>=1 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.order_status in (3,10,11,12,16) and o.date_add>='" + lastorderdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<='" + lastorderdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + lastorderdate.strftime("%Y-%m-%d") + " 23:59:59');"
+		thissql1 = "select distinct u.mobile_number, u.name, u.wallet_money, u.wallet_cap from users u  left join orders o on o.user_id=u.user_id where u.verified&2=0 and u.wallet_money>=1 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.order_status in (3,10,11,12,16) and o.date_add>='" + lastorderdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<='" + lastorderdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + lastorderdate.strftime("%Y-%m-%d") + " 23:59:59');"
 		print(thissql1)
 		result1 = statsengine.execute(thissql1)
 		userids = []
@@ -2789,7 +2864,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 		sendTwiglyMail('Wallet SMS <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for Wallet Expiry on "+lastdate, "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
 
 	def sendrewardexsms(self,lastorderdate, rewardexpirydate,statsengine):
-		thissql1 = "select u.mobile_number, u.name, u.reward_points from users u  left join orders o on o.user_id=u.user_id where u.verified&2=0 and u.reward_points>=1 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.order_status in (3,10,11,12,16) and o.date_add>='" + lastorderdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<='" + lastorderdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + lastorderdate.strftime("%Y-%m-%d") + " 23:59:59');"
+		thissql1 = "select distinct u.mobile_number, u.name, u.reward_points from users u  left join orders o on o.user_id=u.user_id where u.verified&2=0 and u.reward_points>=1 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.order_status in (3,10,11,12,16) and o.date_add>='" + lastorderdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<='" + lastorderdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + lastorderdate.strftime("%Y-%m-%d") + " 23:59:59');"
 		print(thissql1)
 		result1 = statsengine.execute(thissql1)
 		userids = []
