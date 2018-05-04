@@ -4704,7 +4704,7 @@ class RewardStatsHandler(BaseHandler):
 		transaction_value_list = [x["value"] for x in transaction_type]
 
 		# Total Reward Points Credited and Debited in a day
-		thissql1 = "select o.type, date(o.date_add), count(*), sum(o.points) from reward_transactions o where  o.points > 0 and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1,2;"
+		thissql1 = "select o.type, date(o.date_add), count(*), sum(o.points) from reward_transactions o where o.description!='reward clearance cron' and o.points > 0 and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1,2;"
 		result1 = statsengine.execute(thissql1)
 
 		rewardtransactionlookup = {x["value"]: { thisdate:[] for thisdate in daterange} for x in transaction_type}
@@ -4717,6 +4717,7 @@ class RewardStatsHandler(BaseHandler):
 		debitpoints = []
 		credittransactions = []
 		creditpoints = []
+
 		for thisdate in daterange:
 			if (len(rewardtransactionlookup['0'][thisdate])==2):
 				debittransactions.append(int(rewardtransactionlookup['0'][thisdate][0])) 
@@ -4724,6 +4725,7 @@ class RewardStatsHandler(BaseHandler):
 			else:
 				debittransactions.append(0) 
 				debitpoints.append(0)
+
 			if (len(rewardtransactionlookup['1'][thisdate])==2):
 				credittransactions.append(int(rewardtransactionlookup['1'][thisdate][0])) 
 				creditpoints.append(int(rewardtransactionlookup['1'][thisdate][1])) 
@@ -4742,10 +4744,31 @@ class RewardStatsHandler(BaseHandler):
 
 		totaldebittransactions = sum(debittransactions)
 		totaldebitpoints = sum(debitpoints)
+
 		totaldebitavgpoints = 0.0
 		if (totaldebittransactions>0):
 			totaldebitavgpoints = float(totaldebitpoints)/float(totaldebittransactions)
 
+		thissqlcron = "select date(o.date_add), count(*), sum(o.points) from reward_transactions o where o.description='reward clearance cron' and o.type=0 and o.points > 0 and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <='" + parsedenddate.strftime("%Y-%m-%d") + " 23:59:59' group by 1;"
+		resultcron = statsengine.execute(thissqlcron)
+		cleartransactions = []
+		clearpoints = []
+
+		cleartransactionlookup = {thisdate:[] for thisdate in daterange}
+		for item in resultcron:
+			if item[0].strftime("%a %b %d, %Y") in daterange:
+				cleartransactionlookup[item[0].strftime("%a %b %d, %Y")] = item[1:]
+
+		for thisdate in daterange:
+			if (len(cleartransactionlookup[thisdate])==2):
+				cleartransactions.append(int(cleartransactionlookup[thisdate][0])) 
+				clearpoints.append(int(cleartransactionlookup[thisdate][1]))
+			else:
+				cleartransactions.append(0) 
+				clearpoints.append(0)
+
+		totalclearpoints = sum(clearpoints) 
+		totalcleartransactions = sum(cleartransactions)
 
 		# <50 Reward Points Credited in a day
 		# Total points credit in period - small transactions
@@ -4799,7 +4822,7 @@ class RewardStatsHandler(BaseHandler):
 				orderlessthan250pc.append(0) 
 
 		statssession.remove()
-		self.render("templates/rewardstatstemplate.html", daterange=daterange, debittransactions=debittransactions, debitpoints=debitpoints, credittransactions=credittransactions, creditpoints=creditpoints, smlcredittransactions=smlcredittransactions,smlcreditpoints=smlcreditpoints,smlcreditavgpoints=smlcreditavgpoints,totalcredittransactions=totalcredittransactions,totalcreditpoints=totalcreditpoints,totalcreditavgpoints=totalcreditavgpoints,totaldebittransactions=totaldebittransactions, totaldebitpoints=totaldebitpoints,totaldebitavgpoints=totaldebitavgpoints,totalsmlcredittransactions=totalsmlcredittransactions,totalsmlcreditpoints=totalsmlcreditpoints,totalsmlavgpoints=totalsmlavgpoints,orderlessthan250pc=orderlessthan250pc,user=current_user)
+		self.render("templates/rewardstatstemplate.html", daterange=daterange, debittransactions=debittransactions, debitpoints=debitpoints, credittransactions=credittransactions, creditpoints=creditpoints,cleartransactions=cleartransactions, smlcredittransactions=smlcredittransactions,smlcreditpoints=smlcreditpoints,smlcreditavgpoints=smlcreditavgpoints,totalcredittransactions=totalcredittransactions,totalcreditpoints=totalcreditpoints,totalcreditavgpoints=totalcreditavgpoints,totaldebittransactions=totaldebittransactions, totaldebitpoints=totaldebitpoints,totaldebitavgpoints=totaldebitavgpoints,totalsmlcredittransactions=totalsmlcredittransactions,totalsmlcreditpoints=totalsmlcreditpoints,totalsmlavgpoints=totalsmlavgpoints,orderlessthan250pc=orderlessthan250pc,user=current_user,clearpoints=clearpoints,totalclearpoints=totalclearpoints,totalcleartransactions=totalcleartransactions)
 
 class RewardLeaderHandler(BaseHandler):
 	@tornado.web.authenticated

@@ -130,7 +130,7 @@
         },
         title: {
             useHTML: true,
-            text: 'Reward Transactions<br>Total Credit Transactions: {{ totalcredittransactions }}<br>Total Debit Transactions: {{ totaldebittransactions }}'
+            text: 'Reward Transactions<br>Total Credit Transactions: {{ totalcredittransactions }}<br>Total Debit Transactions: {{ totaldebittransactions }}<br>Total Clear Transactions: {{ totalcleartransactions }}'
         },
         xAxis: {
             categories: {% raw daterange %},
@@ -160,6 +160,14 @@
             dataLabels: {
                 enabled: true
             }
+        },{
+            name: 'Clear Transactions',
+            type: "column",
+            showInLegend: true,
+            data: {{ cleartransactions }},
+            dataLabels: {
+                enabled: true
+            }
         }]
     });
 
@@ -169,7 +177,7 @@
         },
         title: {
             useHTML: true,
-            text: 'Total Reward Points <br>Total Credit Points: {{ totalcreditpoints }}<br>Total Debit Points: {{ totaldebitpoints }}<br>Average Credit Points/Tranasaction: {{ round(totalcreditavgpoints,2) }}<br>Total Debit Points/Transaction: {{ round(totaldebitavgpoints,2) }}'
+            text: 'Total Reward Points <br>Total Credit Points: {{ totalcreditpoints }}<br>Total Debit Points: {{ totaldebitpoints }}<br>Average Credit Points/Tranasaction: {{ round(totalcreditavgpoints,2) }}<br>Total Debit Points/Transaction: {{ round(totaldebitavgpoints,2) }}<br>Total Cleared Points: {{ totalclearpoints }}'
         },
         xAxis: {
             categories: {% raw daterange %},
@@ -196,6 +204,14 @@
             type: "column",
             showInLegend: true,
             data: {{ debitpoints }},
+            dataLabels: {
+                enabled: true
+            }
+        },{
+            name: 'Rewards cleared',
+            type: "column",
+            showInLegend: true,
+            data: {{ clearpoints }},
             dataLabels: {
                 enabled: true
             }
