@@ -2789,6 +2789,59 @@ class MailchimpDormantUserHandler(BaseHandler):
 
 			sendTwiglyMail('Dormant Third Party SMS <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for Dormant Third Party on "+parsedstartdate.strftime("%Y-%m-%d"), "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
 
+	def sendWalletBalanceSMS(self, parsedstartdate, ignore_mobiles):
+		if environment_production:
+			statsengine = sqlalchemy.create_engine(statsengine_url)
+			statssession = scoped_session(sessionmaker(bind=statsengine))
+			thissql1 = "select distinct u.mobile_number, u.name, u.wallet_money, u.user_id, u.wallet_cap from users u left join orders o on o.user_id=u.user_id where u.verified&2=0 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59') and u.mobile_number not in ('"+"','".join(ignore_mobiles)+"') and u.wallet_money>1;"
+			# print(thissql1)
+			result1 = statsengine.execute(thissql1)
+			userids = []
+			mobiles = []
+			for item in result1:
+				userids.append({"mobile":str(item[0]).lower(), "name":getFirstName(str(item[1])), "wallet":int(item[2]), "id":str(item[3]), 'wallet_cap':int(item[4])})
+				mobiles.append(str(item[0]).lower())
+
+			statssession.remove()
+			if len(userids) > 0:
+				for item in userids:
+					wallet_cap = item['wallet_cap']
+					if wallet_cap>item['wallet']:
+						wallet_cap=item['wallet']
+					msg = "Hi%20"+item['name'].replace(" ","%20")+"%21%20You%20have%20Rs%20"+str(item['wallet'])+"%20in%20your%20Twigly%20wallet.%20Order%20on%20the%20Twigly%20app%20for%20Rs%20"+str(wallet_cap)+"%20off%20on%20your%20next%20order.%20https%3A%2F%2Fgoo.gl%2FbMNEr4"
+					number = item['mobile']
+					# print(number,msg)
+					sendTwiglySMS(number,msg)
+ 
+
+			sendTwiglyMail('Wallet Balance 15 day SMS <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for Wallet Balance on "+parsedstartdate.strftime("%Y-%m-%d"), "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
+			return mobiles;
+
+	def sendPreorderSMS(self, parsedstartdate, ignore_mobiles, ignore_mobiles2):
+		if environment_production:
+			statsengine = sqlalchemy.create_engine(statsengine_url)
+			statssession = scoped_session(sessionmaker(bind=statsengine))
+			thissql1 = "select distinct u.mobile_number, u.name from users u left join orders o on o.user_id=u.user_id where u.verified&2=0 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59') and u.mobile_number not in ('"+"','".join(ignore_mobiles)+"') and u.mobile_number not in ('"+"','".join(ignore_mobiles2)+"');"
+			# print(thissql1)
+			result1 = statsengine.execute(thissql1)
+			userids = []
+			mobiles = []
+			for item in result1:
+				userids.append({"mobile":str(item[0]).lower(), "name":getFirstName(str(item[1]))})
+				mobiles.append(str(item[0]).lower())
+
+			statssession.remove()
+			if len(userids) > 0:
+				for item in userids:
+					msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20Plan%20your%20meal%20ahead%20and%20get%2015%25%20cashback%20on%20all%20Pre-orders%20from%20Twigly.%20Call%20011-39595911%20or%20visit%20goo.gl%2FxpAf1i"
+					number = item['mobile']
+					# print(number,msg)
+					sendTwiglySMS(number,msg)
+
+			sendTwiglyMail('Wallet Balance 15 day SMS <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for Wallet Balance on "+parsedstartdate.strftime("%Y-%m-%d"), "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
+			return mobiles;
+
+
 
 	def sendRewardSMS(self,parsedstartdate):
 		if environment_production:
@@ -2832,11 +2885,12 @@ class MailchimpDormantUserHandler(BaseHandler):
 					elif (reward_points>=500):
 						msg = "Hi%20"+item['name'].replace(" ","%20")+"%2C%20you%20have%20collected%20"+str(reward_points)+"%20reward%20points.%20You%20can%20exchange%20500%20points%20for%2050%25%20discount.%20Visit%20https%3A%2F%2Ftwigly.in%2Frewards"
 					number = item['mobile']
+					# print(number,msg)
 					sendTwiglySMS(number,msg)
 
 
 			sendTwiglyMail('Reward SMS <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for Rewards on "+parsedstartdate.strftime("%Y-%m-%d"), "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
-
+			return mobiles
 
 
 	def sendwalletsms(self,lastorderdate, walletexpirydate,statsengine):
@@ -2935,6 +2989,75 @@ class MailchimpDormantUserHandler(BaseHandler):
 
 			sendTwiglyMail('Adhoc SMS <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for Wallet", "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
 
+	def sendDessertForAWeekSMS(self,parsedstartdate,thirdparty):
+		if environment_production:
+			statsengine = sqlalchemy.create_engine(statsengine_url)
+			statssession = scoped_session(sessionmaker(bind=statsengine))
+			thissql1 = "select distinct u.mobile_number, u.name, u.user_id from users u left join orders o on o.user_id=u.user_id where u.verified&2=0 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59');"
+			# print(thissql1)
+			if thirdparty:
+				thissql1 = "select distinct u.mobile_number, u.name, u.user_id from users u left join orders o on o.user_id=u.user_id where u.verified&2=0 and o.source in (6,9,10) and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00');"
+
+			result1 = statsengine.execute(thissql1)
+			userids = []
+			mobiles = []
+			for item in result1:
+				userids.append({"mobile":str(item[0]).lower(), "name":getFirstName(str(item[1]))})
+				mobiles.append(str(item[0]).lower())
+
+			offerenddate = datetime.date.today() + datetime.timedelta(days=7)
+			if (len(userids)>0):
+				thissql4 = "update users set free_dessert_reward_date='"+offerenddate.strftime("%Y-%m-%d")+" 23:59:59' where mobile_number in ('"+"','".join(mobiles)+"');"
+				print(thissql4)
+				# result4 = statsengine.execute(thissql4)
+				# statssession.commit()
+
+			statssession.remove()
+
+			if len(userids) > 0:
+				for item in userids:
+					msg = "Dear%20"+item['name'].replace(" ","%20")+"%2C%20Get%20a%20free%20cookie%2C%20drink%20or%20snack%20bar%20with%20every%20Twigly%20order%20till%20"+offerenddate.strftime("%d %b").replace(" ","%20") +"%21%20Order%20from%20goo.gl%2FJZYkYP%20or%20call%20011-39595911"
+					number = item['mobile']
+					print(number,msg)
+					# sendTwiglySMS(number,msg)
+
+			# if thirdparty:
+			# 	sendTwiglyMail('Third Party 21 day dessert SMS <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for Dormant Third Party on "+parsedstartdate.strftime("%Y-%m-%d"), "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
+			# else:
+			# 	sendTwiglyMail('21 day dessert SMS <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for Dormant Third Party on "+parsedstartdate.strftime("%Y-%m-%d"), "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
+
+	def sendBreadForAWeekSMS(self,parsedstartdate):
+		if environment_production:
+			statsengine = sqlalchemy.create_engine(statsengine_url)
+			statssession = scoped_session(sessionmaker(bind=statsengine))
+			thissql1 = "select distinct u.mobile_number, u.name, u.user_id from users u left join orders o on o.user_id=u.user_id where u.verified&2=0 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add<'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59' and u.user_id not in (select m.user_id from orders m where m.order_status in (3,10,11,12,16) and m.date_add>'" + parsedstartdate.strftime("%Y-%m-%d") + " 23:59:59');"
+			# print(thissql1)
+
+			result1 = statsengine.execute(thissql1)
+			userids = []
+			mobiles = []
+			for item in result1:
+				userids.append({"mobile":str(item[0]).lower(), "name":getFirstName(str(item[1]))})
+				mobiles.append(str(item[0]).lower())
+
+			offerenddate = datetime.date.today() + datetime.timedelta(days=7)
+			if (len(userids)>0):
+				thissql4 = "update users set free_breads_reward_date='"+offerenddate.strftime("%Y-%m-%d")+" 23:59:59' where mobile_number in ('"+"','".join(mobiles)+"');"
+				print(thissql4)
+				# result4 = statsengine.execute(thissql4)
+				# statssession.commit()
+
+			statssession.remove()
+
+			if len(userids) > 0:
+				for item in userids:
+					msg = "Dear%20"+item['name'].replace(" ","%20")+"%2C%20Now%20pick%20any%20bread%20for%20your%20Twigly%20sandwich%20at%20no%20extra%20cost%20on%20every%20order%20till%20"+offerenddate.strftime("%d %b").replace(" ","%20") +".%20Order%20from%20goo.gl%2FJZYkYP%20or%20call%20011-39595911"
+					number = item['mobile']
+					print(number,msg)
+					# sendTwiglySMS(number,msg)
+
+			# sendTwiglyMail('30 day bread SMS <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for 30 day bread on "+parsedstartdate.strftime("%Y-%m-%d"), "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
+
 
 	def getDormantTemplateId(self):
 		dormant_template_id = 139777 #139749 for missyou10 # int #139773 for summer10 #139777 for winter10
@@ -2957,11 +3080,18 @@ class MailchimpDormantUserHandler(BaseHandler):
 			bad_delivery_feedback_list = self.sendBadDeliveryFeedbackMail(parsedstartdate)
 			bad_food_feedback_list = self.sendBadFoodFeedbackMail(parsedstartdate)
 
-			self.sendZomatoDormantUserSMSV2(datetime.date.today() - datetime.timedelta(days=34))
 			parsedrewarddate = datetime.date.today() - datetime.timedelta(days=15)
-			self.sendRewardSMS(parsedrewarddate)
+			ignore_list_1 = self.sendRewardSMS(parsedrewarddate)
+			ignore_list_2 = self.sendWalletBalanceSMS(parsedrewarddate, ignore_list_1)
+			self.sendPreorderSMS(parsedrewarddate, ignore_list_1, ignore_list_2)
+			
+			self.sendDessertForAWeekSMS(datetime.date.today() - datetime.timedelta(days=1),True)
+			self.sendDessertForAWeekSMS(datetime.date.today() - datetime.timedelta(days=21),False)
 
+			self.sendBreadForAWeekSMS(datetime.date.today() - datetime.timedelta(days=30))
+			
 			self.sendExpiryMessages()
+
 
 
 
