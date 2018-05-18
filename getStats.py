@@ -3710,7 +3710,7 @@ class LateDeliveryHandler(BaseHandler):
 		statssession = scoped_session(sessionmaker(bind=statsengine))
 
 
-		thissql1 = "select date(o.date_add), dz.falls_under_gurantee, st.name, o.order_id, us.name, o.delivery_address, timediff(d.time_add,a.time_add), dbs.name from orders o left join delivery_zones dz on o.delivery_zone_id=dz.delivery_zone_id left join stores st on o.store_id = st.store_id left join users us on us.user_id=o.user_id left join deliveries dd on o.order_id=dd.order_id left join delivery_boys dbs on dd.delivery_boy_id=dbs.delivery_boy_id left join order_status_times as a on o.order_id = a.order_id left join order_status_times as d on o.order_id = d.order_id where a.order_status=1 and d.order_status=3 and ((dz.falls_under_gurantee = 1 and timediff(d.time_add,a.time_add)>'00:59:59') or (dz.falls_under_gurantee = 0 and timediff(d.time_add,a.time_add)>'01:29:59')) and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <'" + parsedenddate.strftime("%Y-%m-%d") + " 00:00:00' order  by 1,3,8,2 desc,7 desc;"
+		thissql1 = "select date(o.date_add), dz.falls_under_gurantee, st.name, o.order_id, us.name, o.delivery_address, timediff(d.time_add,a.time_add), dbs.name from orders o left join delivery_zones dz on o.delivery_zone_id=dz.delivery_zone_id left join stores st on o.store_id = st.store_id left join users us on us.user_id=o.user_id left join deliveries dd on o.order_id=dd.order_id left join delivery_boys dbs on dd.delivery_boy_id=dbs.delivery_boy_id left join order_status_times as a on o.order_id = a.order_id left join order_status_times as d on o.order_id = d.order_id where a.order_status=1 and d.order_status=3 and ((dz.falls_under_gurantee = 1 and timediff(d.time_add,a.time_add)>'00:49:59') or (dz.falls_under_gurantee = 0 and timediff(d.time_add,a.time_add)>'01:14:59')) and o.order_status in (3,10,11,12,16) and o.date_add>='" + parsedstartdate.strftime("%Y-%m-%d") + " 00:00:00' and o.date_add <'" + parsedenddate.strftime("%Y-%m-%d") + " 00:00:00' order  by 1,3,8,2 desc,7 desc;"
 		result1 = statsengine.execute(thissql1)
 
 		result1backup = []
@@ -3761,7 +3761,7 @@ class LateDeliveryHandler(BaseHandler):
 		displayenddate = parsedenddate +  datetime.timedelta(days=-1)
 
 		statssession.remove()
-		self.render("templates/simpletabletemplate.html", page_url="/latedeliveries", page_title="Twigly Late Orders Summary",table_title="Late Orders Summary - Prioirty orders over 60 mintues and Non Priority orders over 90 minutes - "+parsedstartdate.strftime("%Y-%m-%d")+" to "+displayenddate.strftime("%Y-%m-%d"),tableSort="[]", daterange=daterange, outputtable=outputtable, user=current_user)
+		self.render("templates/simpletabletemplate.html", page_url="/latedeliveries", page_title="Twigly Late Orders Summary",table_title="Late Orders Summary - Prioirty orders over 50 mintues and Non Priority orders over 75 minutes - "+parsedstartdate.strftime("%Y-%m-%d")+" to "+displayenddate.strftime("%Y-%m-%d"),tableSort="[]", daterange=daterange, outputtable=outputtable, user=current_user)
 
 
 class AllOrderTimeHandler(BaseHandler):
