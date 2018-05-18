@@ -2838,7 +2838,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 					# print(number,msg)
 					sendTwiglySMS(number,msg)
 
-			sendTwiglyMail('Wallet Balance 15 day SMS <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for Wallet Balance on "+parsedstartdate.strftime("%Y-%m-%d"), "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
+			sendTwiglyMail('Preorder 15 day SMS <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for Wallet Balance on "+parsedstartdate.strftime("%Y-%m-%d"), "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
 			return mobiles;
 
 
