@@ -3043,7 +3043,7 @@ class MailchimpDormantUserHandler(BaseHandler):
 			offerenddate = datetime.date.today() + datetime.timedelta(days=7)
 			if (len(userids)>0):
 				thissql4 = "update users set free_breads_reward_date='"+offerenddate.strftime("%Y-%m-%d")+" 23:59:59' where mobile_number in ('"+"','".join(mobiles)+"');"
-				print(thissql4)
+				# print(thissql4)
 				result4 = statsengine.execute(thissql4)
 				statssession.commit()
 
