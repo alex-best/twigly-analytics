@@ -3008,9 +3008,9 @@ class MailchimpDormantUserHandler(BaseHandler):
 			offerenddate = datetime.date.today() + datetime.timedelta(days=7)
 			if (len(userids)>0):
 				thissql4 = "update users set free_dessert_reward_date='"+offerenddate.strftime("%Y-%m-%d")+" 23:59:59' where mobile_number in ('"+"','".join(mobiles)+"');"
-				print(thissql4)
-				# result4 = statsengine.execute(thissql4)
-				# statssession.commit()
+				# print(thissql4)
+				result4 = statsengine.execute(thissql4)
+				statssession.commit()
 
 			statssession.remove()
 
@@ -3018,13 +3018,13 @@ class MailchimpDormantUserHandler(BaseHandler):
 				for item in userids:
 					msg = "Dear%20"+item['name'].replace(" ","%20")+"%2C%20Get%20a%20free%20cookie%2C%20drink%20or%20snack%20bar%20with%20every%20Twigly%20order%20till%20"+offerenddate.strftime("%d %b").replace(" ","%20") +"%21%20Order%20from%20goo.gl%2FJZYkYP%20or%20call%20011-39595911"
 					number = item['mobile']
-					print(number,msg)
-					# sendTwiglySMS(number,msg)
+					# print(number,msg)
+					sendTwiglySMS(number,msg)
 
-			# if thirdparty:
-			# 	sendTwiglyMail('Third Party 21 day dessert SMS <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for Dormant Third Party on "+parsedstartdate.strftime("%Y-%m-%d"), "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
-			# else:
-			# 	sendTwiglyMail('21 day dessert SMS <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for Dormant Third Party on "+parsedstartdate.strftime("%Y-%m-%d"), "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
+			if thirdparty:
+				sendTwiglyMail('Third Party 21 day dessert SMS <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for Dormant Third Party on "+parsedstartdate.strftime("%Y-%m-%d"), "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
+			else:
+				sendTwiglyMail('21 day dessert SMS <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for Dormant Third Party on "+parsedstartdate.strftime("%Y-%m-%d"), "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
 
 	def sendBreadForAWeekSMS(self,parsedstartdate):
 		if environment_production:
@@ -3044,8 +3044,8 @@ class MailchimpDormantUserHandler(BaseHandler):
 			if (len(userids)>0):
 				thissql4 = "update users set free_breads_reward_date='"+offerenddate.strftime("%Y-%m-%d")+" 23:59:59' where mobile_number in ('"+"','".join(mobiles)+"');"
 				print(thissql4)
-				# result4 = statsengine.execute(thissql4)
-				# statssession.commit()
+				result4 = statsengine.execute(thissql4)
+				statssession.commit()
 
 			statssession.remove()
 
@@ -3053,10 +3053,10 @@ class MailchimpDormantUserHandler(BaseHandler):
 				for item in userids:
 					msg = "Dear%20"+item['name'].replace(" ","%20")+"%2C%20Now%20pick%20any%20bread%20for%20your%20Twigly%20sandwich%20at%20no%20extra%20cost%20on%20every%20order%20till%20"+offerenddate.strftime("%d %b").replace(" ","%20") +".%20Order%20from%20goo.gl%2FJZYkYP%20or%20call%20011-39595911"
 					number = item['mobile']
-					print(number,msg)
-					# sendTwiglySMS(number,msg)
+					# print(number,msg)
+					sendTwiglySMS(number,msg)
 
-			# sendTwiglyMail('30 day bread SMS <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for 30 day bread on "+parsedstartdate.strftime("%Y-%m-%d"), "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
+			sendTwiglyMail('30 day bread SMS <@testmail.com>','Raghav <***REMOVED***>',str(len(userids))+" sms sent for 30 day bread on "+parsedstartdate.strftime("%Y-%m-%d"), "SMS sent to '"+"','".join(mobiles)+"'", 'plain')
 
 
 	def getDormantTemplateId(self):
