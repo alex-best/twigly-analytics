@@ -2969,20 +2969,22 @@ class MailchimpDormantUserHandler(BaseHandler):
 			statsengine = sqlalchemy.create_engine(statsengine_url)
 			statssession = scoped_session(sessionmaker(bind=statsengine))
 			thissql1=""
-			# thissql1 = "select u.mobile_number, u.name, u.wallet_money from users u where u.verified&2=0 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and u.wallet_money>=50 and u.user_id in (select o.user_id from orders o where o.order_status in (3,10,11,12,16) and o.date_add>'2017-09-06 00:00:00');"
+			# thissql1 = "select u.mobile_number, u.name, u.wallet_money,u.wallet_cap from users u where u.verified&2=0 and (u.mobile_number like '6%%' or u.mobile_number like '7%%' or u.mobile_number like '8%%' or u.mobile_number like '9%%') and length (u.mobile_number)=10 and u.wallet_money>=10 and u.wallet_cap>=10 and u.user_id in (select o.user_id from orders o where o.order_status in (3,10,11,12,16) and o.date_add>'2018-01-01 00:00:00');"
 			result1 = statsengine.execute(thissql1)
 			userids = []
 			mobiles = []
 			for item in result1:
-				userids.append({"mobile":str(item[0]).lower(), "name":getFirstName(str(item[1])), 'points':int(item[2])})
+				userids.append({"mobile":str(item[0]).lower(), "name":getFirstName(str(item[1])), 'wallet':int(item[2]), 'wallet_cap':int(item[3])})
 				mobiles.append(str(item[0]).lower())
 
 			statssession.remove()
 			if len(userids) > 0:
 				for item in userids:
 					msg=""
-					wallet = item['points']
-					msg = "Hi%20"+item['name'].replace(" ","%20")+"%21%20You%20have%20"+str(wallet)+"%20balance%20in%20your%20Twigly%20wallet.%20Try%20the%20New%20Chatora%20Falafel%20Sandwich%20launched%20today%21%20Order%20now%20https%3A%2F%2Fgoo.gl%2FbMNEr4"
+					wallet = item['wallet']
+					msg = "Hi%20"+item['name'].replace(" ","%20")+"%21%20You%20have%20Rs%20"+str(item['wallet'])+"%20in%20your%20Twigly%20wallet.%20Order%20on%20the%20Twigly%20app%20for%20Rs%20"+str(item['wallet_cap'])+"%20off%20on%20your%20next%20order.%20https%3A%2F%2Fgoo.gl%2FbMNEr4"
+
+					# msg = "Hi%20"+item['name'].replace(" ","%20")+"%21%20You%20have%20"+str(wallet)+"%20balance%20in%20your%20Twigly%20wallet.%20Try%20the%20New%20Chatora%20Falafel%20Sandwich%20launched%20today%21%20Order%20now%20https%3A%2F%2Fgoo.gl%2FbMNEr4"
 					number = item['mobile']
 					print(number,msg)
 					sendTwiglySMS(number,msg)
